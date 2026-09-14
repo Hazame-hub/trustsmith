@@ -39,6 +39,12 @@ experts, without taking the advanced path away from those who are.
   whether Go validates the chain for it
   ([ADR-0007](docs/adr/0007-explicit-certificate-purpose.md)). The default,
   `any`, asserts no application purpose. Host names are never checked.
+- **Host name identity:** `--hostname api.example.com` (or an IP address)
+  reports whether the certificate's subject alternative names identify that
+  name, using Go's crypto/x509 matching; the Common Name is never used
+  ([ADR-0008](docs/adr/0008-hostname-identity.md)). It implies no purpose.
+  Internationalised names are first converted to their A-label (`xn--`) form
+  with an explicit, pinned IDNA profile.
 - **Fingerprints** follow [ADR-0002](docs/adr/0002-public-key-identity.md):
   `x509-cert-sha256` for the certificate, `x509-spki-sha256` (a canonical,
   cross-file key identity), and `x509-spki-encoded-sha256` (the key as encoded,
@@ -56,10 +62,10 @@ $ trustsmith inspect --output json cert.der
 $ cat bundle.pem | trustsmith inspect -
 $ trustsmith inspect bundle.pem --roots company-roots.pem
 $ trustsmith inspect server.pem --purpose tls-server --roots company-roots.pem
+$ trustsmith inspect server.pem --hostname api.example.com
 ```
 
-Not yet supported: system or platform trust stores, host name validation,
-revocation, private keys, CSRs, PKCS#12, TLS endpoint probing, and public WebPKI
+Not yet supported: system or platform trust stores, revocation, private keys, CSRs, PKCS#12, TLS endpoint probing, and public WebPKI
 policy checks.
 
 ### Exit codes
@@ -92,6 +98,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0005: structural certification paths inside one input](docs/adr/0005-included-certification-paths.md)
 - [ADR-0006: explicitly supplied trust anchors](docs/adr/0006-explicit-trust-anchors.md)
 - [ADR-0007: explicit certificate-purpose validation](docs/adr/0007-explicit-certificate-purpose.md)
+- [ADR-0008: explicit host name identity](docs/adr/0008-hostname-identity.md)
 
 ## License
 

@@ -51,6 +51,13 @@ This describes the implementation today, which offers only
     permit, and whether Go validates the chain for that purpose to roots you
     supply. A purpose never checks host names, and generic validation is
     never reported as validation for a specific purpose.
+  - Host name identity uses only subject alternative names, through Go's
+    `VerifyHostname`; the Common Name is never used. A requested name with a
+    scheme, path or port is refused rather than stripped, and requests are
+    bounded in length. Internationalised names are converted with an explicit
+    IDNA profile (`golang.org/x/net/idna`, v0.59.0; releases before v0.55.0,
+    affected by GO-2026-5026, fail the tests), and only the user's DNS request
+    is converted: IP addresses and certificate names never are.
   - A self-signature is reported as verified only when it verifies
     cryptographically.
 

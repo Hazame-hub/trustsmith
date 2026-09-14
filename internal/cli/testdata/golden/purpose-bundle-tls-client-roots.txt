@@ -60,12 +60,14 @@ Trust evaluation
 
 Purpose
   Requested        TLS client (tls-client)
-  Host name        not evaluated: --purpose does not check host names
   Entry 0 (api.example.test)
     Usage          unsuitable: the certificate's own fields do not permit TLS client use
     Ext. key usage permits server authentication but not client authentication
     Key usage      sets digital signature, consistent with TLS client use
     Anchored path  could not validate for TLS client use to the explicitly supplied roots: extended key usage along the chain does not permit the requested purpose
+
+Hostname
+  Not evaluated (use --hostname).
 
 Findings (2)
   CRITICAL  entry 0  Extended key usage does not permit the requested purpose [purpose.eku_disallows_usage]

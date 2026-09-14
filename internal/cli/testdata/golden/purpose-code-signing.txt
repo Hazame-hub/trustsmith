@@ -43,11 +43,13 @@ Trust evaluation
 
 Purpose
   Requested        code signing (code-signing)
-  Host name        not evaluated: --purpose does not check host names
   Entry 0 (Trustsmith Test Code Signer)
     Usage          suitable: the certificate's own fields permit code signing use
     Ext. key usage permits code signing
     Key usage      sets digital signature, consistent with code signing use
     Anchored path  not evaluated: no trust anchors were supplied
+
+Hostname
+  Not evaluated (use --hostname).
 
 No findings.

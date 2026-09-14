@@ -11,6 +11,7 @@ import (
 
 	"github.com/Hazame-hub/trustsmith/internal/app/inspectsvc"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
+	"github.com/Hazame-hub/trustsmith/internal/hostname"
 	"github.com/Hazame-hub/trustsmith/internal/purpose"
 )
 
@@ -21,6 +22,7 @@ func newInspectCommand(stdin io.Reader, stdout io.Writer, env Env) *cobra.Comman
 		advanced bool
 		roots    []string
 		purposes string
+		host     string
 	)
 	cmd := &cobra.Command{
 		Use:   "inspect <file|->",
@@ -39,7 +41,12 @@ used. Without --roots, trust is not evaluated.
 --purpose asks whether a certificate's own fields (extended key usage and key
 usage) permit a purpose: any (the default: no specific application),
 tls-server, tls-client, code-signing or email. With --roots, the chain is also
-validated for that purpose. Host names are never checked.
+validated for that purpose. --purpose never checks host names.
+
+--hostname asks whether a certificate's subject alternative names identify a
+host name or IP address (bracketed IPv6 is accepted), using Go's crypto/x509
+matching; the Common Name is never used. It does not imply any purpose. A
+scheme, path or port is a usage error.
 
 Exit codes: 0 no finding at or above --fail-on, 1 operational error,
 2 usage error, 3 findings reached --fail-on.`,
@@ -49,7 +56,7 @@ Exit codes: 0 no finding at or above --fail-on, 1 operational error,
 			}
 			return nil
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if output != "text" && output != "json" {
 				return usageError{fmt.Errorf("invalid --output %q: want text or json", output)}
 			}
@@ -63,6 +70,13 @@ Exit codes: 0 no finding at or above --fail-on, 1 operational error,
 				return usageError{fmt.Errorf("invalid --purpose: %w", err)}
 			}
 			opts := []inspectsvc.Option{inspectsvc.WithPurpose(requested)}
+			if cmd.Flags().Changed("hostname") {
+				request, hostErr := hostname.ParseRequest(host)
+				if hostErr != nil {
+					return usageError{fmt.Errorf("invalid --hostname: %w", hostErr)}
+				}
+				opts = append(opts, inspectsvc.WithHostname(request))
+			}
 			if len(roots) > 0 {
 				for _, r := range roots {
 					if strings.TrimSpace(r) == "" {
@@ -112,6 +126,7 @@ Exit codes: 0 no finding at or above --fail-on, 1 operational error,
 	cmd.Flags().StringVar(&failOn, "fail-on", "critical", "exit 3 when a finding is at least this severe: info, warning, critical or never")
 	cmd.Flags().BoolVar(&advanced, "advanced", false, "include technical details in text output")
 	cmd.Flags().StringArrayVar(&roots, "roots", nil, "validate against the trust anchors in this certificate file (repeatable); without it, trust is not evaluated")
+	cmd.Flags().StringVar(&host, "hostname", "", "check whether the certificate identifies this host name or IP address (no scheme, path or port)")
 	cmd.Flags().StringVar(&purposes, "purpose", string(purpose.Any), "evaluate suitability for a purpose: any, tls-server, tls-client, code-signing or email")
 	return cmd
 }

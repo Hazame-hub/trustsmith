@@ -47,12 +47,14 @@ Trust evaluation
 
 Purpose
   Requested        code signing (code-signing)
-  Host name        not evaluated: --purpose does not check host names
   Entry 0 (Trustsmith Test Mismatched Signer)
     Usage          unsuitable: the certificate's own fields do not permit code signing use
     Ext. key usage permits code signing
     Key usage      sets key encipherment; none is consistent with code signing use (consistent: digital signature)
     Anchored path  verified for code signing use against the explicitly supplied roots
+
+Hostname
+  Not evaluated (use --hostname).
 
 Findings (1)
   CRITICAL  entry 0  Key usage does not permit the requested purpose [purpose.key_usage_disallows_usage]

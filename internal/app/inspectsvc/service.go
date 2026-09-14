@@ -15,6 +15,7 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/chainpath"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
 	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
+	"github.com/Hazame-hub/trustsmith/internal/hostname"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
 	"github.com/Hazame-hub/trustsmith/internal/purpose"
@@ -84,6 +85,9 @@ type Result struct {
 	// Purpose is the evaluation for the explicitly requested purpose. Its
 	// State is not_evaluated for purpose.Any.
 	Purpose PurposeEvaluation
+	// Hostname is whether the certificates identify the explicitly requested
+	// host name or IP address. Its State is not_evaluated without a request.
+	Hostname HostnameEvaluation
 	// RecoveredPanics counts panics contained at the untrusted-input
 	// boundaries: the standard-library X.509 parser and the signature
 	// verification engine. It is always zero unless one of them has a bug;
@@ -99,6 +103,7 @@ type Service struct {
 	pathLimits chainpath.Limits
 	roots      *Roots // nil: trust is not evaluated
 	purpose    purpose.Purpose
+	hostname   *hostname.Request // nil: host name identity is not evaluated
 }
 
 // Option configures a Service.
@@ -207,6 +212,10 @@ func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 	}
 	for _, t := range res.Purpose.Targets {
 		res.Findings = append(res.Findings, interpret.Purpose(t.Entries[0], t.Usage)...)
+	}
+	res.Hostname = s.evaluateHostname(targets)
+	for _, t := range res.Hostname.Targets {
+		res.Findings = append(res.Findings, interpret.Hostname(t.Entries[0], res.Hostname.Request, t.Result)...)
 	}
 
 	for i, b := range decoded.Blocks {

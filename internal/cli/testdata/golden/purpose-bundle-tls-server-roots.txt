@@ -60,11 +60,13 @@ Trust evaluation
 
 Purpose
   Requested        TLS server (tls-server)
-  Host name        not evaluated: --purpose does not check host names
   Entry 0 (api.example.test)
     Usage          suitable: the certificate's own fields permit TLS server use
     Ext. key usage permits server authentication
     Key usage      sets digital signature, consistent with TLS server use
     Anchored path  verified for TLS server use against the explicitly supplied roots
+
+Hostname
+  Not evaluated (use --hostname).
 
 No findings.

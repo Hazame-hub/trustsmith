@@ -1,0 +1,19 @@
+# Stable finding codes (append-only; see docs/adr/0003-findings.md).
+cert.expired
+cert.expiring_soon
+cert.not_yet_valid
+cert.self_signed_leaf
+input.empty
+input.malformed_der
+input.malformed_pem
+input.malformed_spki
+input.no_certificates
+input.trailing_data
+input.unparseable_certificate
+input.unsupported_format
+key.noncanonical_spki
+key.rsa_under_2048
+key.unsupported_for_identity
+name.cn_only_no_san
+sig.md5
+sig.sha1

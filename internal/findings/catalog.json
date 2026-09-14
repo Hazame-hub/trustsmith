@@ -1,0 +1,127 @@
+{
+  "input.empty": {
+    "title": "Input is empty",
+    "explanation": "The input contains no data, or only whitespace, so there is nothing to inspect.",
+    "remediation": [
+      {"code": "check_input", "text": "Check that the right file was given and that it is not empty."}
+    ]
+  },
+  "input.unsupported_format": {
+    "title": "Unsupported input",
+    "explanation": "This input, or one block in it, is not something this version of Trustsmith inspects. This version inspects X.509 certificates in PEM or DER form. Other PEM blocks, such as private keys or certificate requests, are reported by their label only and are not decoded.",
+    "remediation": [
+      {"code": "use_supported_input", "text": "Provide a PEM or DER certificate, or a PEM bundle of certificates."}
+    ]
+  },
+  "input.no_certificates": {
+    "title": "No certificates found",
+    "explanation": "The input was read, but it contains no certificate that could be inspected.",
+    "remediation": [
+      {"code": "check_input", "text": "Check that the right file was given and that it contains a certificate."}
+    ]
+  },
+  "input.malformed_pem": {
+    "title": "Malformed PEM block",
+    "explanation": "A PEM block could not be decoded: its BEGIN line is invalid, its matching END line is missing, or its contents are not valid base64. The other blocks in the same input are still inspected.",
+    "remediation": [
+      {"code": "re_export", "text": "Export the certificate again from its source instead of repairing the file by hand."}
+    ]
+  },
+  "input.malformed_der": {
+    "title": "Malformed DER",
+    "explanation": "The input starts like binary DER but is not one valid DER structure.",
+    "remediation": [
+      {"code": "re_export", "text": "Export the certificate again from its source, in PEM or DER form."}
+    ]
+  },
+  "input.trailing_data": {
+    "title": "Extra data outside certificates",
+    "explanation": "The input contains data that belongs to no certificate, such as text around PEM blocks or bytes after a DER certificate. Strict software may reject files like this.",
+    "remediation": [
+      {"code": "remove_extra_data", "text": "Remove the extra data if the file is read by strict software."}
+    ]
+  },
+  "input.unparseable_certificate": {
+    "title": "Certificate could not be parsed",
+    "explanation": "This block is framed as a certificate, but the X.509 parser rejected it. Its fingerprints are computed from the bytes where possible; none of its other fields are shown, because none can be relied on.",
+    "remediation": [
+      {"code": "reissue", "text": "Obtain a correctly encoded certificate from its issuer."}
+    ]
+  },
+  "input.malformed_spki": {
+    "title": "Malformed public key",
+    "explanation": "The certificate's public key is not a valid encoding for the algorithm it declares, so it has no x509-spki-sha256 key identity.",
+    "remediation": [
+      {"code": "reissue", "text": "Obtain a correctly encoded certificate from its issuer."}
+    ]
+  },
+  "cert.expired": {
+    "title": "Certificate has expired",
+    "explanation": "The inspection time is after the certificate's notAfter date. Software that validates certificates will reject it.",
+    "remediation": [
+      {"code": "renew", "text": "Renew or replace the certificate, then deploy the replacement everywhere the old one is used."}
+    ]
+  },
+  "cert.not_yet_valid": {
+    "title": "Certificate is not yet valid",
+    "explanation": "The inspection time is before the certificate's notBefore date, so validation fails until then. A wrong system clock can cause the same result.",
+    "remediation": [
+      {"code": "check_clock", "text": "Check the clock of the machine that validates the certificate."},
+      {"code": "reissue", "text": "If the dates are wrong, reissue the certificate with the intended validity period."}
+    ]
+  },
+  "cert.expiring_soon": {
+    "title": "Certificate expires soon",
+    "explanation": "The certificate expires within 30 days (within 7 days is critical).",
+    "remediation": [
+      {"code": "renew", "text": "Renew the certificate and deploy the replacement before the old one expires."}
+    ]
+  },
+  "cert.self_signed_leaf": {
+    "title": "Self-signed end-entity certificate",
+    "explanation": "The certificate is not a CA certificate and is signed by its own key. Clients accept it only if it is trusted explicitly, one certificate at a time; it does not chain to any authority.",
+    "remediation": [
+      {"code": "issue_from_ca", "text": "Issue the certificate from a private or public CA that the clients already trust."}
+    ]
+  },
+  "sig.sha1": {
+    "title": "SHA-1 signature",
+    "explanation": "The certificate is signed with SHA-1, which is no longer collision resistant, and current software rejects SHA-1 certificate signatures. On a self-signed CA certificate (a trust anchor) the signature is not checked during validation, so there it is informational.",
+    "remediation": [
+      {"code": "reissue_sha256", "text": "Reissue the certificate with a SHA-256 or stronger signature."}
+    ]
+  },
+  "sig.md5": {
+    "title": "MD5 signature",
+    "explanation": "The certificate is signed with MD5, which is broken, and certificate signatures using it can be forged. On a self-signed CA certificate (a trust anchor) the signature is not checked during validation, so there it is informational.",
+    "remediation": [
+      {"code": "reissue_sha256", "text": "Reissue the certificate with a SHA-256 or stronger signature."}
+    ]
+  },
+  "key.rsa_under_2048": {
+    "title": "RSA key shorter than 2048 bits",
+    "explanation": "RSA keys shorter than 2048 bits are considered too weak, and current software and policies reject them.",
+    "remediation": [
+      {"code": "rekey", "text": "Generate a new key of at least 2048 bits (or an ECDSA P-256 or Ed25519 key) and reissue the certificate."}
+    ]
+  },
+  "key.noncanonical_spki": {
+    "title": "Public key has a non-canonical encoding",
+    "explanation": "The public key is encoded differently from its canonical form, for example RSA without NULL parameters or a compressed EC point. Its x509-spki-sha256 identity uses the canonical form, so the as-encoded fingerprint differs and is shown separately. Some software rejects such encodings.",
+    "remediation": [
+      {"code": "reissue", "text": "Reissue the certificate with a canonically encoded public key."}
+    ]
+  },
+  "key.unsupported_for_identity": {
+    "title": "No key identity for this key type",
+    "explanation": "This key algorithm or encoding is outside ADR-0002, so it has no x509-spki-sha256 identity and cannot be matched with other files. Its as-encoded fingerprint is still shown.",
+    "remediation": []
+  },
+  "name.cn_only_no_san": {
+    "title": "Name is only in the Common Name",
+    "explanation": "The certificate names its subject only in the Common Name and has no Subject Alternative Name extension. Modern TLS clients ignore the Common Name when they match host names.",
+    "remediation": [
+      {"code": "add_san", "text": "Reissue the certificate with its names in the Subject Alternative Name extension."}
+    ]
+  }
+}

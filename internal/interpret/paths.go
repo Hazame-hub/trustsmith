@@ -68,7 +68,7 @@ func Paths(r chainpath.Result, first map[fingerprint.Cert]int) []findings.Findin
 				if is.Outcome != chainpath.OutcomeNotEvaluated {
 					continue
 				}
-				k := key{code: findings.ChainStructureNotEvaluated, fp: is.Certificate, kind: is.Kind, oid: is.ExtensionOID}
+				k := key{code: findings.ChainStructureUnverifiable, fp: is.Certificate, kind: is.Kind, oid: is.ExtensionOID}
 				if _, ok := seen[k]; ok {
 					continue
 				}
@@ -77,7 +77,7 @@ func Paths(r chainpath.Result, first map[fingerprint.Cert]int) []findings.Findin
 					evidence = append(evidence, ev("extension_oid", is.ExtensionOID))
 				}
 				seen[k] = len(fs)
-				fs = append(fs, finding(entry, findings.ChainStructureNotEvaluated, findings.SeverityInfo, evidence...))
+				fs = append(fs, finding(entry, findings.ChainStructureUnverifiable, findings.SeverityInfo, evidence...))
 			}
 		}
 

@@ -98,7 +98,7 @@ var corpusExpectations = map[string]expectation{
 		paths:         []string{"0>1>2 " + completeSatisfied, "0>1>3>4 " + completeSatisfied}},
 	"path-cycle.pem": {types: []inspectsvc.ArtifactType{cert, cert}, findings: []string{"0:chain.cycle:info"},
 		relationships: []string{"[0]->[1]:verified", "[1]->[0]:verified"}, paths: []string{"0>1 cycle:cycle structure=satisfied validity=satisfied"}},
-	"path-critical-extension.pem": {types: []inspectsvc.ArtifactType{cert, cert, cert}, findings: []string{"1:chain.structure_not_evaluated:info"},
+	"path-critical-extension.pem": {types: []inspectsvc.ArtifactType{cert, cert, cert}, findings: []string{"1:chain.structure_unverifiable:info"},
 		relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}, paths: []string{"0>1>2 complete_in_input:self_signed_terminal structure=structurally_unverifiable validity=satisfied"}},
 }
 

@@ -88,7 +88,7 @@ func TestNotEvaluatedStructureIsInformational(t *testing.T) {
 	leaf := testpki.Issue(t, serverTemplate("api.example.test"), testpki.ECDSAKey(t), inter)
 
 	fs := pathFindings(t, leaf.DER, inter.DER, root.DER)
-	assertCodes(t, fs, "chain.structure_not_evaluated:info")
+	assertCodes(t, fs, "chain.structure_unverifiable:info")
 	if evidence(fs[0], "reason") != string(chainpath.IssueCriticalExtensionNotProcessed) || evidence(fs[0], "extension_oid") != "1.3.6.1.4.1.55555.1" {
 		t.Errorf("evidence %+v", fs[0].Evidence)
 	}

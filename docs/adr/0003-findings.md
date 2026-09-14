@@ -67,7 +67,7 @@ Codes in this revision:
 | `chain.issuer_not_ca` | warning | an issuer on an included path is not a CA certificate (ADR-0005) |
 | `chain.issuer_key_usage` | warning | an issuer's key usage lacks keyCertSign (ADR-0005) |
 | `chain.path_length_exceeded` | warning | a CA's pathLenConstraint is exceeded (ADR-0005) |
-| `chain.structure_not_evaluated` | info | something relevant to a path's structure was not evaluated (ADR-0005) |
+| `chain.structure_unverifiable` | info | no structural violation, but part of a path's structure could not be evaluated (ADR-0005) |
 | `chain.cycle` | info | verified issuer relationships form a cycle (ADR-0005) |
 | `chain.path_limit_reached` | info | path construction limits were reached; paths are incomplete (ADR-0005) |
 
@@ -111,6 +111,10 @@ Codes in this revision:
 - **Findings** include the rendered catalog text and codes. Their `entry` is
   `null` for whole-input findings.
 - **Arrays** are always arrays, never `null`.
+- **Pre-release rename:** `chain.structure_not_evaluated` was renamed to
+  `chain.structure_unverifiable` before any release, to match the
+  `structurally_unverifiable` state and avoid implying nothing was evaluated.
+  After the first release, codes are never renamed.
 - **Compatibility:** within `v1`, fields may be added. Renaming, removing or
   changing the meaning of a field requires `v2`.
 

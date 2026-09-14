@@ -50,7 +50,7 @@ const (
 	ChainIssuerNotCA           Code = "chain.issuer_not_ca"
 	ChainIssuerKeyUsage        Code = "chain.issuer_key_usage"
 	ChainPathLengthExceeded    Code = "chain.path_length_exceeded"
-	ChainStructureNotEvaluated Code = "chain.structure_not_evaluated"
+	ChainStructureUnverifiable Code = "chain.structure_unverifiable"
 	ChainCycle                 Code = "chain.cycle"
 	ChainPathLimitReached      Code = "chain.path_limit_reached"
 )

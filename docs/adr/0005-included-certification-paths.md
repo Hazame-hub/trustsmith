@@ -140,7 +140,7 @@ Findings stay sparse and avoid duplicates:
 | `chain.issuer_not_ca` | warning | The issuer, once, however many paths pass through it; evidence `basic_constraints` = `absent` or `ca_false`. |
 | `chain.issuer_key_usage` | warning | The issuer, once. |
 | `chain.path_length_exceeded` | warning | The constrained CA, once, with the largest excess seen. |
-| `chain.structure_not_evaluated` | info | The certificate, once per reason and extension. |
+| `chain.structure_unverifiable` | info | The certificate, once per reason and extension. |
 | `chain.cycle` | info | The certificate that would repeat. |
 | `chain.path_limit_reached` | info | The whole input. |
 

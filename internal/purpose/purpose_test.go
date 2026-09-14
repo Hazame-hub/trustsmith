@@ -112,7 +112,8 @@ func TestExtendedKeyUsage(t *testing.T) {
 		{"10 no EKU for tls-server", nil, sig, purpose.TLSServer, purpose.Suitable, nil},
 		{"10 no EKU for code-signing", nil, sig, purpose.CodeSigning, purpose.Suitable, nil},
 		{"10 no EKU for email", nil, sig, purpose.Email, purpose.Suitable, nil},
-		// 11. anyExtendedKeyUsage permits every purpose.
+		// 11. anyExtendedKeyUsage: not restricted by extended key usage for this
+		// evaluator (not a claim that every application accepts it).
 		{"11 any EKU for tls-server", []x509.ExtKeyUsage{x509.ExtKeyUsageAny}, sig, purpose.TLSServer, purpose.Suitable, nil},
 		{"11 any EKU for code-signing", []x509.ExtKeyUsage{x509.ExtKeyUsageAny}, sig, purpose.CodeSigning, purpose.Suitable, nil},
 	})
@@ -131,6 +132,32 @@ func TestKeyUsage(t *testing.T) {
 		{"content commitment only for email", []x509.ExtKeyUsage{x509.ExtKeyUsageEmailProtection}, x509.KeyUsageContentCommitment, purpose.Email, purpose.Suitable, nil},
 		{"both extensions disallow", client, x509.KeyUsageCertSign, purpose.TLSServer, purpose.Unsuitable, []purpose.Reason{purpose.ReasonExtKeyUsage, purpose.ReasonKeyUsage}},
 	})
+}
+
+// The basis records how the extended key usage decision was reached, so a
+// consumer with a stricter application policy can see when suitability rests
+// only on anyExtendedKeyUsage.
+func TestExtKeyUsageBasis(t *testing.T) {
+	for _, tc := range []struct {
+		eku   []x509.ExtKeyUsage
+		basis purpose.ExtKeyUsageBasis
+		state purpose.State
+	}{
+		{nil, purpose.EKUNotPresent, purpose.Suitable},
+		{server, purpose.EKUListed, purpose.Suitable},
+		{[]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageAny}, purpose.EKUListed, purpose.Suitable},
+		{[]x509.ExtKeyUsage{x509.ExtKeyUsageAny}, purpose.EKUAny, purpose.Suitable},
+		{[]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageAny}, purpose.EKUAny, purpose.Suitable},
+		{client, purpose.EKUNotListed, purpose.Unsuitable},
+	} {
+		r := purpose.Evaluate(leaf(t, tc.eku, sig), purpose.TLSServer)
+		if r.ExtKeyUsageBasis != tc.basis || r.State != tc.state {
+			t.Errorf("eku %v: basis %q state %s, want %q %s", tc.eku, r.ExtKeyUsageBasis, r.State, tc.basis, tc.state)
+		}
+	}
+	if r := purpose.Evaluate(leaf(t, server, sig), purpose.Any); r.ExtKeyUsageBasis != "" {
+		t.Errorf("not evaluated, yet basis %q", r.ExtKeyUsageBasis)
+	}
 }
 
 func TestResultFacts(t *testing.T) {

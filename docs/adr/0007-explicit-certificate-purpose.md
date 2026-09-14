@@ -63,7 +63,14 @@ requested, with or without roots.
 
 - **Extended key usage** (RFC 5280 section 4.2.1.12):
   - An absent extension places no restriction.
-  - `anyExtendedKeyUsage` permits every purpose.
+  - `anyExtendedKeyUsage` means the extension does not restrict the
+    certificate to other purposes, so this evaluator treats it as not
+    restricted by extended key usage. That is Trustsmith's generic
+    interpretation, not a claim that every application accepts the
+    certificate: RFC 5280 allows an application that requires a specific
+    usage to reject a certificate listing `anyExtendedKeyUsage` without that
+    usage. `certificate_usage.ext_key_usage_basis` records which case applied
+    (`not_present`, `listed`, `any_extended_key_usage`, `not_listed`).
   - Otherwise the purpose's usage must be listed. Unrecognised usage OIDs
     restrict like any other listed usage.
 - **Key usage:**
@@ -93,7 +100,8 @@ requested, with or without roots.
 - Go's `checkChainForKeyUsage` then enforces that usage along the whole chain:
   - every certificate is checked, the root included;
   - a certificate without extended key usage is unrestricted;
-  - `anyExtendedKeyUsage` passes.
+  - a certificate listing `anyExtendedKeyUsage` passes for any requested usage
+    (Go verifier behaviour, below).
 - A chain that does not permit the purpose gives
   `failed / incompatible_usage`.
 - `purpose_evaluation.targets[].anchored_path` mirrors the trust evaluation
@@ -115,9 +123,13 @@ requested, with or without roots.
   - `anchored_path: failed (incompatible_usage)`.
 
   With `any`, the same chain verifies.
-- **No EKU and `anyExtendedKeyUsage`.** A leaf without extended key usage, or
-  with `anyExtendedKeyUsage`, verifies for every purpose. That matches the
-  leaf evaluator.
+- **No EKU.** A certificate without extended key usage verifies for every
+  requested purpose.
+- **`anyExtendedKeyUsage` is a Go verifier behaviour, not an RFC 5280 rule.**
+  - A certificate listing `anyExtendedKeyUsage`, alone or together with a
+    specific usage, passes Go's chain check for every supported purpose.
+  - This records what Go 1.27.1 does. An application that requires the
+    specific usage may still reject such a certificate.
 - **Without roots, intermediate restrictions are not evaluated.** Trustsmith
   does not claim a purpose-valid path in that case.
 
@@ -163,8 +175,9 @@ requested, with or without roots.
 - `targets`, each with:
   - `certificate`;
   - `certificate_usage`: `state`, `reasons`, `required_ext_key_usage`,
-    `ext_key_usage_present`, `ext_key_usage`, `key_usage_present`, `key_usage`,
-    `consistent_key_usage` and `ca_certificate`;
+    `ext_key_usage_present`, `ext_key_usage_basis`, `ext_key_usage`,
+    `key_usage_present`, `key_usage`, `consistent_key_usage` and
+    `ca_certificate`;
   - `anchored_path`: `state` and `reason`.
 
 Usage names are stable snake_case, such as `server_auth` and

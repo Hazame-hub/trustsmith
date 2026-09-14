@@ -177,6 +177,7 @@
           ],
           "required_ext_key_usage": "server_auth",
           "ext_key_usage_present": true,
+          "ext_key_usage_basis": "not_listed",
           "ext_key_usage": [
             "client_auth"
           ],

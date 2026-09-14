@@ -306,6 +306,7 @@
           "reasons": [],
           "required_ext_key_usage": "email_protection",
           "ext_key_usage_present": true,
+          "ext_key_usage_basis": "listed",
           "ext_key_usage": [
             "email_protection"
           ],

@@ -377,12 +377,13 @@ func writePurpose(b *strings.Builder, res inspectsvc.Result) {
 
 func extKeyUsageText(u purpose.Result) string {
 	required := extKeyUsageHuman(u.Purpose.ExtKeyUsageName())
-	switch {
-	case !u.ExtKeyUsagePresent:
-		return "not present: no restriction"
-	case slices.Contains(u.ExtKeyUsages, "any"):
-		return "includes anyExtendedKeyUsage: no restriction"
-	case slices.Contains(u.Reasons, purpose.ReasonExtKeyUsage):
+	switch u.ExtKeyUsageBasis {
+	case purpose.EKUNotPresent:
+		return "not present: not restricted by extended key usage"
+	case purpose.EKUAny:
+		return "lists anyExtendedKeyUsage but not " + required +
+			": not restricted by extended key usage for this evaluator, though an application requiring " + required + " may refuse it"
+	case purpose.EKUNotListed:
 		listed := make([]string, len(u.ExtKeyUsages))
 		for i, n := range u.ExtKeyUsages {
 			listed[i] = extKeyUsageHuman(n)

@@ -401,8 +401,8 @@ func TestIntermediateExtKeyUsageRestriction(t *testing.T) {
 }
 
 // 10, 11. Go's verifier treats a certificate without extended key usage as
-// unrestricted, and anyExtendedKeyUsage as permitting every purpose, matching
-// the leaf evaluator.
+// unrestricted, and passes anyExtendedKeyUsage for a requested usage (a Go
+// verifier behaviour; see TestGoAcceptsAnyExtendedKeyUsage).
 func TestGoExtKeyUsageSemantics(t *testing.T) {
 	root := testpki.Issue(t, caTemplate("Root", 1, -1), testpki.ECDSAKey(t), nil)
 	noEKUTpl := leafTemplate("no-eku.example.test", 2)
@@ -415,6 +415,35 @@ func TestGoExtKeyUsageSemantics(t *testing.T) {
 	anyTpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
 	anyEKU := testpki.Issue(t, anyTpl, testpki.ECDSAKey(t), root)
 	assertResult(t, verifyFor(purpose.CodeSigning, anyEKU, anchors(root)), trustverify.Verified, trustverify.ReasonNone)
+}
+
+// Pinned Go 1.27.1 verifier behaviour, not an RFC 5280 requirement: a
+// certificate listing anyExtendedKeyUsage, alone or next to a specific usage,
+// passes Go's chain extended key usage check for every supported specific
+// purpose. RFC 5280 lets an application that requires a specific usage reject
+// such a certificate; Trustsmith reports Go's result as Go's.
+func TestGoAcceptsAnyExtendedKeyUsage(t *testing.T) {
+	root := testpki.Issue(t, caTemplate("Root", 1, -1), testpki.ECDSAKey(t), nil)
+	specific := []purpose.Purpose{purpose.TLSServer, purpose.TLSClient, purpose.CodeSigning, purpose.Email}
+	for i, tc := range []struct {
+		name string
+		ekus []x509.ExtKeyUsage
+	}{
+		{"any only", []x509.ExtKeyUsage{x509.ExtKeyUsageAny}},
+		{"any and server auth", []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageAny}},
+		{"any and code signing", []x509.ExtKeyUsage{x509.ExtKeyUsageCodeSigning, x509.ExtKeyUsageAny}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tpl := leafTemplate("any.example.test", int64(10+i))
+			tpl.ExtKeyUsage = tc.ekus
+			cert := testpki.Issue(t, tpl, testpki.ECDSAKey(t), root)
+			for _, p := range specific {
+				if r := verifyFor(p, cert, anchors(root)); r.State != trustverify.Verified {
+					t.Errorf("pinned Go behaviour changed: %s for %s: %s/%s", tc.name, p, r.State, r.Reason)
+				}
+			}
+		})
+	}
 }
 
 // Go's verifier ignores the leaf's key usage bits, so a certificate whose key

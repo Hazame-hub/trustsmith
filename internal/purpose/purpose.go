@@ -111,13 +111,31 @@ type Reason string
 
 const (
 	// ReasonExtKeyUsage: the extended key usage extension is present and lists
-	// neither the purpose's usage nor anyExtendedKeyUsage.
+	// neither the purpose's usage nor anyExtendedKeyUsage (basis not_listed).
 	ReasonExtKeyUsage Reason = "ext_key_usage_disallows_usage"
 	// ReasonKeyUsage: the key usage extension is present and sets none of the
 	// bits consistent with the purpose.
 	ReasonKeyUsage       Reason = "key_usage_disallows_usage"
 	ReasonNotParsed      Reason = "certificate_not_parsed"
 	ReasonUnknownPurpose Reason = "unknown_purpose"
+)
+
+// ExtKeyUsageBasis records how the extended key usage decision was reached.
+type ExtKeyUsageBasis string
+
+const (
+	// EKUNotPresent: no extended key usage extension, so the certificate is
+	// not restricted by extended key usage.
+	EKUNotPresent ExtKeyUsageBasis = "not_present"
+	// EKUListed: the purpose's usage is listed.
+	EKUListed ExtKeyUsageBasis = "listed"
+	// EKUAny: anyExtendedKeyUsage is listed but the purpose's usage is not.
+	// This evaluator treats the certificate as not restricted by extended key
+	// usage. RFC 5280 lets an application that requires the specific usage
+	// reject it, so this is not a claim that every application accepts it.
+	EKUAny ExtKeyUsageBasis = "any_extended_key_usage"
+	// EKUNotListed: other usages only; the purpose is not permitted.
+	EKUNotListed ExtKeyUsageBasis = "not_listed"
 )
 
 // Result of Evaluate. Lists are never nil.
@@ -127,7 +145,8 @@ type Result struct {
 	Reasons []Reason // in the order extended key usage, key usage
 
 	ExtKeyUsagePresent bool
-	ExtKeyUsages       []string // stable names; dotted OIDs for usages Go does not name
+	ExtKeyUsageBasis   ExtKeyUsageBasis // empty unless evaluated
+	ExtKeyUsages       []string         // stable names; dotted OIDs for usages Go does not name
 	KeyUsagePresent    bool
 	KeyUsages          []string
 	// CA reports BasicConstraints CA:TRUE. RFC 5280 does not make a CA
@@ -141,10 +160,12 @@ var (
 )
 
 // Evaluate reports whether c's own fields permit p:
-//   - Extended key usage (RFC 5280 4.2.1.12): an absent extension places no
-//     restriction; anyExtendedKeyUsage permits every purpose; otherwise the
-//     purpose's usage must be listed. Unrecognised usages restrict like any
-//     other listed usage.
+//   - Extended key usage (RFC 5280 4.2.1.12): an absent extension does not
+//     restrict the certificate; a listed purpose usage permits it; a listed
+//     anyExtendedKeyUsage is treated by this evaluator as not restricting it
+//     (see EKUAny: an application may still require the specific usage);
+//     otherwise the purpose is not permitted. Unrecognised usages restrict
+//     like any other listed usage.
 //   - Key usage: an absent extension places no restriction; otherwise at least
 //     one bit consistent with the purpose must be set.
 func Evaluate(c *x509.Certificate, p Purpose) Result {
@@ -179,7 +200,15 @@ func Evaluate(c *x509.Certificate, p Purpose) Result {
 	}
 	r.KeyUsages = keyUsageNames(c.KeyUsage)
 
-	if r.ExtKeyUsagePresent && !slices.Contains(c.ExtKeyUsage, x509.ExtKeyUsageAny) && !slices.Contains(c.ExtKeyUsage, usage) {
+	switch {
+	case !r.ExtKeyUsagePresent:
+		r.ExtKeyUsageBasis = EKUNotPresent
+	case slices.Contains(c.ExtKeyUsage, usage):
+		r.ExtKeyUsageBasis = EKUListed
+	case slices.Contains(c.ExtKeyUsage, x509.ExtKeyUsageAny):
+		r.ExtKeyUsageBasis = EKUAny
+	default:
+		r.ExtKeyUsageBasis = EKUNotListed
 		r.Reasons = append(r.Reasons, ReasonExtKeyUsage)
 	}
 	if r.KeyUsagePresent && c.KeyUsage&consistentKeyUsage[p] == 0 {

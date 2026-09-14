@@ -62,6 +62,7 @@ type jsonCertificateUsage struct {
 	Reasons             []string `json:"reasons"` // ext_key_usage_disallows_usage, key_usage_disallows_usage, ...
 	RequiredExtKeyUsage string   `json:"required_ext_key_usage"`
 	ExtKeyUsagePresent  bool     `json:"ext_key_usage_present"`
+	ExtKeyUsageBasis    string   `json:"ext_key_usage_basis,omitempty"` // not_present, listed, any_extended_key_usage or not_listed
 	ExtKeyUsage         []string `json:"ext_key_usage"`
 	KeyUsagePresent     bool     `json:"key_usage_present"`
 	KeyUsage            []string `json:"key_usage"`
@@ -504,7 +505,7 @@ func purposeJSON(res inspectsvc.Result) jsonPurposeEvaluation {
 			Certificate: jsonCertificateRef{Fingerprint: t.Certificate.Hex(), Entries: intsOrEmpty(t.Entries)},
 			CertificateUsage: jsonCertificateUsage{
 				State: string(u.State), Reasons: reasons, RequiredExtKeyUsage: u.Purpose.ExtKeyUsageName(),
-				ExtKeyUsagePresent: u.ExtKeyUsagePresent, ExtKeyUsage: orEmpty(u.ExtKeyUsages),
+				ExtKeyUsagePresent: u.ExtKeyUsagePresent, ExtKeyUsageBasis: string(u.ExtKeyUsageBasis), ExtKeyUsage: orEmpty(u.ExtKeyUsages),
 				KeyUsagePresent: u.KeyUsagePresent, KeyUsage: orEmpty(u.KeyUsages),
 				ConsistentKeyUsage: orEmpty(u.Purpose.ConsistentKeyUsages()), CACertificate: u.CA,
 			},

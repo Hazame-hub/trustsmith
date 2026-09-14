@@ -13,6 +13,7 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/chainpath"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
 	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
+	"github.com/Hazame-hub/trustsmith/internal/hostname"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
 	"github.com/Hazame-hub/trustsmith/internal/purpose"
@@ -48,6 +49,8 @@ func renderText(w io.Writer, res inspectsvc.Result, advanced bool) error {
 	writeTrust(&b, res)
 	b.WriteString("\n")
 	writePurpose(&b, res)
+	b.WriteString("\n")
+	writeHostname(&b, res)
 	b.WriteString("\n")
 	writeFindings(&b, res.Findings)
 
@@ -347,7 +350,6 @@ func writePurpose(b *strings.Builder, res inspectsvc.Result) {
 		}
 	}
 	topField(b, "Requested", purposeHuman(e.Requested)+" ("+string(e.Requested)+")")
-	topField(b, "Host name", "not evaluated: --purpose does not check host names")
 	for _, t := range e.Targets {
 		first := t.Entries[0]
 		fmt.Fprintf(b, "  Entry %d (%s)\n", first, names[first])
@@ -373,6 +375,63 @@ func writePurpose(b *strings.Builder, res inspectsvc.Result) {
 		}
 		field(b, "Anchored path", anchoredPathText(t, res.Trust.State == inspectsvc.TrustEvaluated))
 	}
+}
+
+// writeHostname renders host name identity. It says only whether the
+// certificate identifies the requested name; it never judges the certificate
+// as a whole.
+func writeHostname(b *strings.Builder, res inspectsvc.Result) {
+	e := res.Hostname
+	b.WriteString("Hostname\n")
+	if e.State != inspectsvc.HostnameEvaluated {
+		b.WriteString("  Not evaluated (use --hostname).\n")
+		return
+	}
+	names := map[int]string{}
+	for _, a := range res.Artifacts {
+		if a.Certificate != nil {
+			names[a.Entry] = subjectName(a.Certificate)
+		}
+	}
+	r := e.Request
+	kind := "DNS name"
+	if r.Kind == hostname.KindIP {
+		kind = "IP address"
+	}
+	requested := r.Input + " (" + kind
+	if r.Normalized != r.Input {
+		requested += ", compared as " + r.Normalized
+	}
+	topField(b, "Requested", requested+")")
+	topField(b, "Matcher", "Go crypto/x509 VerifyHostname ("+e.EngineVersion+"): subject alternative names only")
+	for _, t := range e.Targets {
+		first := t.Entries[0]
+		fmt.Fprintf(b, "  Entry %d (%s)\n", first, names[first])
+		res := t.Result
+		switch res.State {
+		case hostname.Matched:
+			field(b, "Match", "yes")
+		case hostname.Mismatch:
+			field(b, "Match", "no")
+			if r.Kind == hostname.KindIP {
+				field(b, "IP addresses", listOrNone(res.IPAddresses))
+			} else {
+				field(b, "DNS names", listOrNone(res.DNSNames))
+			}
+			if res.CommonNameIgnored {
+				field(b, "Common Name", "equals the request, but is not used for host name validation")
+			}
+		default:
+			field(b, "Match", "could not be evaluated ("+string(res.Reason)+")")
+		}
+	}
+}
+
+func listOrNone(v []string) string {
+	if len(v) == 0 {
+		return "(none)"
+	}
+	return strings.Join(v, ", ")
 }
 
 func extKeyUsageText(u purpose.Result) string {

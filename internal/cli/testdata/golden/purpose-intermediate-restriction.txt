@@ -47,12 +47,14 @@ Trust evaluation
 
 Purpose
   Requested        TLS client (tls-client)
-  Host name        not evaluated: --purpose does not check host names
   Entry 0 (purpose-client)
     Usage          suitable: the certificate's own fields permit TLS client use
     Ext. key usage permits client authentication
     Key usage      sets digital signature, consistent with TLS client use
     Anchored path  could not validate for TLS client use to the explicitly supplied roots: extended key usage along the chain does not permit the requested purpose
+
+Hostname
+  Not evaluated (use --hostname).
 
 Findings (1)
   CRITICAL  entry 0  Not verified against the supplied roots [trust.failed]

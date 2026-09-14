@@ -146,9 +146,10 @@ requested, with or without roots.
 
 ### Host names and TLS
 
-- No purpose evaluates host names: `purpose_evaluation.hostname_evaluated` is
-  always `false`, `DNSName` stays unset (`internal/archtest`), and the text
-  says "Host name: not evaluated".
+- No purpose evaluates host names, and `DNSName` stays unset
+  (`internal/archtest`). Host name identity is its own layer (ADR-0008); the
+  former `purpose_evaluation.hostname_evaluated` flag was removed before any
+  release.
 - There is no endpoint probing, cipher-suite, protocol-version,
   signature-scheme, key-exchange, ALPN, SNI or client-certificate negotiation
   logic.
@@ -170,8 +171,7 @@ requested, with or without roots.
 
 **JSON.** `trustsmith.inspect/v1` gains, additively, a top-level
 `purpose_evaluation`:
-- `requested`, `state` (`not_evaluated` or `evaluated`) and
-  `hostname_evaluated`;
+- `requested` and `state` (`not_evaluated` or `evaluated`);
 - `targets`, each with:
   - `certificate`;
   - `certificate_usage`: `state`, `reasons`, `required_ext_key_usage`,
@@ -188,8 +188,7 @@ certificate's extended key usage, not the requested purpose.
 **Text.**
 - A "Purpose" section always appears. For `any` it reads "Not evaluated for a
   specific application".
-- Otherwise it gives the requested purpose, "Host name: not evaluated", and
-  for each target its usage, extended key usage, key usage and anchored path.
+- Otherwise it gives the requested purpose and, for each target, its usage, extended key usage, key usage and anchored path.
 - The trust section names the extended key usage the verifier was asked for,
   and qualifies each result with the purpose, for example "verified for TLS
   server use against the explicitly supplied roots".

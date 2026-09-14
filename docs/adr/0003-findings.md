@@ -62,6 +62,7 @@ Codes in this revision:
 | `key.noncanonical_spki` | warning | KeyID exists but the key is encoded non-canonically |
 | `key.unsupported_for_identity` | info | the key has no ADR-0002 identity |
 | `name.cn_only_no_san` | warning | non-CA certificate named only by Common Name |
+| `name.hostname_mismatch` | critical | the certificate does not identify the name requested with `--hostname` (ADR-0008) |
 | `issuer.candidate_unverifiable` | info | a matching certificate in the input could not check this signature, and none verified (ADR-0004) |
 | `issuer.candidates_not_checked` | info | issuer-candidate limits were reached; issuer information is incomplete (ADR-0004) |
 | `chain.issuer_not_ca` | warning | an issuer on an included path is not a CA certificate (ADR-0005) |
@@ -108,13 +109,14 @@ Codes in this revision:
   Internal structs are never serialised.
 - **Top-level fields:** `schema`, `inspected_at`, `input`, `overview`,
   `artifacts`, `relationships`, `paths`, `trust_evaluation`,
-  `purpose_evaluation`, `findings`. `relationships` and the
+  `purpose_evaluation`, `hostname_evaluation`, `findings`. `relationships` and the
   summary fields `issuer_in_input`, `verified_issuer_entries` and
   `candidate_issuer_entries` were added compatibly within v1 (ADR-0004), as
   were `paths`, `overview.included_paths` and `overview.path_limit_reached`
   (ADR-0005). `trust_evaluation` and the qualified summary `chain` values
   were added within v1 (ADR-0006), as were `purpose_evaluation` and
-  `trust_evaluation.requested_purpose` (ADR-0007).
+  `trust_evaluation.requested_purpose` (ADR-0007), and `hostname_evaluation`
+  (ADR-0008).
 - **Fingerprints** are keyed by ADR-0002 scheme name. A missing key identity is
   `null`.
 - **Findings** include the rendered catalog text and codes. Their `entry` is
@@ -133,7 +135,7 @@ Codes in this revision:
 |---|---|
 | 0 | success; no finding at or above `--fail-on` (default `critical`) |
 | 1 | operational error (unreadable, missing or oversized input, directory given, unusable `--roots` file) |
-| 2 | usage error (flags, arguments, unknown command, unknown `--purpose`, endpoint argument while probing is unimplemented) |
+| 2 | usage error (flags, arguments, unknown command, unknown `--purpose`, invalid `--hostname`, endpoint argument while probing is unimplemented) |
 | 3 | inspection completed and the highest finding reached `--fail-on` |
 
 `--fail-on never` disables 3. The output format does not affect the exit code.

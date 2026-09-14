@@ -34,18 +34,48 @@ type jsonInspect struct {
 	// PurposeEvaluation is suitability for the purpose requested with
 	// --purpose. It is separate from trust_evaluation.
 	PurposeEvaluation jsonPurposeEvaluation `json:"purpose_evaluation"`
-	Findings          []jsonFinding         `json:"findings"`
+	// HostnameEvaluation is host name identity for the name requested with
+	// --hostname. It is separate from trust and purpose.
+	HostnameEvaluation jsonHostnameEvaluation `json:"hostname_evaluation"`
+	Findings           []jsonFinding          `json:"findings"`
 }
 
 // jsonPurposeEvaluation is the evaluation for an explicitly requested purpose.
 // requested is the exact --purpose value. state is not_evaluated for "any"
-// (targets is then empty) or evaluated. hostname_evaluated is always false:
-// no purpose checks host names.
+// (targets is then empty) or evaluated. Host name identity is never part of
+// it; see hostname_evaluation.
 type jsonPurposeEvaluation struct {
-	Requested         string              `json:"requested"`
-	State             string              `json:"state"`
-	HostnameEvaluated bool                `json:"hostname_evaluated"`
-	Targets           []jsonPurposeTarget `json:"targets"`
+	Requested string              `json:"requested"`
+	State     string              `json:"state"`
+	Targets   []jsonPurposeTarget `json:"targets"`
+}
+
+// jsonHostnameEvaluation is whether the targets identify the host name or IP
+// address requested with --hostname. state is not_evaluated without a request
+// (requested, normalized, kind, matcher and engine_version are then null and
+// targets empty) or evaluated. requested is the input as given; normalized is
+// what was matched; kind is dns or ip.
+type jsonHostnameEvaluation struct {
+	State         string               `json:"state"`
+	Requested     *string              `json:"requested"`
+	Normalized    *string              `json:"normalized"`
+	Kind          *string              `json:"kind"`
+	Matcher       *string              `json:"matcher"`
+	EngineVersion *string              `json:"engine_version"`
+	Targets       []jsonHostnameTarget `json:"targets"`
+}
+
+// jsonHostnameTarget is one certificate's result: matched, mismatch or
+// unverifiable (with a reason). The certificate's subject alternative names
+// are listed as encoded. common_name_ignored says the Common Name equals the
+// request but, as always, was not used.
+type jsonHostnameTarget struct {
+	Certificate            jsonCertificateRef `json:"certificate"`
+	State                  string             `json:"state"`
+	Reason                 string             `json:"reason,omitempty"`
+	CertificateDNSNames    []string           `json:"certificate_dns_names"`
+	CertificateIPAddresses []string           `json:"certificate_ip_addresses"`
+	CommonNameIgnored      bool               `json:"common_name_ignored"`
 }
 
 // jsonPurposeTarget keeps two facts apart: certificate_usage is what the
@@ -368,6 +398,7 @@ func renderJSON(w io.Writer, res inspectsvc.Result) error {
 	}
 	doc.TrustEvaluation = trustJSON(res)
 	doc.PurposeEvaluation = purposeJSON(res)
+	doc.HostnameEvaluation = hostnameJSON(res)
 	for _, f := range res.Findings {
 		doc.Findings = append(doc.Findings, findingJSON(f))
 	}
@@ -488,6 +519,27 @@ func trustJSON(res inspectsvc.Result) jsonTrustEvaluation {
 			j.Chains = append(j.Chains, chain)
 		}
 		out.Targets = append(out.Targets, j)
+	}
+	return out
+}
+
+func hostnameJSON(res inspectsvc.Result) jsonHostnameEvaluation {
+	e := res.Hostname
+	out := jsonHostnameEvaluation{State: string(e.State), Targets: []jsonHostnameTarget{}}
+	if e.State != inspectsvc.HostnameEvaluated {
+		return out
+	}
+	requested, normalized, kind, matcher, version := e.Request.Input, e.Request.Normalized, string(e.Request.Kind), e.Matcher, e.EngineVersion
+	out.Requested, out.Normalized, out.Kind, out.Matcher, out.EngineVersion = &requested, &normalized, &kind, &matcher, &version
+	for _, t := range e.Targets {
+		out.Targets = append(out.Targets, jsonHostnameTarget{
+			Certificate:            jsonCertificateRef{Fingerprint: t.Certificate.Hex(), Entries: intsOrEmpty(t.Entries)},
+			State:                  string(t.Result.State),
+			Reason:                 string(t.Result.Reason),
+			CertificateDNSNames:    orEmpty(t.Result.DNSNames),
+			CertificateIPAddresses: orEmpty(t.Result.IPAddresses),
+			CommonNameIgnored:      t.Result.CommonNameIgnored,
+		})
 	}
 	return out
 }

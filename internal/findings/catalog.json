@@ -124,6 +124,13 @@
       {"code": "add_san", "text": "Reissue the certificate with its names in the Subject Alternative Name extension."}
     ]
   },
+  "name.hostname_mismatch": {
+    "title": "Certificate does not identify the requested host name",
+    "explanation": "None of the certificate's subject alternative names identifies the host name or IP address requested with --hostname. Matching uses Go's crypto/x509 host name verification: DNS names match without regard to ASCII case, a wildcard matches only as the whole left-most label, an IP address matches only IP address entries, and the Common Name is never used. This concerns identity only; trust and purpose are separate questions.",
+    "remediation": [
+      {"code": "reissue_with_san", "text": "Reissue the certificate with the host name or IP address in its Subject Alternative Name extension, or check that the intended host name was requested."}
+    ]
+  },
   "issuer.candidate_unverifiable": {
     "title": "Issuer certificate found, but its signature could not be checked",
     "explanation": "A certificate in this input matches this certificate's issuer, but the signature could not be checked with its key, for example because the signature algorithm is one the verification engine refuses. This is not evidence that the signature is invalid, and none of the input's certificates was confirmed as the issuer.",

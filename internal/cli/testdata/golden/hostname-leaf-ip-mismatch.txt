@@ -1,0 +1,32 @@
+Inspected testdata/certs/leaf.pem (PEM, 1 entry) at 2026-09-14 12:00:00 UTC
+
+[0] TLS server certificate
+    Identifies     api.example.test, www.example.test, 192.0.2.10
+    Issuer         CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests
+                   no matching issuer candidate found in this input
+    Valid          yes, until 2026-12-01 00:00:00 UTC (77 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated against trust anchors (none supplied; see --roots)
+    Certificate    sha256:37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff
+    Key identity   sha256:43cf39723dae7709bde52e224ef9b7f74cac1a9b579882721bad854291b96a6d (x509-spki-sha256)
+
+Trust evaluation
+  Not evaluated: no trust anchors were supplied (use --roots <file>).
+  Certificates in the inspected input are never used as trust anchors.
+
+Purpose
+  Not evaluated for a specific application (use --purpose).
+
+Hostname
+  Requested        [2001:db8::1] (IP address, compared as 2001:db8::1)
+  Matcher          Go crypto/x509 VerifyHostname (GO_VERSION): subject alternative names only
+  Entry 0 (api.example.test)
+    Match          no
+    IP addresses   192.0.2.10
+
+Findings (1)
+  CRITICAL  entry 0  Certificate does not identify the requested host name [name.hostname_mismatch]
+            None of the certificate's subject alternative names identifies the host name or IP address requested with --hostname. Matching uses Go's crypto/x509 host name verification: DNS names match without regard to ASCII case, a wildcard matches only as the whole left-most label, an IP address matches only IP address entries, and the Common Name is never used. This concerns identity only; trust and purpose are separate questions.
+            Evidence: requested=[2001:db8::1]; normalized=2001:db8::1; kind=ip; certificate_ip_addresses=192.0.2.10
+            Fix: Reissue the certificate with the host name or IP address in its Subject Alternative Name extension, or check that the intended host name was requested.

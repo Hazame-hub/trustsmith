@@ -344,7 +344,6 @@
   "purpose_evaluation": {
     "requested": "code-signing",
     "state": "evaluated",
-    "hostname_evaluated": false,
     "targets": [
       {
         "certificate": {
@@ -378,6 +377,15 @@
         }
       }
     ]
+  },
+  "hostname_evaluation": {
+    "state": "not_evaluated",
+    "requested": null,
+    "normalized": null,
+    "kind": null,
+    "matcher": null,
+    "engine_version": null,
+    "targets": []
   },
   "findings": [
     {

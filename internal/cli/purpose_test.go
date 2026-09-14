@@ -24,10 +24,9 @@ type jsonPurposeDoc struct {
 		} `json:"targets"`
 	} `json:"trust_evaluation"`
 	PurposeEvaluation struct {
-		Requested         string `json:"requested"`
-		State             string `json:"state"`
-		HostnameEvaluated *bool  `json:"hostname_evaluated"`
-		Targets           []struct {
+		Requested string `json:"requested"`
+		State     string `json:"state"`
+		Targets   []struct {
 			Certificate struct {
 				Entries []int `json:"entries"`
 			} `json:"certificate"`
@@ -45,6 +44,9 @@ type jsonPurposeDoc struct {
 			} `json:"anchored_path"`
 		} `json:"targets"`
 	} `json:"purpose_evaluation"`
+	HostnameEvaluation struct {
+		State string `json:"state"`
+	} `json:"hostname_evaluation"`
 	Findings []struct {
 		Code     string `json:"code"`
 		Severity string `json:"severity"`
@@ -191,17 +193,25 @@ func TestPurposeJSONContract(t *testing.T) {
 	}
 }
 
-// 18. No purpose evaluates host names.
+// 18 (purpose slice), 24 (hostname slice). No purpose evaluates host names:
+// host name identity is its own layer, evaluated only with --hostname.
 func TestPurposeNeverEvaluatesHostnames(t *testing.T) {
 	chdirRoot(t)
 	for _, p := range []string{"any", "tls-server", "tls-client", "code-signing", "email"} {
-		_, d := decodePurpose(t, "--fail-on", "never", "testdata/certs/leaf.pem", "--purpose", p)
-		if d.PurposeEvaluation.HostnameEvaluated == nil || *d.PurposeEvaluation.HostnameEvaluated {
-			t.Errorf("%s: hostname_evaluated %v", p, d.PurposeEvaluation.HostnameEvaluated)
+		_, out, _ := run(t, nil, "inspect", "--output", "json", "--fail-on", "never", "--purpose", p, "testdata/certs/leaf.pem")
+		var d jsonPurposeDoc
+		if err := json.Unmarshal([]byte(out), &d); err != nil {
+			t.Fatal(err)
+		}
+		if d.HostnameEvaluation.State != "not_evaluated" {
+			t.Errorf("%s: hostname_evaluation state %q", p, d.HostnameEvaluation.State)
+		}
+		if strings.Contains(out, "hostname_evaluated") {
+			t.Errorf("%s: purpose_evaluation must not carry a host name flag", p)
 		}
 	}
 	_, text, _ := run(t, nil, "inspect", "--fail-on", "never", "--purpose", "tls-server", "testdata/certs/leaf.pem")
-	if !strings.Contains(text, "Host name        not evaluated") {
+	if !strings.Contains(text, "Hostname\n  Not evaluated (use --hostname).") {
 		t.Errorf("text does not say host names were not evaluated:\n%s", text)
 	}
 }

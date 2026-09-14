@@ -17,12 +17,14 @@ Trust evaluation
 
 Purpose
   Requested        TLS server (tls-server)
-  Host name        not evaluated: --purpose does not check host names
   Entry 0 (client-1)
     Usage          unsuitable: the certificate's own fields do not permit TLS server use
     Ext. key usage permits client authentication but not server authentication
     Key usage      sets digital signature, consistent with TLS server use
     Anchored path  not evaluated: no trust anchors were supplied
+
+Hostname
+  Not evaluated (use --hostname).
 
 Findings (1)
   CRITICAL  entry 0  Extended key usage does not permit the requested purpose [purpose.eku_disallows_usage]

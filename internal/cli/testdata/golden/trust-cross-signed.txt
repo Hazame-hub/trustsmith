@@ -96,4 +96,7 @@ Trust evaluation
 Purpose
   Not evaluated for a specific application (use --purpose).
 
+Hostname
+  Not evaluated (use --hostname).
+
 No findings.

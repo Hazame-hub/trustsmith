@@ -43,11 +43,13 @@ Trust evaluation
 
 Purpose
   Requested        TLS server (tls-server)
-  Host name        not evaluated: --purpose does not check host names
   Entry 0 (no-eku.example.test)
     Usage          suitable: the certificate's own fields permit TLS server use
     Ext. key usage not present: not restricted by extended key usage
     Key usage      sets digital signature, consistent with TLS server use
     Anchored path  not evaluated: no trust anchors were supplied
+
+Hostname
+  Not evaluated (use --hostname).
 
 No findings.

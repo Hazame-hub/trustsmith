@@ -37,6 +37,9 @@ const (
 // Names.
 const (
 	NameCNOnlyNoSAN Code = "name.cn_only_no_san"
+	// NameHostnameMismatch: the certificate does not identify the host name
+	// or IP address requested with --hostname.
+	NameHostnameMismatch Code = "name.hostname_mismatch"
 )
 
 // Issuer relationships inside the input (signature checks only, never trust).

@@ -42,6 +42,7 @@ internal/interpret      facts + relationships + paths + time → friendly summar
 internal/chainpath      certification paths and structural issuer checks inside one input (ADR-0005)
 internal/trustverify    validation against explicitly supplied trust anchors; the only Go verifier call (ADR-0006)
 internal/purpose        what a certificate's own fields permit for an explicitly requested purpose (ADR-0007)
+internal/hostname       whether a certificate identifies an explicitly requested host name or IP address (ADR-0008)
 internal/issuerlinks    issuer relationships between the certificates of one input (ADR-0004)
 internal/sigcheck       does one certificate's key verify another's signature (no policy)
 internal/findings       stable codes, severities, evidence, catalog
@@ -54,12 +55,12 @@ testdata/certs          committed inspection corpus
 ```
 
 Dependencies point inward only: `cmd → cli → app → interpret → {chainpath →
-issuerlinks, trustverify → purpose} → {x509facts → sigcheck, artifact,
-findings} → fingerprint`.
+issuerlinks, trustverify → purpose, hostname} → {x509facts → sigcheck,
+artifact, findings} → fingerprint`.
 `internal/archtest` enforces:
 
 - **Domain packages** (`fingerprint`, `artifact`, `x509facts`, `findings`,
-  `interpret`, `sigcheck`, `issuerlinks`, `chainpath`, `trustverify`, `purpose`):
+  `interpret`, `sigcheck`, `issuerlinks`, `chainpath`, `trustverify`, `purpose`, `hostname`):
   - do not import `os`, `os/exec`, `net`, `net/http`, `database/sql`,
     `syscall` or `io/fs` directly;
   - do not depend on cobra, the CLI, application services, `cmd` or `testpki`.

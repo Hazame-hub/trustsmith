@@ -29,12 +29,13 @@ import (
 	"golang.org/x/net/idna"
 )
 
-// MaxRawInputBytes is a safety bound on the raw requested value, checked
-// before any normalisation. It is deliberately generous and is not the DNS
-// length limit: IDNA conversion can lengthen or shorten a name, so the DNS
-// limits (63 bytes per label, 253 bytes for the name) are enforced on the ASCII
-// result by the profile's VerifyDNSLength.
-const MaxRawInputBytes = 1024
+// MaxRawInputBytes is a defensive bound on the raw requested value, checked
+// before any normalisation, only to refuse pathological input sizes. It is
+// deliberately generous and is not a DNS length rule: IDNA conversion can
+// lengthen or shorten a name, so the DNS limits (63 bytes per label, 253
+// bytes for the name) are enforced on the ASCII result by the profile's
+// VerifyDNSLength, after one terminal root dot has been removed.
+const MaxRawInputBytes = 4096
 
 // dnsProfile is Trustsmith's IDNA profile for requested DNS names. It is spelled
 // out option by option instead of using idna.Lookup, whose configuration may
@@ -109,7 +110,7 @@ func ParseRequest(s string) (Request, error) {
 	case s == "":
 		return fail("empty")
 	case len(s) > MaxRawInputBytes:
-		return fail("longer than %d bytes", MaxRawInputBytes)
+		return fail("exceeds the %d-byte input safety limit (a defensive bound on the raw value, not a DNS length rule)", MaxRawInputBytes)
 	case !utf8.ValidString(s):
 		return fail("not valid UTF-8")
 	case strings.IndexFunc(s, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) >= 0:

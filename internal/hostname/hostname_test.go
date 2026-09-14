@@ -262,3 +262,73 @@ func TestUnverifiable(t *testing.T) {
 		t.Errorf("empty request %+v", r)
 	}
 }
+
+// The raw input bound is a defensive limit on input size, not a DNS length
+// rule: DNS length is checked on the ASCII result of IDNA conversion.
+func TestRawInputBoundIsNotDNSLength(t *testing.T) {
+	if hostname.MaxRawInputBytes != 4096 {
+		t.Errorf("raw input bound %d, want 4096", hostname.MaxRawInputBytes)
+	}
+	// 723 bytes of UTF-8 (full-width letters) that normalise to a 243-byte name.
+	fullWidth := strings.Repeat("ａ", 60)
+	raw := strings.Join([]string{fullWidth, fullWidth, fullWidth, fullWidth}, ".")
+	ascii := strings.Join([]string{strings.Repeat("a", 60), strings.Repeat("a", 60), strings.Repeat("a", 60), strings.Repeat("a", 60)}, ".")
+	if len(raw) <= 253 || len(ascii) > 253 {
+		t.Fatalf("setup: raw %d bytes, ascii %d bytes", len(raw), len(ascii))
+	}
+	if r := request(t, raw); r.Normalized != ascii {
+		t.Errorf("normalised %q", r.Normalized)
+	}
+	// The reverse: fewer than 253 bytes of UTF-8 that exceed 253 bytes once encoded.
+	encodedTooLong := strings.Repeat("bücherei.", 20) + "example"
+	if len(encodedTooLong) > 253 {
+		t.Fatalf("setup: raw %d bytes", len(encodedTooLong))
+	}
+	assertRefused(t, encodedTooLong)
+	// Only input beyond the defensive bound gets the safety-limit error.
+	_, err := hostname.ParseRequest(strings.Repeat("a", hostname.MaxRawInputBytes+1))
+	if !errors.Is(err, hostname.ErrInvalid) || !strings.Contains(err.Error(), "input safety limit") {
+		t.Errorf("oversized input: %v", err)
+	}
+	if _, err := hostname.ParseRequest(strings.Repeat("a", 300)); err == nil || strings.Contains(err.Error(), "input safety limit") {
+		t.Errorf("a 300-byte label must fail the DNS length rule, not the safety limit: %v", err)
+	}
+}
+
+// A single terminal root dot is the absolute form of the same DNS name: it is
+// kept in the request as given and removed before IDNA and matching.
+func TestRootDotIsNormalised(t *testing.T) {
+	plain, dotted := request(t, "api.example.test"), request(t, "api.example.test.")
+	if plain.Normalized != dotted.Normalized || dotted.Normalized != "api.example.test" || dotted.Input != "api.example.test." || dotted.Kind != hostname.KindDNS {
+		t.Errorf("plain %+v dotted %+v", plain, dotted)
+	}
+	c := cert(t, "", []string{"api.example.test"}, nil)
+	assertState(t, hostname.Evaluate(c, plain), hostname.Matched)
+	assertState(t, hostname.Evaluate(c, dotted), hostname.Matched)
+
+	wildcard := cert(t, "", []string{"*.example.test"}, nil)
+	assertState(t, match(t, wildcard, "api.example.test."), hostname.Matched)
+	assertState(t, match(t, wildcard, "example.test."), hostname.Mismatch)
+	assertState(t, match(t, wildcard, "a.b.example.test."), hostname.Mismatch)
+
+	if u := request(t, "BÜCHER.example."); u.Normalized != "xn--bcher-kva.example" || u.Input != "BÜCHER.example." {
+		t.Errorf("unicode with root dot %+v", u)
+	}
+
+	// Only one root dot; empty labels anywhere else are refused.
+	assertRefused(t, "api.example.test..", ".", "..", "api..example.test.", ".api.example.test.")
+
+	// Length is checked after the root dot is removed and the name converted:
+	// a 253-byte name with its root dot is accepted, a 254-byte one is not.
+	name253 := strings.Repeat("a", 63) + "." + strings.Repeat("b", 63) + "." + strings.Repeat("c", 63) + "." + strings.Repeat("d", 61)
+	if len(name253) != 253 {
+		t.Fatalf("setup: %d bytes", len(name253))
+	}
+	if r := request(t, name253+"."); r.Normalized != name253 {
+		t.Errorf("253-byte name with root dot: %+v", r)
+	}
+	assertRefused(t, name253+"d.")
+
+	// IP literals never lose a dot: these are not IP literals, and are refused.
+	assertRefused(t, "192.0.2.10.", "2001:db8::1.", "[2001:db8::1].")
+}

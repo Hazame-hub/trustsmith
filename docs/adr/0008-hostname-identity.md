@@ -77,7 +77,7 @@ every option, so an x/net upgrade cannot change Trustsmith silently.
 
 1. **Syntactic refusal of the raw value** (usage error, exit 2). Components are
    never stripped. Refused:
-   - an empty value, more than `MaxRawInputBytes` (1024), or invalid UTF-8;
+   - an empty value, more than `MaxRawInputBytes` (4096, a defensive bound, not a DNS rule), or invalid UTF-8;
    - whitespace or control characters, including NUL;
    - a URL scheme, path (`/` or `\`), query, fragment or user information;
    - a wildcard.
@@ -98,7 +98,7 @@ every option, so an x/net upgrade cannot change Trustsmith silently.
    (`１９２．０．２．１０`) from becoming a DNS request for `192.0.2.10`.
 
 **Two separate length concepts:**
-- `MaxRawInputBytes` is a generous safety bound on the raw value.
+- `MaxRawInputBytes` (4096) is a generous defensive bound on the raw value, refusing only pathological input sizes; its error says so.
 - DNS length is enforced only on the ASCII result, by `VerifyDNSLength`,
   because IDNA can lengthen a name (`bücherei` ×20 is 180 bytes of UTF-8 but
   more than 253 bytes of ASCII) or shorten it (full-width text).

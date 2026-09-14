@@ -65,6 +65,29 @@ var hostnameGoldens = []struct {
 	{"hostname-cn-only", []string{"testdata/certs/cn-only.pem", "--hostname", "cn-only.example.test"}},
 	{"hostname-roots-tls-server-mismatch", []string{"testdata/certs/bundle.pem", "--roots", "testdata/roots/test-root.pem", "--purpose", "tls-server", "--hostname", "other.example.test"}},
 	{"hostname-match-purpose-mismatch", []string{"testdata/certs/leaf.pem", "--purpose", "tls-client", "--hostname", "www.example.test"}},
+	{"hostname-unicode-mismatch", []string{"testdata/certs/leaf.pem", "--hostname", "Bücher.example"}},
+}
+
+// IDNA 16. JSON keeps the requested value as given and the normalised A-label,
+// deterministically.
+func TestHostnameUnicodeJSON(t *testing.T) {
+	chdirRoot(t)
+	args := []string{"--fail-on", "never", "testdata/certs/leaf.pem", "--hostname", "Bücher.example."}
+	_, first, _ := run(t, nil, append([]string{"inspect", "--output", "json"}, args...)...)
+	_, second, _ := run(t, nil, append([]string{"inspect", "--output", "json"}, args...)...)
+	if first != second {
+		t.Error("JSON output differs between identical runs")
+	}
+	_, d := decodeHostname(t, args...)
+	he := d.HostnameEvaluation
+	if he.Requested == nil || *he.Requested != "Bücher.example." || he.Normalized == nil || *he.Normalized != "xn--bcher-kva.example" ||
+		he.Kind == nil || *he.Kind != "dns" || he.Targets[0].State != "mismatch" {
+		t.Errorf("%+v", he)
+	}
+	// The certificate's SANs are reported as encoded, never normalised.
+	if !slices.Equal(he.Targets[0].CertificateDNSNames, []string{"api.example.test", "www.example.test"}) {
+		t.Errorf("SAN facts %v", he.Targets[0].CertificateDNSNames)
+	}
 }
 
 // 28, 29. Text and JSON goldens for host name identity.
@@ -139,8 +162,9 @@ func TestHostnameUsageErrors(t *testing.T) {
 	chdirRoot(t)
 	for _, h := range []string{
 		"", "https://api.example.test", "api.example.test/path", "api.example.test:443", "192.0.2.10:443",
-		"[2001:db8::1]:443", "api..example.test", "*.example.test", "bad host", "bücher.example", "fe80::1%eth0",
-		strings.Repeat("a", 300),
+		"[2001:db8::1]:443", "api..example.test", "*.example.test", "bad host", "fe80::1%eth0",
+		"_service.example.test", "a\u200db.example.test", "אa.example.test", "ab--cd.example.test", "xn--example-.test",
+		strings.Repeat("a", 300), strings.Repeat("a", 2000),
 	} {
 		code, out, stderr := run(t, nil, "inspect", "--hostname", h, "testdata/certs/leaf.pem")
 		if code != 2 || out != "" || !strings.Contains(stderr, "--hostname") {

@@ -43,7 +43,8 @@ experts, without taking the advanced path away from those who are.
   reports whether the certificate's subject alternative names identify that
   name, using Go's crypto/x509 matching; the Common Name is never used
   ([ADR-0008](docs/adr/0008-hostname-identity.md)). It implies no purpose.
-  Internationalised names are not supported yet; give the `xn--` form.
+  Internationalised names are first converted to their A-label (`xn--`) form
+  with an explicit, pinned IDNA profile.
 - **Fingerprints** follow [ADR-0002](docs/adr/0002-public-key-identity.md):
   `x509-cert-sha256` for the certificate, `x509-spki-sha256` (a canonical,
   cross-file key identity), and `x509-spki-encoded-sha256` (the key as encoded,
@@ -64,8 +65,7 @@ $ trustsmith inspect server.pem --purpose tls-server --roots company-roots.pem
 $ trustsmith inspect server.pem --hostname api.example.com
 ```
 
-Not yet supported: system or platform trust stores, internationalised host
-names, revocation, private keys, CSRs, PKCS#12, TLS endpoint probing, and public WebPKI
+Not yet supported: system or platform trust stores, revocation, private keys, CSRs, PKCS#12, TLS endpoint probing, and public WebPKI
 policy checks.
 
 ### Exit codes

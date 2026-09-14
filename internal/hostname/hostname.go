@@ -11,8 +11,10 @@
 //   - a DNS request matches DNS SANs case-insensitively (ASCII);
 //   - a wildcard matches only as the complete left-most label of a SAN.
 //
-// This package validates and normalises the requested name, and turns Go's
-// answer into a stable result. It implements no matching of its own.
+// This package validates and normalises the requested name, including IDNA
+// conversion of internationalised names, and turns Go's answer into a stable
+// result. It implements no matching of its own and never rewrites names taken
+// from a certificate.
 package hostname
 
 import (
@@ -21,11 +23,49 @@ import (
 	"fmt"
 	"net/netip"
 	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"golang.org/x/net/idna"
 )
 
-// MaxInputLength bounds a requested name in bytes. A DNS name is at most 253
-// bytes, plus an optional root dot.
-const MaxInputLength = 255
+// MaxRawInputBytes is a safety bound on the raw requested value, checked
+// before any normalisation. It is deliberately generous and is not the DNS
+// length limit: IDNA conversion can lengthen or shorten a name, so the DNS
+// limits (63 bytes per label, 253 bytes for the name) are enforced on the ASCII
+// result by the profile's VerifyDNSLength.
+const MaxRawInputBytes = 1024
+
+// dnsProfile is Trustsmith's IDNA profile for requested DNS names. It is spelled
+// out option by option instead of using idna.Lookup, whose configuration may
+// change between releases, because host name normalisation is part of
+// Trustsmith's stable behaviour. In golang.org/x/net v0.59.0:
+//   - MapForLookup: UTS #46 mapping for lookup (case folding, width and
+//     compatibility mappings, NFC). It also enables StrictDomainName and
+//     ValidateLabels, which are listed again below to make the profile
+//     explicit;
+//   - BidiRule: the RFC 5893 Bidi rule, applied when a name has right-to-left
+//     labels;
+//   - Transitional(false): deviation characters (ß, ς, ZWJ, ZWNJ) are kept and
+//     encoded, never mapped (ß is not mapped to "ss");
+//   - StrictDomainName(true): STD3 ASCII rules (letters, digits and hyphens
+//     only; no underscore, no "*");
+//   - ValidateLabels(true): label validity, including hyphen positions (no
+//     leading or trailing hyphen, no "--" in positions 3 and 4 outside valid
+//     A-labels) and the CONTEXTJ rules for joiners;
+//   - VerifyDNSLength(true): after conversion, labels are 1 to 63 bytes and
+//     the name at most 253 bytes; empty labels are errors, and so is a
+//     terminal root dot.
+//
+// The behaviour is pinned by profile_internal_test.go.
+var dnsProfile = idna.New(
+	idna.MapForLookup(),
+	idna.BidiRule(),
+	idna.Transitional(false),
+	idna.StrictDomainName(true),
+	idna.ValidateLabels(true),
+	idna.VerifyDNSLength(true),
+)
 
 // Kind is what the request names.
 type Kind string
@@ -38,27 +78,29 @@ const (
 // Request is a validated host name or IP address to match.
 type Request struct {
 	Input      string // exactly as supplied, for display
-	Normalized string // what is matched
+	Normalized string // what is matched: canonical IP text or an ASCII DNS name
 	Kind       Kind
 }
 
 // ErrInvalid marks a requested name that is not a host name or IP address.
 var ErrInvalid = errors.New("invalid host name")
 
-// ParseRequest validates s and normalises it for matching.
+// ParseRequest validates s and normalises it for matching, in this order:
 //
-//   - Components are refused, never stripped: a URL scheme, path, query,
-//     user information or port is an error.
-//   - IP addresses are recognised first. Plain or bracketed IPv6 and IPv4 are
-//     normalised to their canonical text form. Zones are refused.
-//   - A DNS name loses one terminal root dot and is lower-cased (ASCII).
-//     Labels must be non-empty, at most 63 bytes, made of letters, digits,
-//     hyphens and underscores (Go's matcher accepts underscores), and must not
-//     start or end with a hyphen. The whole name is at most 253 bytes. A
-//     wildcard is not a host name, and an all-numeric last label is refused
-//     because it is neither a DNS name nor a valid IP address.
-//   - Non-ASCII names are refused until internationalised host names are
-//     supported.
+//  1. Syntactic refusal of the raw value: empty, longer than MaxRawInputBytes,
+//     invalid UTF-8, whitespace or control characters, a URL scheme, path,
+//     query, fragment, user information, or a wildcard. Components are never
+//     stripped.
+//  2. IP literals are recognised on the raw value: IPv4, IPv6, or IPv6 in
+//     brackets, normalised to canonical text. Zones are refused. IP literals
+//     never go through IDNA.
+//  3. Anything else with a colon is refused (a port, or a malformed address).
+//  4. A DNS name loses one terminal root dot and is converted by dnsProfile.ToASCII,
+//     which maps, validates and length-checks it. The result is lower-case
+//     ASCII; for example "Bücher.example." becomes "xn--bcher-kva.example".
+//  5. A result whose last label is all digits is refused: it is neither a DNS
+//     name nor an IP literal (for example full-width digits that map to
+//     "192.0.2.10").
 func ParseRequest(s string) (Request, error) {
 	fail := func(format string, args ...any) (Request, error) {
 		return Request{}, fmt.Errorf("%w: "+format, append([]any{ErrInvalid}, args...)...)
@@ -66,14 +108,18 @@ func ParseRequest(s string) (Request, error) {
 	switch {
 	case s == "":
 		return fail("empty")
-	case len(s) > MaxInputLength:
-		return fail("longer than %d bytes", MaxInputLength)
+	case len(s) > MaxRawInputBytes:
+		return fail("longer than %d bytes", MaxRawInputBytes)
+	case !utf8.ValidString(s):
+		return fail("not valid UTF-8")
+	case strings.IndexFunc(s, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) >= 0:
+		return fail("%q contains whitespace or control characters", s)
 	case strings.Contains(s, "://"):
 		return fail("%q contains a URL scheme; give only the host name or IP address", s)
-	case strings.ContainsAny(s, "/?#@"):
+	case strings.ContainsAny(s, `/\?#@`):
 		return fail("%q contains a path or other URL component; give only the host name or IP address", s)
-	case strings.IndexFunc(s, func(r rune) bool { return r <= ' ' || r == 0x7f }) >= 0:
-		return fail("%q contains whitespace or control characters", s)
+	case strings.Contains(s, "*"):
+		return fail("%q: a wildcard is not a host name", s)
 	}
 
 	if strings.HasPrefix(s, "[") {
@@ -93,19 +139,20 @@ func ParseRequest(s string) (Request, error) {
 		return fail("%q contains a port or is not a valid IP address; give only the host name or IP address", s)
 	}
 
+	// The profile's VerifyDNSLength treats a terminal root dot as an error, so
+	// one is removed first: "api.example.com." requests "api.example.com".
 	name := strings.TrimSuffix(s, ".")
-	for i := 0; i < len(name); i++ {
-		if name[i] >= 0x80 {
-			// Pending decision: internationalised names need IDNA (UTS #46)
-			// conversion, which Go's matcher does not perform.
-			return fail("%q is not ASCII: internationalised host names are not supported yet; give the A-label (xn--) form", s)
-		}
+	if name == "" {
+		return fail("%q has no labels", s)
 	}
-	name = strings.ToLower(name)
-	if err := checkDNSName(name); err != nil {
-		return fail("%q: %v", s, err)
+	ascii, err := dnsProfile.ToASCII(name)
+	if err != nil {
+		return fail("%q is not a valid host name (%v)", s, err)
 	}
-	return Request{Input: s, Normalized: name, Kind: KindDNS}, nil
+	if last := ascii[strings.LastIndexByte(ascii, '.')+1:]; strings.Trim(last, "0123456789") == "" {
+		return fail("%q: an all-numeric last label is neither a DNS name nor a valid IP address", s)
+	}
+	return Request{Input: s, Normalized: ascii, Kind: KindDNS}, nil
 }
 
 func ipRequest(input string, addr netip.Addr) (Request, error) {
@@ -113,37 +160,6 @@ func ipRequest(input string, addr netip.Addr) (Request, error) {
 		return Request{}, fmt.Errorf("%w: %q has an IPv6 zone, which no certificate can identify", ErrInvalid, input)
 	}
 	return Request{Input: input, Normalized: addr.String(), Kind: KindIP}, nil
-}
-
-func checkDNSName(name string) error {
-	if name == "" {
-		return errors.New("empty")
-	}
-	if len(name) > 253 {
-		return errors.New("longer than 253 bytes")
-	}
-	labels := strings.Split(name, ".")
-	for _, label := range labels {
-		switch {
-		case label == "":
-			return errors.New("empty label")
-		case len(label) > 63:
-			return errors.New("label longer than 63 bytes")
-		case strings.Contains(label, "*"):
-			return errors.New("a wildcard is not a host name")
-		case label[0] == '-' || label[len(label)-1] == '-':
-			return errors.New("label starts or ends with a hyphen")
-		}
-		for _, c := range label {
-			if !isLabelChar(c) {
-				return fmt.Errorf("label %q contains %q", label, c)
-			}
-		}
-	}
-	if last := labels[len(labels)-1]; strings.Trim(last, "0123456789") == "" {
-		return errors.New("an all-numeric last label is neither a DNS name nor a valid IP address")
-	}
-	return nil
 }
 
 // State is the outcome of matching one certificate.
@@ -206,15 +222,10 @@ func Evaluate(c *x509.Certificate, r Request) Result {
 		res.State = Matched
 	case errors.As(err, &mismatch):
 		res.State = Mismatch
-		res.CommonNameIgnored = r.Kind == KindDNS && c.Subject.CommonName != "" && strings.EqualFold(c.Subject.CommonName, r.Normalized)
+		res.CommonNameIgnored = r.Kind == KindDNS && c.Subject.CommonName != "" &&
+			(strings.EqualFold(c.Subject.CommonName, r.Normalized) || strings.EqualFold(c.Subject.CommonName, r.Input))
 	default:
 		res.State, res.Reason = Unverifiable, ReasonEngineError
 	}
 	return res
-}
-
-// isLabelChar reports a byte allowed in a normalised DNS label: lower-case
-// letters, digits, hyphens and underscores.
-func isLabelChar(c rune) bool {
-	return c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-' || c == '_'
 }

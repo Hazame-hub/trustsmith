@@ -43,17 +43,37 @@ func assertState(t *testing.T, r hostname.Result, want hostname.State) {
 	}
 }
 
+func assertRefused(t *testing.T, inputs ...string) {
+	t.Helper()
+	for _, in := range inputs {
+		if r, err := hostname.ParseRequest(in); !errors.Is(err, hostname.ErrInvalid) {
+			t.Errorf("ParseRequest(%q) must be refused, got %+v, %v", in, r, err)
+		}
+	}
+}
+
+// 13 and IDNA cases 1, 3, 11. Normalisation of accepted requests.
 func TestParseRequestNormalisation(t *testing.T) {
 	for _, tc := range []struct {
 		in, normalized string
 		kind           hostname.Kind
 	}{
+		// ASCII names behave as before IDNA was added.
 		{"api.example.com", "api.example.com", hostname.KindDNS},
 		{"API.Example.COM", "api.example.com", hostname.KindDNS},
 		{"api.example.com.", "api.example.com", hostname.KindDNS}, // one root dot is removed
 		{"localhost", "localhost", hostname.KindDNS},
-		{"_service.example.com", "_service.example.com", hostname.KindDNS},
 		{"xn--bcher-kva.example", "xn--bcher-kva.example", hostname.KindDNS},
+		{"XN--BCHER-KVA.example", "xn--bcher-kva.example", hostname.KindDNS},
+		// 1, 3. Unicode names become lower-case A-labels.
+		{"bücher.example", "xn--bcher-kva.example", hostname.KindDNS},
+		{"BÜCHER.EXAMPLE", "xn--bcher-kva.example", hostname.KindDNS},
+		{"Bücher.example.", "xn--bcher-kva.example", hostname.KindDNS},
+		// 4. Non-transitional: ß is encoded, not mapped to "ss".
+		{"straße.example", "xn--strae-oqa.example", hostname.KindDNS},
+		// 11. Raw UTF-8 far longer than the ASCII result: full-width letters and dots.
+		{"ＡＰＩ．ＥＸＡＭＰＬＥ．ＣＯＭ", "api.example.com", hostname.KindDNS},
+		// 12. IP literals never go through IDNA.
 		{"192.0.2.10", "192.0.2.10", hostname.KindIP},
 		{"2001:db8::1", "2001:db8::1", hostname.KindIP},
 		{"2001:0DB8:0:0::1", "2001:db8::1", hostname.KindIP},
@@ -65,32 +85,75 @@ func TestParseRequestNormalisation(t *testing.T) {
 			t.Errorf("ParseRequest(%q) = %+v, %v; want %q %s", tc.in, r, err, tc.normalized, tc.kind)
 		}
 	}
+	if len("ＡＰＩ．ＥＸＡＭＰＬＥ．ＣＯＭ") <= 2*len("api.example.com") {
+		t.Fatal("test 11 setup: the raw input must be materially longer than its ASCII form")
+	}
 }
 
 // 18, 19, 20. Anything that is not a bare host name or IP address is refused;
 // components are never silently stripped.
-func TestParseRequestRefuses(t *testing.T) {
-	for _, in := range []string{
-		"",
-		"https://api.example.com", "api.example.com/path", "user@api.example.com", "api.example.com?x", // scheme, path, user info
-		"api.example.com:443", "192.0.2.10:443", "[2001:db8::1]:443", "[2001:db8::1", "[192.0.2.10]", // ports and brackets
-		"fe80::1%eth0",                                                         // zone
-		"api..example.com", ".api.example.com", "api.example.com..", ".", "..", // empty labels
-		"-api.example.com", "api-.example.com", "api example.com", "api\texample.com",
+func TestParseRequestRefusesSyntax(t *testing.T) {
+	assertRefused(t,
+		"", strings.Repeat("a", hostname.MaxRawInputBytes+1), "\xff.example",
+		"https://api.example.com", "api.example.com/path", `api.example.com\path`, "user@api.example.com", "api.example.com?x", "api.example.com#x",
+		"api.example.com:443", "192.0.2.10:443", "[2001:db8::1]:443", "[2001:db8::1", "[192.0.2.10]",
+		"fe80::1%eth0",
+		"api example.com", "api\texample.com", "api\x00.example.com", "api example.com",
 		"*.example.com", "api*.example.com", "*",
-		"256.1.1.1", "192.0.2", "192.0.2.010", "1.2.3.4.5", // not IP addresses, not DNS names
-		strings.Repeat("a", 64) + ".example.com",
-		strings.Repeat("a.", 127) + "com",
-		strings.Repeat("a", 256),
-		"bücher.example", // internationalised names are not supported yet
-	} {
-		if _, err := hostname.ParseRequest(in); !errors.Is(err, hostname.ErrInvalid) {
-			t.Errorf("ParseRequest(%q) must be refused, got %v", in, err)
-		}
+		".", "..", "api..example.com", ".api.example.com", "api.example.com..",
+		"-api.example.com", "api-.example.com",
+		"256.1.1.1", "192.0.2", "192.0.2.010", "1.2.3.4.5", // not IP addresses, and not DNS names
+	)
+}
+
+// IDNA cases 5, 7, 8, 9, 10, 12, 14: refused by the explicit profile.
+func TestParseRequestRefusesByProfile(t *testing.T) {
+	// 14. Underscores are not allowed under strict (STD3) host name rules.
+	assertRefused(t, "_service.example.com", "api_1.example.com")
+	// 5. Disallowed code points (private use, noncharacter).
+	assertRefused(t, "\ue000.example", "a\ufdd0b.example")
+	// 7. The Bidi rule: a right-to-left label may not contain a left-to-right letter.
+	assertRefused(t, "אa.example")
+	// 8. Joiners outside their CONTEXTJ context.
+	assertRefused(t, "a\u200db.example", "a\u200cb.example")
+	// Hyphens in positions 3 and 4 are reserved outside valid A-labels.
+	assertRefused(t, "ab--cd.example")
+	// An A-label that decodes to ASCII only (GO-2026-5026) or is not valid Punycode.
+	assertRefused(t, "xn--example-.com", "xn--a.example")
+	// 9. Per-label DNS length after conversion: 63 raw characters, but more than
+	// 63 bytes once encoded.
+	longLabel := strings.Repeat("a", 60) + "üüü"
+	if n := len([]rune(longLabel)); n != 63 {
+		t.Fatalf("setup: label has %d characters", n)
+	}
+	assertRefused(t, longLabel+".example")
+	request(t, strings.Repeat("a", 63)+".example") // the ASCII limit itself is accepted
+	// 10. Whole-name DNS length after conversion: 200 bytes of UTF-8 that
+	// become more than 253 bytes of ASCII.
+	longName := strings.Repeat("bücherei.", 20) + "example"
+	if len(longName) > 253 {
+		t.Fatalf("setup: raw name is %d bytes", len(longName))
+	}
+	assertRefused(t, longName)
+	assertRefused(t, strings.Repeat("a", 64)+".example.com", strings.Repeat("a.", 127)+"com")
+	// 12. Full-width digits map to an IP-looking DNS name, which is refused:
+	// IP literals are recognised only on the raw input, never after IDNA.
+	assertRefused(t, "１９２．０．２．１０")
+}
+
+// 6. A valid internationalised name with a right-to-left label.
+func TestBidiValidName(t *testing.T) {
+	r := request(t, "שלום.example")
+	if r.Kind != hostname.KindDNS || !strings.HasPrefix(r.Normalized, "xn--") || !strings.HasSuffix(r.Normalized, ".example") {
+		t.Errorf("%+v", r)
+	}
+	// A joiner in a valid CONTEXTJ position (after a virama) is accepted.
+	if _, err := hostname.ParseRequest("क्\u200dष.example"); err != nil {
+		t.Errorf("valid ZWJ after virama refused: %v", err)
 	}
 }
 
-// 1, 2, 3, 14. DNS names: exact, case-insensitive, mismatch, several SANs.
+// 1, 2, 3, 14 (matching). DNS names: exact, case-insensitive, mismatch, several SANs.
 func TestDNSNames(t *testing.T) {
 	c := cert(t, "api.example.test", []string{"www.example.test", "API.example.test", "internal.example.test"}, nil)
 	assertState(t, match(t, c, "api.example.test"), hostname.Matched)
@@ -109,6 +172,8 @@ func TestWildcards(t *testing.T) {
 	assertState(t, match(t, c, "api.example.test"), hostname.Matched)
 	assertState(t, match(t, c, "example.test"), hostname.Mismatch)
 	assertState(t, match(t, c, "a.b.example.test"), hostname.Mismatch)
+	// A wildcard SAN matches an internationalised name through its A-label.
+	assertState(t, match(t, c, "bücher.example.test"), hostname.Matched)
 
 	partial := cert(t, "", []string{"api*.example.test"}, nil)
 	assertState(t, match(t, partial, "api1.example.test"), hostname.Mismatch)
@@ -148,28 +213,36 @@ func TestCommonNameIsNotUsed(t *testing.T) {
 	}
 }
 
-// 15, 16. Internationalised names: requests are refused until IDNA
-// conversion is supported; an A-label request matches an A-label SAN, as the
-// certificate encodes it.
+// IDNA cases 2, 4, 15. Internationalised requests match the equivalent
+// A-label SAN; certificate facts are never rewritten.
 func TestInternationalisedNames(t *testing.T) {
-	c := cert(t, "", []string{"xn--bcher-kva.example"}, nil)
-	assertState(t, match(t, c, "xn--bcher-kva.example"), hostname.Matched)
-	assertState(t, match(t, c, "XN--BCHER-KVA.example"), hostname.Matched)
-	if _, err := hostname.ParseRequest("bücher.example"); !errors.Is(err, hostname.ErrInvalid) {
-		t.Errorf("a Unicode request must be refused for now: %v", err)
+	c := cert(t, "", []string{"xn--bcher-kva.example", "API.example.test"}, nil)
+	for _, in := range []string{"bücher.example", "BÜCHER.example", "xn--bcher-kva.example", "XN--BCHER-KVA.example"} {
+		assertState(t, match(t, c, in), hostname.Matched)
 	}
-	// Pinned Go 1.27.1: VerifyHostname performs no IDNA conversion, so the
-	// Unicode form never matches the A-label SAN.
+	r := match(t, c, "Bücher.example")
+	if !slices.Equal(r.DNSNames, []string{"xn--bcher-kva.example", "API.example.test"}) {
+		t.Errorf("certificate SAN facts changed: %v", r.DNSNames)
+	}
+	// Pinned Go 1.27.1: VerifyHostname performs no IDNA conversion itself, so
+	// only the normalised request can match.
 	if err := c.VerifyHostname("bücher.example"); err == nil {
 		t.Error("pinned Go behaviour changed: VerifyHostname now converts Unicode names")
 	}
+
+	// 4. Non-transitional ß: the request is xn--strae-oqa, not strasse.
+	strasse := cert(t, "", []string{"strasse.example"}, nil)
+	assertState(t, match(t, strasse, "straße.example"), hostname.Mismatch)
+	encoded := cert(t, "", []string{"xn--strae-oqa.example"}, nil)
+	assertState(t, match(t, encoded, "straße.example"), hostname.Matched)
 }
 
 // 17. Trailing dots.
 func TestTrailingDot(t *testing.T) {
 	c := cert(t, "", []string{"api.example.test"}, nil)
-	// Trustsmith removes one root dot from the request.
+	// Trustsmith removes one root dot from the request before IDNA.
 	assertState(t, match(t, c, "api.example.test."), hostname.Matched)
+	assertState(t, match(t, cert(t, "", []string{"xn--bcher-kva.example"}, nil), "bücher.example."), hostname.Matched)
 	// Pinned Go 1.27.1: VerifyHostname also ignores a request's terminal dot.
 	if err := c.VerifyHostname("api.example.test."); err != nil {
 		t.Errorf("pinned Go behaviour changed: %v", err)

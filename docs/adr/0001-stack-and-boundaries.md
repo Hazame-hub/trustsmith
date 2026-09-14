@@ -27,7 +27,9 @@ certificate bundles.
   framing, and salvaging certificates Go rejects.
 - **Cobra** provides the CLI.
 - **The build compiles only these third-party modules**: `golang.org/x/crypto`,
-  `github.com/spf13/cobra`, `github.com/spf13/pflag` and
+  `golang.org/x/net` (for `golang.org/x/net/idna` only, ADR-0008),
+  `golang.org/x/text` (required by `idna`), `github.com/spf13/cobra`,
+  `github.com/spf13/pflag` and
   `github.com/inconshreveable/mousetrap`. `internal/archtest` fails the build on
   any other module. Adding one is a reviewed change to the allow-list.
 - **Apache-2.0**; module path `github.com/Hazame-hub/trustsmith`.

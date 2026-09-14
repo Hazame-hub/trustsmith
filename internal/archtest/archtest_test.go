@@ -46,6 +46,11 @@ var forbiddenDirectImports = []string{"os", "os/exec", "net", "net/http", "datab
 // other out-of-scope dependencies are kept from leaking into a slice.
 var allowedModules = []string{
 	"golang.org/x/crypto",
+	// golang.org/x/net is approved for golang.org/x/net/idna only (ADR-0008);
+	// golang.org/x/text is compiled because idna imports its bidi and norm
+	// packages.
+	"golang.org/x/net",
+	"golang.org/x/text",
 	"github.com/spf13/cobra",
 	"github.com/spf13/pflag",
 	"github.com/inconshreveable/mousetrap",

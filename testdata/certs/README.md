@@ -36,6 +36,13 @@ Validity periods are relative to the test clock 2026-09-14T12:00:00Z.
 | `path-no-basic-constraints.pem` | leaf, an issuer without basic constraints, root: the structure fails |
 | `path-not-ca.pem` | leaf, an issuer with basic constraints CA:FALSE, root: the structure fails |
 | `private-key-only.pem` | only a private key block: no certificates |
+| `purpose-any-eku.pem` | leaf with anyExtendedKeyUsage and its intermediate |
+| `purpose-code-signing.pem` | code signing leaf (extended key usage code signing) and its intermediate |
+| `purpose-email.pem` | email protection leaf with an email address and its intermediate |
+| `purpose-key-usage-conflict.pem` | code signing leaf whose key usage is key encipherment only, and its intermediate |
+| `purpose-no-eku.pem` | leaf without extended key usage (no restriction) and its intermediate |
+| `purpose-root-ca.pem` | root CA of the purpose fixtures (also testdata/roots/purpose-root.pem) |
+| `purpose-server-only-intermediate.pem` | client leaf under an intermediate restricted to server authentication |
 | `reissued-intermediates.pem` | leaf and two certificates for the same intermediate key: both verify the leaf |
 | `root-ca.pem` | self-signed root CA |
 | `rsa-1024.pem` | TLS server certificate with an RSA-1024 key |

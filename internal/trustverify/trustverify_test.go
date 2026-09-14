@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
+	"github.com/Hazame-hub/trustsmith/internal/purpose"
 	"github.com/Hazame-hub/trustsmith/internal/sigcheck"
 	"github.com/Hazame-hub/trustsmith/internal/testpki"
 	"github.com/Hazame-hub/trustsmith/internal/trustverify"
@@ -59,7 +60,11 @@ func certs(cs []*testpki.Cert) []*x509.Certificate {
 func anchors(cs ...*testpki.Cert) []*testpki.Cert { return cs }
 
 func verifyAt(at time.Time, target *testpki.Cert, anchors []*testpki.Cert, intermediates ...*testpki.Cert) trustverify.Result {
-	return trustverify.Verify(target.Cert, certs(anchors), certs(intermediates), at)
+	return trustverify.Verify(target.Cert, certs(anchors), certs(intermediates), at, purpose.Any)
+}
+
+func verifyFor(p purpose.Purpose, target *testpki.Cert, anchors []*testpki.Cert, intermediates ...*testpki.Cert) trustverify.Result {
+	return trustverify.Verify(target.Cert, certs(anchors), certs(intermediates), now, p)
 }
 
 func verify(target *testpki.Cert, anchors []*testpki.Cert, intermediates ...*testpki.Cert) trustverify.Result {
@@ -345,7 +350,7 @@ func TestWeakSignatureVerifiesButVerifierRejectsIt(t *testing.T) {
 			if got := sigcheck.Certificate(weak, ca.Cert); got.State != tc.signer {
 				t.Fatalf("signer relationship %s, want %s", got.State, tc.signer)
 			}
-			r := trustverify.Verify(weak, []*x509.Certificate{ca.Cert}, nil, now)
+			r := trustverify.Verify(weak, []*x509.Certificate{ca.Cert}, nil, now, purpose.Any)
 			assertResult(t, r, trustverify.Failed, trustverify.ReasonInsecureSignatureAlgorithm)
 		})
 	}
@@ -354,7 +359,105 @@ func TestWeakSignatureVerifiesButVerifierRejectsIt(t *testing.T) {
 // The package refuses to let Go substitute system roots or the system clock.
 func TestRefusesImplicitDefaults(t *testing.T) {
 	p := newPKI(t)
-	assertResult(t, trustverify.Verify(p.leaf.Cert, nil, certs([]*testpki.Cert{p.inter}), now), trustverify.Unverifiable, trustverify.ReasonEngineError)
-	assertResult(t, trustverify.Verify(p.leaf.Cert, certs(anchors(p.root)), nil, time.Time{}), trustverify.Unverifiable, trustverify.ReasonEngineError)
-	assertResult(t, trustverify.Verify(nil, certs(anchors(p.root)), nil, now), trustverify.Unverifiable, trustverify.ReasonEngineError)
+	assertResult(t, trustverify.Verify(p.leaf.Cert, nil, certs([]*testpki.Cert{p.inter}), now, purpose.Any), trustverify.Unverifiable, trustverify.ReasonEngineError)
+	assertResult(t, trustverify.Verify(p.leaf.Cert, certs(anchors(p.root)), nil, time.Time{}, purpose.Any), trustverify.Unverifiable, trustverify.ReasonEngineError)
+	assertResult(t, trustverify.Verify(nil, certs(anchors(p.root)), nil, now, purpose.Any), trustverify.Unverifiable, trustverify.ReasonEngineError)
+	// An unknown purpose must not fall through to Go's default key usage.
+	assertResult(t, trustverify.Verify(p.leaf.Cert, certs(anchors(p.root)), certs([]*testpki.Cert{p.inter}), now, purpose.Purpose("")), trustverify.Unverifiable, trustverify.ReasonEngineError)
+}
+
+// 15, 16. A requested purpose is enforced by Go along the chain. Generic
+// success does not imply success for a specific purpose.
+func TestRequestedPurposeIsEnforced(t *testing.T) {
+	p := newPKI(t) // the leaf lists server authentication only
+	assertResult(t, verifyFor(purpose.Any, p.leaf, anchors(p.root), p.inter), trustverify.Verified, trustverify.ReasonNone)
+	assertResult(t, verifyFor(purpose.TLSServer, p.leaf, anchors(p.root), p.inter), trustverify.Verified, trustverify.ReasonNone)
+	assertResult(t, verifyFor(purpose.TLSClient, p.leaf, anchors(p.root), p.inter), trustverify.Failed, trustverify.ReasonIncompatibleUsage)
+	assertResult(t, verifyFor(purpose.CodeSigning, p.leaf, anchors(p.root), p.inter), trustverify.Failed, trustverify.ReasonIncompatibleUsage)
+	assertResult(t, verifyFor(purpose.Email, p.leaf, anchors(p.root), p.inter), trustverify.Failed, trustverify.ReasonIncompatibleUsage)
+}
+
+// 14. An intermediate's extended key usage restricts the certificates below
+// it: generic inspection verifies, a purpose the intermediate does not permit
+// fails, even when the leaf itself permits it.
+func TestIntermediateExtKeyUsageRestriction(t *testing.T) {
+	root := testpki.Issue(t, caTemplate("Root", 1, -1), testpki.ECDSAKey(t), nil)
+	interTpl := caTemplate("Server-Only Intermediate", 2, -1)
+	interTpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
+	inter := testpki.Issue(t, interTpl, testpki.ECDSAKey(t), root)
+	clientTpl := leafTemplate("client", 3)
+	clientTpl.DNSNames, clientTpl.ExtKeyUsage = nil, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+	client := testpki.Issue(t, clientTpl, testpki.ECDSAKey(t), inter)
+
+	assertResult(t, verifyFor(purpose.Any, client, anchors(root), inter), trustverify.Verified, trustverify.ReasonNone)
+	if leaf := purpose.Evaluate(client.Cert, purpose.TLSClient); leaf.State != purpose.Suitable {
+		t.Fatalf("setup: the leaf itself permits tls-client: %+v", leaf)
+	}
+	assertResult(t, verifyFor(purpose.TLSClient, client, anchors(root), inter), trustverify.Failed, trustverify.ReasonIncompatibleUsage)
+	assertResult(t, verifyFor(purpose.TLSServer, client, anchors(root), inter), trustverify.Failed, trustverify.ReasonIncompatibleUsage)
+
+	server := testpki.Issue(t, leafTemplate("api.example.test", 4), testpki.ECDSAKey(t), inter)
+	assertResult(t, verifyFor(purpose.TLSServer, server, anchors(root), inter), trustverify.Verified, trustverify.ReasonNone)
+}
+
+// 10, 11. Go's verifier treats a certificate without extended key usage as
+// unrestricted, and passes anyExtendedKeyUsage for a requested usage (a Go
+// verifier behaviour; see TestGoAcceptsAnyExtendedKeyUsage).
+func TestGoExtKeyUsageSemantics(t *testing.T) {
+	root := testpki.Issue(t, caTemplate("Root", 1, -1), testpki.ECDSAKey(t), nil)
+	noEKUTpl := leafTemplate("no-eku.example.test", 2)
+	noEKUTpl.ExtKeyUsage = nil
+	noEKU := testpki.Issue(t, noEKUTpl, testpki.ECDSAKey(t), root)
+	for _, p := range []purpose.Purpose{purpose.TLSServer, purpose.TLSClient, purpose.CodeSigning, purpose.Email} {
+		assertResult(t, verifyFor(p, noEKU, anchors(root)), trustverify.Verified, trustverify.ReasonNone)
+	}
+	anyTpl := leafTemplate("any-eku.example.test", 3)
+	anyTpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
+	anyEKU := testpki.Issue(t, anyTpl, testpki.ECDSAKey(t), root)
+	assertResult(t, verifyFor(purpose.CodeSigning, anyEKU, anchors(root)), trustverify.Verified, trustverify.ReasonNone)
+}
+
+// Pinned Go 1.27.1 verifier behaviour, not an RFC 5280 requirement: a
+// certificate listing anyExtendedKeyUsage, alone or next to a specific usage,
+// passes Go's chain extended key usage check for every supported specific
+// purpose. RFC 5280 lets an application that requires a specific usage reject
+// such a certificate; Trustsmith reports Go's result as Go's.
+func TestGoAcceptsAnyExtendedKeyUsage(t *testing.T) {
+	root := testpki.Issue(t, caTemplate("Root", 1, -1), testpki.ECDSAKey(t), nil)
+	specific := []purpose.Purpose{purpose.TLSServer, purpose.TLSClient, purpose.CodeSigning, purpose.Email}
+	for i, tc := range []struct {
+		name string
+		ekus []x509.ExtKeyUsage
+	}{
+		{"any only", []x509.ExtKeyUsage{x509.ExtKeyUsageAny}},
+		{"any and server auth", []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageAny}},
+		{"any and code signing", []x509.ExtKeyUsage{x509.ExtKeyUsageCodeSigning, x509.ExtKeyUsageAny}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tpl := leafTemplate("any.example.test", int64(10+i))
+			tpl.ExtKeyUsage = tc.ekus
+			cert := testpki.Issue(t, tpl, testpki.ECDSAKey(t), root)
+			for _, p := range specific {
+				if r := verifyFor(p, cert, anchors(root)); r.State != trustverify.Verified {
+					t.Errorf("pinned Go behaviour changed: %s for %s: %s/%s", tc.name, p, r.State, r.Reason)
+				}
+			}
+		})
+	}
+}
+
+// Go's verifier ignores the leaf's key usage bits, so a certificate whose key
+// usage does not permit code signing still verifies "for code signing". Leaf
+// suitability and anchored-path validation are separate facts, and neither
+// implies the other.
+func TestGoIgnoresLeafKeyUsage(t *testing.T) {
+	root := testpki.Issue(t, caTemplate("Root", 1, -1), testpki.ECDSAKey(t), nil)
+	tpl := leafTemplate("signer.example.test", 2)
+	tpl.ExtKeyUsage, tpl.KeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageCodeSigning}, x509.KeyUsageKeyEncipherment
+	signer := testpki.Issue(t, tpl, testpki.ECDSAKey(t), root)
+
+	if leaf := purpose.Evaluate(signer.Cert, purpose.CodeSigning); leaf.State != purpose.Unsuitable {
+		t.Fatalf("leaf evaluation %+v", leaf)
+	}
+	assertResult(t, verifyFor(purpose.CodeSigning, signer, anchors(root)), trustverify.Verified, trustverify.ReasonNone)
 }

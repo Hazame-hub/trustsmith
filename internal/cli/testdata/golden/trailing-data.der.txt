@@ -15,6 +15,9 @@ Trust evaluation
   Not evaluated: no trust anchors were supplied (use --roots <file>).
   Certificates in the inspected input are never used as trust anchors.
 
+Purpose
+  Not evaluated for a specific application (use --purpose).
+
 Findings (1)
   WARNING   input  Extra data outside certificates [input.trailing_data]
             The input contains data that belongs to no certificate, such as text around PEM blocks or bytes after a DER certificate. Strict software may reject files like this.

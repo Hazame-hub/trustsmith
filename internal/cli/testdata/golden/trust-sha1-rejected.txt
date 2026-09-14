@@ -46,6 +46,9 @@ Trust evaluation
     Result         could not validate to the explicitly supplied roots
     Reason         signature algorithm rejected by the Go verifier
 
+Purpose
+  Not evaluated for a specific application (use --purpose).
+
 Findings (2)
   CRITICAL  entry 0  SHA-1 signature [sig.sha1]
             The certificate is signed with SHA-1, which is no longer collision resistant, and current software rejects SHA-1 certificate signatures. On a self-signed CA certificate the signature is not checked when that certificate is used as a trust anchor, so there it is informational.

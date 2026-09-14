@@ -23,6 +23,8 @@ key.noncanonical_spki
 key.rsa_under_2048
 key.unsupported_for_identity
 name.cn_only_no_san
+purpose.eku_disallows_usage
+purpose.key_usage_disallows_usage
 sig.md5
 sig.sha1
 trust.failed

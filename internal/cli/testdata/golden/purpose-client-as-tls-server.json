@@ -1,0 +1,230 @@
+{
+  "schema": "trustsmith.inspect/v1",
+  "inspected_at": "2026-09-14T12:00:00Z",
+  "input": {
+    "kind": "file",
+    "locator": "testdata/certs/client.pem",
+    "format": "pem",
+    "size_bytes": 660
+  },
+  "overview": {
+    "artifacts": 1,
+    "certificates": 1,
+    "findings": 1,
+    "highest_severity": "critical",
+    "included_paths": 1,
+    "path_limit_reached": false
+  },
+  "artifacts": [
+    {
+      "entry": 0,
+      "type": "certificate",
+      "pem_label": "CERTIFICATE",
+      "offset": 0,
+      "fingerprints": {
+        "x509-cert-sha256": "9ac776eb18c35eb789eb8c6736e1f7b52ac64ee7c13194de649399f393e79845",
+        "x509-spki-sha256": "4ad9d4a82ac57140dcba76248e6a6063258f2af0b76c228275356d454939ad26",
+        "x509-spki-encoded-sha256": "4ad9d4a82ac57140dcba76248e6a6063258f2af0b76c228275356d454939ad26"
+      },
+      "key_identity": {
+        "status": "canonical"
+      },
+      "summary": {
+        "kind": "TLS client certificate",
+        "purposes": [
+          "tls_client"
+        ],
+        "identifies": [
+          "spiffe://example.test/client-1"
+        ],
+        "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+        "self_signed": "no",
+        "validity": {
+          "state": "valid",
+          "not_before": "2026-09-01T00:00:00Z",
+          "not_after": "2027-09-01T00:00:00Z",
+          "days_remaining": 351
+        },
+        "key": "ECDSA P-256",
+        "signature": "ECDSA-SHA256",
+        "chain": "not_checked",
+        "issuer_in_input": "no_candidate_found",
+        "verified_issuer_entries": [],
+        "candidate_issuer_entries": []
+      },
+      "technical": {
+        "version": 3,
+        "serial": "6a",
+        "subject": "CN=client-1",
+        "issuer": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "public_key": {
+          "algorithm": "ECDSA",
+          "detail": "P-256",
+          "bits": 256
+        },
+        "signature_algorithm": {
+          "name": "ECDSA-SHA256",
+          "oid": "1.2.840.10045.4.3.2"
+        },
+        "key_usage": [
+          "digitalSignature"
+        ],
+        "extended_key_usage": [
+          "clientAuth"
+        ],
+        "basic_constraints": {
+          "present": false,
+          "is_ca": false,
+          "max_path_len": null
+        },
+        "authority_key_id": "50e2744d3d26027cff05ff82bd47b1ac446b9d58",
+        "subject_alt_names": {
+          "dns": [],
+          "ip": [],
+          "email": [],
+          "uri": [
+            "spiffe://example.test/client-1"
+          ]
+        },
+        "extensions": [
+          {
+            "oid": "2.5.29.15",
+            "critical": true,
+            "name": "keyUsage"
+          },
+          {
+            "oid": "2.5.29.37",
+            "critical": false,
+            "name": "extKeyUsage"
+          },
+          {
+            "oid": "2.5.29.35",
+            "critical": false,
+            "name": "authorityKeyIdentifier"
+          },
+          {
+            "oid": "2.5.29.17",
+            "critical": false,
+            "name": "subjectAltName"
+          }
+        ],
+        "crl_distribution_points": [],
+        "ocsp_servers": [],
+        "issuing_certificate_urls": [],
+        "policy_oids": [],
+        "self_issued": false,
+        "self_signature": "not_applicable",
+        "pin_sha256": "StnUqCrFcUDcunYkjmpgYyWPKvC3bCKCdTVtRUk5rSY="
+      }
+    }
+  ],
+  "relationships": [],
+  "paths": [
+    {
+      "type": "included_certification_path",
+      "certificates": [
+        {
+          "x509-cert-sha256": "9ac776eb18c35eb789eb8c6736e1f7b52ac64ee7c13194de649399f393e79845",
+          "entries": [
+            0
+          ]
+        }
+      ],
+      "completeness": "partial",
+      "end": "no_issuer_candidate",
+      "cycle_to_position": null,
+      "signatures": "not_applicable",
+      "structure": {
+        "state": "not_applicable",
+        "issues": []
+      },
+      "validity": {
+        "state": "satisfied",
+        "outside_validity_period": []
+      },
+      "trust": "not_evaluated"
+    }
+  ],
+  "trust_evaluation": {
+    "state": "not_evaluated",
+    "source": null,
+    "engine": null,
+    "engine_version": null,
+    "requested_purpose": null,
+    "requested_extended_key_usages": [],
+    "roots_files": [],
+    "anchors": [],
+    "targets": []
+  },
+  "purpose_evaluation": {
+    "requested": "tls-server",
+    "state": "evaluated",
+    "hostname_evaluated": false,
+    "targets": [
+      {
+        "certificate": {
+          "x509-cert-sha256": "9ac776eb18c35eb789eb8c6736e1f7b52ac64ee7c13194de649399f393e79845",
+          "entries": [
+            0
+          ]
+        },
+        "certificate_usage": {
+          "state": "unsuitable",
+          "reasons": [
+            "ext_key_usage_disallows_usage"
+          ],
+          "required_ext_key_usage": "server_auth",
+          "ext_key_usage_present": true,
+          "ext_key_usage_basis": "not_listed",
+          "ext_key_usage": [
+            "client_auth"
+          ],
+          "key_usage_present": true,
+          "key_usage": [
+            "digital_signature"
+          ],
+          "consistent_key_usage": [
+            "digital_signature",
+            "key_encipherment",
+            "key_agreement"
+          ],
+          "ca_certificate": false
+        },
+        "anchored_path": {
+          "state": "not_evaluated"
+        }
+      }
+    ]
+  },
+  "findings": [
+    {
+      "code": "purpose.eku_disallows_usage",
+      "severity": "critical",
+      "entry": 0,
+      "title": "Extended key usage does not permit the requested purpose",
+      "explanation": "The certificate's extended key usage extension lists specific usages, and neither the usage the purpose requested with --purpose needs nor anyExtendedKeyUsage is among them. Software that checks extended key usage refuses the certificate for that purpose. This concerns the certificate's own fields only; trust and host names are separate questions.",
+      "evidence": [
+        {
+          "key": "requested",
+          "value": "tls-server"
+        },
+        {
+          "key": "required_ext_key_usage",
+          "value": "server_auth"
+        },
+        {
+          "key": "ext_key_usage",
+          "value": "client_auth"
+        }
+      ],
+      "remediation": [
+        {
+          "code": "reissue_with_usage",
+          "text": "Reissue the certificate with the extended key usage the purpose needs, or check that the intended purpose was requested."
+        }
+      ]
+    }
+  ]
+}

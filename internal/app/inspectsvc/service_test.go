@@ -102,6 +102,22 @@ var corpusExpectations = map[string]expectation{
 		relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}, paths: []string{"0>1>2 complete_in_input:self_signed_terminal structure=structurally_unverifiable validity=satisfied"}},
 }
 
+// Explicit purpose fixtures: a leaf followed by its intermediate, or the
+// purpose root alone. Their meaning without --purpose is ordinary.
+func init() {
+	for _, name := range []string{
+		"purpose-code-signing.pem", "purpose-email.pem", "purpose-no-eku.pem", "purpose-any-eku.pem",
+		"purpose-key-usage-conflict.pem", "purpose-server-only-intermediate.pem",
+	} {
+		corpusExpectations[name] = expectation{
+			types:         []inspectsvc.ArtifactType{cert, cert},
+			relationships: []string{"[0]->[1]:verified"},
+			paths:         []string{"0>1 partial:no_issuer_candidate structure=satisfied validity=satisfied"},
+		}
+	}
+	corpusExpectations["purpose-root-ca.pem"] = expectation{types: []inspectsvc.ArtifactType{cert}, paths: []string{selfSignedAlone}}
+}
+
 const (
 	partialAlone               = "0 partial:no_issuer_candidate structure=not_applicable validity=satisfied"
 	selfSignedAlone            = "0 complete_in_input:self_signed_terminal structure=not_applicable validity=satisfied"

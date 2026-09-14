@@ -1,0 +1,515 @@
+{
+  "schema": "trustsmith.inspect/v1",
+  "inspected_at": "2026-09-14T12:00:00Z",
+  "input": {
+    "kind": "file",
+    "locator": "testdata/certs/bundle.pem",
+    "format": "pem",
+    "size_bytes": 2024
+  },
+  "overview": {
+    "artifacts": 3,
+    "certificates": 3,
+    "findings": 0,
+    "highest_severity": "none",
+    "included_paths": 1,
+    "path_limit_reached": false
+  },
+  "artifacts": [
+    {
+      "entry": 0,
+      "type": "certificate",
+      "pem_label": "CERTIFICATE",
+      "offset": 0,
+      "fingerprints": {
+        "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+        "x509-spki-sha256": "43cf39723dae7709bde52e224ef9b7f74cac1a9b579882721bad854291b96a6d",
+        "x509-spki-encoded-sha256": "43cf39723dae7709bde52e224ef9b7f74cac1a9b579882721bad854291b96a6d"
+      },
+      "key_identity": {
+        "status": "canonical"
+      },
+      "summary": {
+        "kind": "TLS server certificate",
+        "purposes": [
+          "tls_server"
+        ],
+        "identifies": [
+          "api.example.test",
+          "www.example.test",
+          "192.0.2.10"
+        ],
+        "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+        "self_signed": "no",
+        "validity": {
+          "state": "valid",
+          "not_before": "2026-09-01T00:00:00Z",
+          "not_after": "2026-12-01T00:00:00Z",
+          "days_remaining": 77
+        },
+        "key": "ECDSA P-256",
+        "signature": "ECDSA-SHA256",
+        "chain": "verified_to_supplied_roots",
+        "issuer_in_input": "verified",
+        "verified_issuer_entries": [
+          1
+        ],
+        "candidate_issuer_entries": []
+      },
+      "technical": {
+        "version": 3,
+        "serial": "64",
+        "subject": "CN=api.example.test",
+        "issuer": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "public_key": {
+          "algorithm": "ECDSA",
+          "detail": "P-256",
+          "bits": 256
+        },
+        "signature_algorithm": {
+          "name": "ECDSA-SHA256",
+          "oid": "1.2.840.10045.4.3.2"
+        },
+        "key_usage": [
+          "digitalSignature"
+        ],
+        "extended_key_usage": [
+          "serverAuth"
+        ],
+        "basic_constraints": {
+          "present": false,
+          "is_ca": false,
+          "max_path_len": null
+        },
+        "authority_key_id": "50e2744d3d26027cff05ff82bd47b1ac446b9d58",
+        "subject_alt_names": {
+          "dns": [
+            "api.example.test",
+            "www.example.test"
+          ],
+          "ip": [
+            "192.0.2.10"
+          ],
+          "email": [],
+          "uri": []
+        },
+        "extensions": [
+          {
+            "oid": "2.5.29.15",
+            "critical": true,
+            "name": "keyUsage"
+          },
+          {
+            "oid": "2.5.29.37",
+            "critical": false,
+            "name": "extKeyUsage"
+          },
+          {
+            "oid": "2.5.29.35",
+            "critical": false,
+            "name": "authorityKeyIdentifier"
+          },
+          {
+            "oid": "2.5.29.17",
+            "critical": false,
+            "name": "subjectAltName"
+          }
+        ],
+        "crl_distribution_points": [],
+        "ocsp_servers": [],
+        "issuing_certificate_urls": [],
+        "policy_oids": [],
+        "self_issued": false,
+        "self_signature": "not_applicable",
+        "pin_sha256": "Q885cj2udwm95S4iTvm390ysGptXmIJyG62FQpG5am0="
+      }
+    },
+    {
+      "entry": 1,
+      "type": "certificate",
+      "pem_label": "CERTIFICATE",
+      "offset": 684,
+      "fingerprints": {
+        "x509-cert-sha256": "ae96492f08a113ded178c48fe3924b288f3489d718a4b843a6fcda90af49017a",
+        "x509-spki-sha256": "75e9521e95c4b0ee4af721652fb83814cec92025c8feb338ed6e6644d0862f1e",
+        "x509-spki-encoded-sha256": "75e9521e95c4b0ee4af721652fb83814cec92025c8feb338ed6e6644d0862f1e"
+      },
+      "key_identity": {
+        "status": "canonical"
+      },
+      "summary": {
+        "kind": "CA certificate",
+        "purposes": [
+          "ca"
+        ],
+        "identifies": [
+          "CN=Trustsmith Test Intermediate CA"
+        ],
+        "issuer_as_stated": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+        "self_signed": "no",
+        "validity": {
+          "state": "valid",
+          "not_before": "2026-01-01T00:00:00Z",
+          "not_after": "2031-01-01T00:00:00Z",
+          "days_remaining": 1569
+        },
+        "key": "ECDSA P-256",
+        "signature": "ECDSA-SHA256",
+        "chain": "not_checked",
+        "issuer_in_input": "verified",
+        "verified_issuer_entries": [
+          2
+        ],
+        "candidate_issuer_entries": []
+      },
+      "technical": {
+        "version": 3,
+        "serial": "02",
+        "subject": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+        "issuer": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "public_key": {
+          "algorithm": "ECDSA",
+          "detail": "P-256",
+          "bits": 256
+        },
+        "signature_algorithm": {
+          "name": "ECDSA-SHA256",
+          "oid": "1.2.840.10045.4.3.2"
+        },
+        "key_usage": [
+          "keyCertSign",
+          "cRLSign"
+        ],
+        "extended_key_usage": [],
+        "basic_constraints": {
+          "present": true,
+          "is_ca": true,
+          "max_path_len": 0
+        },
+        "subject_key_id": "50e2744d3d26027cff05ff82bd47b1ac446b9d58",
+        "authority_key_id": "b1d443a7e84c5d4cb16c81fa9061be2ca3f35a3b",
+        "subject_alt_names": {
+          "dns": [],
+          "ip": [],
+          "email": [],
+          "uri": []
+        },
+        "extensions": [
+          {
+            "oid": "2.5.29.15",
+            "critical": true,
+            "name": "keyUsage"
+          },
+          {
+            "oid": "2.5.29.19",
+            "critical": true,
+            "name": "basicConstraints"
+          },
+          {
+            "oid": "2.5.29.14",
+            "critical": false,
+            "name": "subjectKeyIdentifier"
+          },
+          {
+            "oid": "2.5.29.35",
+            "critical": false,
+            "name": "authorityKeyIdentifier"
+          }
+        ],
+        "crl_distribution_points": [],
+        "ocsp_servers": [],
+        "issuing_certificate_urls": [],
+        "policy_oids": [],
+        "self_issued": false,
+        "self_signature": "not_applicable",
+        "pin_sha256": "delSHpXEsO5K9yFlL7g4FM7JICXI/rM47W5mRNCGLx4="
+      }
+    },
+    {
+      "entry": 2,
+      "type": "certificate",
+      "pem_label": "CERTIFICATE",
+      "offset": 1380,
+      "fingerprints": {
+        "x509-cert-sha256": "9ccfee007ad73eced4df32fc914d882dee1b6d8a2557e3036b14d7dd41ca7c39",
+        "x509-spki-sha256": "1832e730048404d0c0d9db515a2b62129f3869362e9e2e59acf163e8e0622838",
+        "x509-spki-encoded-sha256": "1832e730048404d0c0d9db515a2b62129f3869362e9e2e59acf163e8e0622838"
+      },
+      "key_identity": {
+        "status": "canonical"
+      },
+      "summary": {
+        "kind": "Self-signed CA certificate",
+        "purposes": [
+          "ca"
+        ],
+        "identifies": [
+          "CN=Trustsmith Test Root CA"
+        ],
+        "issuer_as_stated": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+        "self_signed": "verified",
+        "validity": {
+          "state": "valid",
+          "not_before": "2026-01-01T00:00:00Z",
+          "not_after": "2036-01-01T00:00:00Z",
+          "days_remaining": 3395
+        },
+        "key": "ECDSA P-256",
+        "signature": "ECDSA-SHA256",
+        "chain": "not_checked",
+        "issuer_in_input": "self_signed",
+        "verified_issuer_entries": [],
+        "candidate_issuer_entries": []
+      },
+      "technical": {
+        "version": 3,
+        "serial": "01",
+        "subject": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+        "issuer": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2036-01-01T00:00:00Z",
+        "public_key": {
+          "algorithm": "ECDSA",
+          "detail": "P-256",
+          "bits": 256
+        },
+        "signature_algorithm": {
+          "name": "ECDSA-SHA256",
+          "oid": "1.2.840.10045.4.3.2"
+        },
+        "key_usage": [
+          "keyCertSign",
+          "cRLSign"
+        ],
+        "extended_key_usage": [],
+        "basic_constraints": {
+          "present": true,
+          "is_ca": true,
+          "max_path_len": 1
+        },
+        "subject_key_id": "b1d443a7e84c5d4cb16c81fa9061be2ca3f35a3b",
+        "subject_alt_names": {
+          "dns": [],
+          "ip": [],
+          "email": [],
+          "uri": []
+        },
+        "extensions": [
+          {
+            "oid": "2.5.29.15",
+            "critical": true,
+            "name": "keyUsage"
+          },
+          {
+            "oid": "2.5.29.19",
+            "critical": true,
+            "name": "basicConstraints"
+          },
+          {
+            "oid": "2.5.29.14",
+            "critical": false,
+            "name": "subjectKeyIdentifier"
+          }
+        ],
+        "crl_distribution_points": [],
+        "ocsp_servers": [],
+        "issuing_certificate_urls": [],
+        "policy_oids": [],
+        "self_issued": true,
+        "self_signature": "verified",
+        "pin_sha256": "GDLnMASEBNDA2dtRWitiEp84aTYuni5ZrPFj6OBiKDg="
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "certificate_issuer",
+      "child": {
+        "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+        "entries": [
+          0
+        ]
+      },
+      "candidate": {
+        "x509-cert-sha256": "ae96492f08a113ded178c48fe3924b288f3489d718a4b843a6fcda90af49017a",
+        "entries": [
+          1
+        ]
+      },
+      "evidence": [
+        "issuer_dn_match",
+        "authority_key_id_match"
+      ],
+      "state": "verified"
+    },
+    {
+      "type": "certificate_issuer",
+      "child": {
+        "x509-cert-sha256": "ae96492f08a113ded178c48fe3924b288f3489d718a4b843a6fcda90af49017a",
+        "entries": [
+          1
+        ]
+      },
+      "candidate": {
+        "x509-cert-sha256": "9ccfee007ad73eced4df32fc914d882dee1b6d8a2557e3036b14d7dd41ca7c39",
+        "entries": [
+          2
+        ]
+      },
+      "evidence": [
+        "issuer_dn_match",
+        "authority_key_id_match"
+      ],
+      "state": "verified"
+    }
+  ],
+  "paths": [
+    {
+      "type": "included_certification_path",
+      "certificates": [
+        {
+          "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+          "entries": [
+            0
+          ]
+        },
+        {
+          "x509-cert-sha256": "ae96492f08a113ded178c48fe3924b288f3489d718a4b843a6fcda90af49017a",
+          "entries": [
+            1
+          ]
+        },
+        {
+          "x509-cert-sha256": "9ccfee007ad73eced4df32fc914d882dee1b6d8a2557e3036b14d7dd41ca7c39",
+          "entries": [
+            2
+          ]
+        }
+      ],
+      "completeness": "complete_in_input",
+      "end": "self_signed_terminal",
+      "cycle_to_position": null,
+      "signatures": "verified",
+      "structure": {
+        "state": "satisfied",
+        "issues": []
+      },
+      "validity": {
+        "state": "satisfied",
+        "outside_validity_period": []
+      },
+      "trust": "not_evaluated"
+    }
+  ],
+  "trust_evaluation": {
+    "state": "evaluated",
+    "source": "supplied_roots",
+    "engine": "go-x509",
+    "engine_version": "GO_VERSION",
+    "requested_purpose": "tls-server",
+    "requested_extended_key_usages": [
+      "server_auth"
+    ],
+    "roots_files": [
+      {
+        "locator": "testdata/roots/test-root.pem",
+        "certificates": 1
+      }
+    ],
+    "anchors": [
+      {
+        "x509-cert-sha256": "9ccfee007ad73eced4df32fc914d882dee1b6d8a2557e3036b14d7dd41ca7c39",
+        "subject": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+        "self_signature": "verified",
+        "sources": [
+          {
+            "roots_file": "testdata/roots/test-root.pem",
+            "entry": 0
+          }
+        ],
+        "input_entries": [
+          2
+        ]
+      }
+    ],
+    "targets": [
+      {
+        "certificate": {
+          "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+          "entries": [
+            0
+          ]
+        },
+        "state": "verified",
+        "chains": [
+          {
+            "certificates": [
+              {
+                "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+                "entries": [
+                  0
+                ]
+              },
+              {
+                "x509-cert-sha256": "ae96492f08a113ded178c48fe3924b288f3489d718a4b843a6fcda90af49017a",
+                "entries": [
+                  1
+                ]
+              },
+              {
+                "x509-cert-sha256": "9ccfee007ad73eced4df32fc914d882dee1b6d8a2557e3036b14d7dd41ca7c39",
+                "entries": [
+                  2
+                ]
+              }
+            ],
+            "anchor": "9ccfee007ad73eced4df32fc914d882dee1b6d8a2557e3036b14d7dd41ca7c39"
+          }
+        ]
+      }
+    ]
+  },
+  "purpose_evaluation": {
+    "requested": "tls-server",
+    "state": "evaluated",
+    "hostname_evaluated": false,
+    "targets": [
+      {
+        "certificate": {
+          "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+          "entries": [
+            0
+          ]
+        },
+        "certificate_usage": {
+          "state": "suitable",
+          "reasons": [],
+          "required_ext_key_usage": "server_auth",
+          "ext_key_usage_present": true,
+          "ext_key_usage_basis": "listed",
+          "ext_key_usage": [
+            "server_auth"
+          ],
+          "key_usage_present": true,
+          "key_usage": [
+            "digital_signature"
+          ],
+          "consistent_key_usage": [
+            "digital_signature",
+            "key_encipherment",
+            "key_agreement"
+          ],
+          "ca_certificate": false
+        },
+        "anchored_path": {
+          "state": "verified"
+        }
+      }
+    ]
+  },
+  "findings": []
+}

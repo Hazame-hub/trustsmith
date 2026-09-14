@@ -47,6 +47,10 @@ This describes the implementation today, which offers only
   - Trust results name their source and engine (`supplied_roots`, `go-x509`).
     Failure reasons are stable codes; verifier messages are not part of the
     output.
+  - Purpose results keep two facts apart: what the certificate's own fields
+    permit, and whether Go validates the chain for that purpose to roots you
+    supply. A purpose never checks host names, and generic validation is
+    never reported as validation for a specific purpose.
   - A self-signature is reported as verified only when it verifies
     cryptographically.
 

@@ -1,0 +1,61 @@
+Inspected testdata/certs/purpose-server-only-intermediate.pem (PEM, 2 entries) at 2026-09-14 12:00:00 UTC
+
+[0] TLS client certificate
+    Identifies     spiffe://example.test/purpose-client
+    Issuer         CN=Trustsmith Purpose Server-Only Intermediate CA,O=Trustsmith Purpose Tests
+                   signature verified with the key of the certificate in entry 1 of this input
+    Valid          yes, until 2027-09-01 00:00:00 UTC (351 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          could not validate to the explicitly supplied roots (see Trust evaluation)
+    Certificate    sha256:314066ae7b01aadbe7f8edd875e0af28b392a8a7d907c6c70b46e1d24db93826
+    Key identity   sha256:3f6e4ef48c516e510fe5978a60dd32d225f4555a0797dfba644e7941bac8b684 (x509-spki-sha256)
+
+[1] CA certificate
+    Identifies     CN=Trustsmith Purpose Server-Only Intermediate CA
+    Issuer         CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests
+                   no matching issuer candidate found in this input
+    Valid          yes, until 2031-01-01 00:00:00 UTC (1569 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated on its own: it issues another certificate in this input
+    Certificate    sha256:49c4df20e2ab58827f39b6ceaf67c1302458f39fa42aa81df04f5fec2ae9d4ca
+    Key identity   sha256:c6c0f139b3f55ea46b4a785b9807f4ad3adfc7fecf90da3c2d40989aa56dcb9e (x509-spki-sha256)
+
+Issuer relationships (1)
+  Signature checks between certificates of this input. A verified signature is not a trust decision.
+  entry 0, candidate issuer entry 1: verified; evidence: issuer_dn_match, authority_key_id_match
+
+Included certification paths (1)
+  Built only from certificates in this input, linked by verified signatures. Trust is not evaluated:
+  no certificate is treated as a trust anchor, including self-signed ones.
+  Path 1: entry 0 (purpose-client) > entry 1 (Trustsmith Purpose Server-Only Intermediate CA)
+    Ends           no matching issuer candidate found in this input
+    Completeness   partial
+    Signatures     verified: each certificate's signature verifies with the key of the next
+    CA constraints satisfied (basic constraints, key usage, path length)
+    Validity       every certificate on the path is within its validity period
+    Trust          not evaluated by this layer (see Trust evaluation)
+
+Trust evaluation
+  Source           explicitly supplied roots: testdata/roots/purpose-root.pem (1 certificate)
+  Verifier         Go crypto/x509 (GO_VERSION), extended key usage client authentication (tls-client), no host name
+  Anchor           Trustsmith Purpose Root CA (sha256:8e7c4823bf49738b364dbc23852849ac6b0b699d50a321b6fd6383fb95f5c6a5), entry 0 of testdata/roots/purpose-root.pem
+  Entry 0 (purpose-client)
+    Result         could not validate for TLS client use to the explicitly supplied roots
+    Reason         extended key usage along the chain does not permit the requested purpose
+
+Purpose
+  Requested        TLS client (tls-client)
+  Host name        not evaluated: --purpose does not check host names
+  Entry 0 (purpose-client)
+    Usage          suitable: the certificate's own fields permit TLS client use
+    Ext. key usage permits client authentication
+    Key usage      sets digital signature, consistent with TLS client use
+    Anchored path  could not validate for TLS client use to the explicitly supplied roots: extended key usage along the chain does not permit the requested purpose
+
+Findings (1)
+  CRITICAL  entry 0  Not verified against the supplied roots [trust.failed]
+            Trustsmith asked Go's crypto/x509 verifier to validate this certificate against the trust anchors supplied with --roots, and the verifier rejected it. The reason evidence is a stable code, such as no_explicit_anchor_path or certificate_expired. Only the supplied roots were considered: no system trust store was used, and certificates in the inspected input are never anchors themselves.
+            Evidence: reason=incompatible_usage; purpose=tls-client
+            Fix: Check that the roots file holds the intended trust anchors and that the inspected input includes the intermediate certificates the chain needs.

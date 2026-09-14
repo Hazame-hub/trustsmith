@@ -157,6 +157,7 @@
     "source": "supplied_roots",
     "engine": "go-x509",
     "engine_version": "GO_VERSION",
+    "requested_purpose": "any",
     "requested_extended_key_usages": [
       "any"
     ],
@@ -193,6 +194,12 @@
         "chains": []
       }
     ]
+  },
+  "purpose_evaluation": {
+    "requested": "any",
+    "state": "not_evaluated",
+    "hostname_evaluated": false,
+    "targets": []
   },
   "findings": [
     {

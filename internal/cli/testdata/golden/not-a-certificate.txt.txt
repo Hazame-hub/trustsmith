@@ -4,6 +4,9 @@ Trust evaluation
   Not evaluated: no trust anchors were supplied (use --roots <file>).
   Certificates in the inspected input are never used as trust anchors.
 
+Purpose
+  Not evaluated for a specific application (use --purpose).
+
 Findings (1)
   CRITICAL  input  Unsupported input [input.unsupported_format]
             This input, or one block in it, is not something this version of Trustsmith inspects. This version inspects X.509 certificates in PEM or DER form. Other PEM blocks, such as private keys or certificate requests, are reported by their label only and are not decoded.

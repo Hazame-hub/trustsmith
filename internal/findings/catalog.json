@@ -183,6 +183,20 @@
     "explanation": "Go's crypto/x509 verifier did not reach a conclusion Trustsmith can classify, for example because a work limit was reached. This is not evidence that the certificate would be rejected or accepted.",
     "remediation": []
   },
+  "purpose.eku_disallows_usage": {
+    "title": "Extended key usage does not permit the requested purpose",
+    "explanation": "The certificate's extended key usage extension lists specific usages, and neither the usage the purpose requested with --purpose needs nor anyExtendedKeyUsage is among them. Software that checks extended key usage refuses the certificate for that purpose. This concerns the certificate's own fields only; trust and host names are separate questions.",
+    "remediation": [
+      {"code": "reissue_with_usage", "text": "Reissue the certificate with the extended key usage the purpose needs, or check that the intended purpose was requested."}
+    ]
+  },
+  "purpose.key_usage_disallows_usage": {
+    "title": "Key usage does not permit the requested purpose",
+    "explanation": "The certificate's key usage extension sets none of the key usage bits RFC 5280 names as consistent with the purpose requested with --purpose. Go's certificate verifier does not check a certificate's key usage bits for this, but other software may refuse the certificate.",
+    "remediation": [
+      {"code": "reissue_with_key_usage", "text": "Reissue the certificate with a key usage consistent with the purpose, or check that the intended purpose was requested."}
+    ]
+  },
   "issuer.candidates_not_checked": {
     "title": "Some possible issuers were not checked",
     "explanation": "This input contains more possible issuer certificates than Trustsmith checks for one certificate or for one input, so some were not checked. The issuer information shown for this certificate is incomplete, not absent.",

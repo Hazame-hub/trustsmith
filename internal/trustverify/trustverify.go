@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
+	"github.com/Hazame-hub/trustsmith/internal/purpose"
 )
 
 // Engine names the verifier whose conclusion a Result reports.
@@ -94,18 +95,21 @@ type Result struct {
 	Chains []Chain
 }
 
-// Verify validates target against anchors at now.
+// Verify validates target against anchors at now, for purpose p.
 //
 // intermediates are candidate intermediate certificates. Any of them that is
 // also an anchor is left out of the intermediate pool, so each certificate
 // plays exactly one role. Nothing is fetched and no system certificates are
 // used.
 //
-// The verifier is asked for any extended key usage: generic inspection is not
-// purpose validation. No host name is requested.
-func Verify(target *x509.Certificate, anchors, intermediates []*x509.Certificate, now time.Time) Result {
-	if target == nil || len(anchors) == 0 || now.IsZero() {
-		// Refuse rather than let Go substitute the system roots or clock.
+// The verifier is asked for p's extended key usage (purpose.Any maps to
+// x509.ExtKeyUsageAny, so generic inspection is not purpose validation). Go
+// enforces a specific usage along the whole chain. No host name is requested.
+func Verify(target *x509.Certificate, anchors, intermediates []*x509.Certificate, now time.Time, p purpose.Purpose) Result {
+	usage, knownPurpose := p.ExtKeyUsage()
+	if target == nil || len(anchors) == 0 || now.IsZero() || !knownPurpose {
+		// Refuse rather than let Go substitute the system roots, the system
+		// clock or its default key usage (server authentication).
 		return Result{State: Unverifiable, Reason: ReasonEngineError, Chains: []Chain{}}
 	}
 	roots := x509.NewCertPool()
@@ -125,7 +129,7 @@ func Verify(target *x509.Certificate, anchors, intermediates []*x509.Certificate
 		Roots:                     roots,
 		Intermediates:             pool,
 		CurrentTime:               now,
-		KeyUsages:                 []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		KeyUsages:                 []x509.ExtKeyUsage{usage},
 		MaxConstraintComparisions: MaxConstraintComparisons,
 	})
 	if err != nil {

@@ -93,4 +93,7 @@ Trust evaluation
     Chain 1        entry 0 (cross.path.example.test) > entry 1 (Trustsmith Path Cross Intermediate) > anchor Trustsmith Path Root A
     Chain 2        entry 0 (cross.path.example.test) > entry 1 (Trustsmith Path Cross Intermediate) > entry 3 (Trustsmith Path Root A) > anchor Trustsmith Path Root B
 
+Purpose
+  Not evaluated for a specific application (use --purpose).
+
 No findings.

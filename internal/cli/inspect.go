@@ -11,6 +11,7 @@ import (
 
 	"github.com/Hazame-hub/trustsmith/internal/app/inspectsvc"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
+	"github.com/Hazame-hub/trustsmith/internal/purpose"
 )
 
 func newInspectCommand(stdin io.Reader, stdout io.Writer, env Env) *cobra.Command {
@@ -19,6 +20,7 @@ func newInspectCommand(stdin io.Reader, stdout io.Writer, env Env) *cobra.Comman
 		failOn   string
 		advanced bool
 		roots    []string
+		purposes string
 	)
 	cmd := &cobra.Command{
 		Use:   "inspect <file|->",
@@ -33,6 +35,11 @@ Trust is evaluated only against trust anchors you supply with --roots: a
 certificate file or bundle, repeatable. Certificates in the inspected input,
 self-signed or not, are never trust anchors, and no system trust store is
 used. Without --roots, trust is not evaluated.
+
+--purpose asks whether a certificate's own fields (extended key usage and key
+usage) permit a purpose: any (the default: no specific application),
+tls-server, tls-client, code-signing or email. With --roots, the chain is also
+validated for that purpose. Host names are never checked.
 
 Exit codes: 0 no finding at or above --fail-on, 1 operational error,
 2 usage error, 3 findings reached --fail-on.`,
@@ -51,7 +58,11 @@ Exit codes: 0 no finding at or above --fail-on, 1 operational error,
 				return usageError{err}
 			}
 
-			var opts []inspectsvc.Option
+			requested, err := purpose.Parse(purposes)
+			if err != nil {
+				return usageError{fmt.Errorf("invalid --purpose: %w", err)}
+			}
+			opts := []inspectsvc.Option{inspectsvc.WithPurpose(requested)}
 			if len(roots) > 0 {
 				for _, r := range roots {
 					if strings.TrimSpace(r) == "" {
@@ -101,6 +112,7 @@ Exit codes: 0 no finding at or above --fail-on, 1 operational error,
 	cmd.Flags().StringVar(&failOn, "fail-on", "critical", "exit 3 when a finding is at least this severe: info, warning, critical or never")
 	cmd.Flags().BoolVar(&advanced, "advanced", false, "include technical details in text output")
 	cmd.Flags().StringArrayVar(&roots, "roots", nil, "validate against the trust anchors in this certificate file (repeatable); without it, trust is not evaluated")
+	cmd.Flags().StringVar(&purposes, "purpose", string(purpose.Any), "evaluate suitability for a purpose: any, tls-server, tls-client, code-signing or email")
 	return cmd
 }
 

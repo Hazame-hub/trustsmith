@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
+	"github.com/Hazame-hub/trustsmith/internal/purpose"
 	"github.com/Hazame-hub/trustsmith/internal/trustverify"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
 )
@@ -44,6 +46,8 @@ func renderText(w io.Writer, res inspectsvc.Result, advanced bool) error {
 	}
 	b.WriteString("\n")
 	writeTrust(&b, res)
+	b.WriteString("\n")
+	writePurpose(&b, res)
 	b.WriteString("\n")
 	writeFindings(&b, res.Findings)
 
@@ -291,7 +295,7 @@ func writeTrust(b *strings.Builder, res inspectsvc.Result) {
 		files[i] = fmt.Sprintf("%s (%s)", f.Locator, plural(f.Certificates, "certificate", "certificates"))
 	}
 	topField(b, "Source", "explicitly supplied roots: "+strings.Join(files, ", "))
-	topField(b, "Verifier", "Go crypto/x509 ("+t.EngineVersion+"), any extended key usage, no host name")
+	topField(b, "Verifier", "Go crypto/x509 ("+t.EngineVersion+"), "+verifierUsageText(t.Purpose)+", no host name")
 	anchorNames := map[fingerprint.Cert]string{}
 	for _, a := range t.Roots.Anchors {
 		fp := a.Certificate.Fingerprint
@@ -313,18 +317,168 @@ func writeTrust(b *strings.Builder, res inspectsvc.Result) {
 		r := target.Result
 		switch r.State {
 		case trustverify.Verified:
-			field(b, "Result", "verified against the explicitly supplied roots")
+			field(b, "Result", "verified"+purposeUse(t.Purpose)+" against the explicitly supplied roots")
 			for i, c := range r.Chains {
 				field(b, fmt.Sprintf("Chain %d", i+1), trustChainText(c, first, names, inInput, anchorNames))
 			}
 		case trustverify.Failed:
-			field(b, "Result", "could not validate to the explicitly supplied roots")
+			field(b, "Result", "could not validate"+purposeUse(t.Purpose)+" to the explicitly supplied roots")
 			field(b, "Reason", trustReasonText(r.Reason))
 		default:
 			field(b, "Result", "inconclusive: the verifier reached no conclusion Trustsmith can classify")
 			field(b, "Reason", trustReasonText(r.Reason))
 		}
 	}
+}
+
+// writePurpose renders suitability for an explicitly requested purpose, keeping
+// the certificate's own usage apart from validation to supplied roots.
+func writePurpose(b *strings.Builder, res inspectsvc.Result) {
+	e := res.Purpose
+	b.WriteString("Purpose\n")
+	if e.State != inspectsvc.PurposeEvaluated {
+		b.WriteString("  Not evaluated for a specific application (use --purpose).\n")
+		return
+	}
+	names := map[int]string{}
+	for _, a := range res.Artifacts {
+		if a.Certificate != nil {
+			names[a.Entry] = subjectName(a.Certificate)
+		}
+	}
+	topField(b, "Requested", purposeHuman(e.Requested)+" ("+string(e.Requested)+")")
+	topField(b, "Host name", "not evaluated: --purpose does not check host names")
+	for _, t := range e.Targets {
+		first := t.Entries[0]
+		fmt.Fprintf(b, "  Entry %d (%s)\n", first, names[first])
+		u := t.Usage
+		switch u.State {
+		case purpose.Suitable:
+			field(b, "Usage", "suitable: the certificate's own fields permit "+purposeHuman(u.Purpose)+" use")
+		case purpose.Unsuitable:
+			field(b, "Usage", "unsuitable: the certificate's own fields do not permit "+purposeHuman(u.Purpose)+" use")
+		default:
+			reasons := make([]string, len(u.Reasons))
+			for i, r := range u.Reasons {
+				reasons[i] = string(r)
+			}
+			field(b, "Usage", "could not be evaluated ("+strings.Join(reasons, ", ")+")")
+		}
+		if u.State == purpose.Suitable || u.State == purpose.Unsuitable {
+			field(b, "Ext. key usage", extKeyUsageText(u))
+			field(b, "Key usage", keyUsageText(u))
+			if u.CA {
+				field(b, "CA certificate", "yes (RFC 5280 does not make that unsuitable on its own)")
+			}
+		}
+		field(b, "Anchored path", anchoredPathText(t, res.Trust.State == inspectsvc.TrustEvaluated))
+	}
+}
+
+func extKeyUsageText(u purpose.Result) string {
+	required := extKeyUsageHuman(u.Purpose.ExtKeyUsageName())
+	switch u.ExtKeyUsageBasis {
+	case purpose.EKUNotPresent:
+		return "not present: not restricted by extended key usage"
+	case purpose.EKUAny:
+		return "lists anyExtendedKeyUsage but not " + required +
+			": not restricted by extended key usage for this evaluator, though an application requiring " + required + " may refuse it"
+	case purpose.EKUNotListed:
+		listed := make([]string, len(u.ExtKeyUsages))
+		for i, n := range u.ExtKeyUsages {
+			listed[i] = extKeyUsageHuman(n)
+		}
+		return "permits " + strings.Join(listed, ", ") + " but not " + required
+	}
+	return "permits " + required
+}
+
+func keyUsageText(u purpose.Result) string {
+	if !u.KeyUsagePresent {
+		return "not present: no restriction"
+	}
+	set := keyUsageHuman(u.KeyUsages)
+	if set == "" {
+		set = "no bits"
+	}
+	if slices.Contains(u.Reasons, purpose.ReasonKeyUsage) {
+		return "sets " + set + "; none is consistent with " + purposeHuman(u.Purpose) + " use (consistent: " + keyUsageHuman(u.Purpose.ConsistentKeyUsages()) + ")"
+	}
+	return "sets " + set + ", consistent with " + purposeHuman(u.Purpose) + " use"
+}
+
+func anchoredPathText(t inspectsvc.PurposeTarget, trustEvaluated bool) string {
+	use := purposeHuman(t.Usage.Purpose) + " use"
+	switch {
+	case !trustEvaluated:
+		return "not evaluated: no trust anchors were supplied"
+	case t.AnchoredPath == trustverify.Verified:
+		return "verified for " + use + " against the explicitly supplied roots"
+	case t.AnchoredPath == trustverify.Failed:
+		return "could not validate for " + use + " to the explicitly supplied roots: " + trustReasonText(t.AnchoredPathReason)
+	}
+	return "inconclusive against the explicitly supplied roots: " + trustReasonText(t.AnchoredPathReason)
+}
+
+func purposeHuman(p purpose.Purpose) string {
+	switch p {
+	case purpose.TLSServer:
+		return "TLS server"
+	case purpose.TLSClient:
+		return "TLS client"
+	case purpose.CodeSigning:
+		return "code signing"
+	case purpose.Email:
+		return "email protection"
+	}
+	return string(p)
+}
+
+// purposeUse qualifies a trust result with the purpose it was validated for.
+func purposeUse(p purpose.Purpose) string {
+	if p == purpose.Any || p == "" {
+		return ""
+	}
+	return " for " + purposeHuman(p) + " use"
+}
+
+func verifierUsageText(p purpose.Purpose) string {
+	if p == purpose.Any || p == "" {
+		return "any extended key usage"
+	}
+	return "extended key usage " + extKeyUsageHuman(p.ExtKeyUsageName()) + " (" + string(p) + ")"
+}
+
+var extKeyUsageHumanNames = map[string]string{
+	"any":              "any purpose",
+	"server_auth":      "server authentication",
+	"client_auth":      "client authentication",
+	"code_signing":     "code signing",
+	"email_protection": "email protection",
+	"time_stamping":    "time stamping",
+	"ocsp_signing":     "OCSP signing",
+}
+
+func extKeyUsageHuman(name string) string {
+	if h, ok := extKeyUsageHumanNames[name]; ok {
+		return h
+	}
+	return name
+}
+
+func keyUsageHuman(names []string) string {
+	out := make([]string, len(names))
+	for i, n := range names {
+		switch n {
+		case "key_cert_sign":
+			out[i] = "certificate signing"
+		case "crl_sign":
+			out[i] = "CRL signing"
+		default:
+			out[i] = strings.ReplaceAll(n, "_", " ")
+		}
+	}
+	return strings.Join(out, ", ")
 }
 
 func trustChainText(c trustverify.Chain, target int, names map[int]string, inInput map[fingerprint.Cert][]int, anchorNames map[fingerprint.Cert]string) string {
@@ -362,7 +516,9 @@ func trustReasonText(r trustverify.Reason) string {
 	case trustverify.ReasonUnhandledCriticalExtension:
 		return "unhandled critical extension"
 	case trustverify.ReasonIncompatibleUsage:
-		return "incompatible key usage"
+		// Go's IncompatibleUsage concerns extended key usage along the chain,
+		// never the key usage extension.
+		return "extended key usage along the chain does not permit the requested purpose"
 	case trustverify.ReasonInsecureSignatureAlgorithm:
 		return "signature algorithm rejected by the Go verifier"
 	case trustverify.ReasonPolicy:

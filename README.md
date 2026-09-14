@@ -33,6 +33,12 @@ experts, without taking the advanced path away from those who are.
   ([ADR-0006](docs/adr/0006-explicit-trust-anchors.md)). Only the supplied
   certificates are anchors: certificates in the inspected file never are, and
   no system trust store is used. Without `--roots`, trust is not evaluated.
+- **Suitability for a purpose you name:** `--purpose tls-server` (or
+  `tls-client`, `code-signing`, `email`) reports whether the certificate's own
+  extended key usage and key usage permit that purpose and, with `--roots`,
+  whether Go validates the chain for it
+  ([ADR-0007](docs/adr/0007-explicit-certificate-purpose.md)). The default,
+  `any`, asserts no application purpose. Host names are never checked.
 - **Fingerprints** follow [ADR-0002](docs/adr/0002-public-key-identity.md):
   `x509-cert-sha256` for the certificate, `x509-spki-sha256` (a canonical,
   cross-file key identity), and `x509-spki-encoded-sha256` (the key as encoded,
@@ -49,11 +55,12 @@ $ trustsmith inspect --advanced bundle.pem
 $ trustsmith inspect --output json cert.der
 $ cat bundle.pem | trustsmith inspect -
 $ trustsmith inspect bundle.pem --roots company-roots.pem
+$ trustsmith inspect server.pem --purpose tls-server --roots company-roots.pem
 ```
 
-Not yet supported: system or platform trust stores, host name and purpose
-(extended key usage) validation, revocation, private keys, CSRs, PKCS#12, TLS
-endpoint probing, and public WebPKI policy checks.
+Not yet supported: system or platform trust stores, host name validation,
+revocation, private keys, CSRs, PKCS#12, TLS endpoint probing, and public WebPKI
+policy checks.
 
 ### Exit codes
 
@@ -84,6 +91,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0004: issuer relationships inside one input](docs/adr/0004-issuer-relationships.md)
 - [ADR-0005: structural certification paths inside one input](docs/adr/0005-included-certification-paths.md)
 - [ADR-0006: explicitly supplied trust anchors](docs/adr/0006-explicit-trust-anchors.md)
+- [ADR-0007: explicit certificate-purpose validation](docs/adr/0007-explicit-certificate-purpose.md)
 
 ## License
 

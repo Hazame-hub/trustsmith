@@ -148,15 +148,16 @@ type jsonExtension struct {
 // jsonRelationship is a certificate_issuer relationship: the candidate has
 // naming or key-identifier evidence of having issued the child, and state is
 // the result of checking the child's signature with the candidate's key
-// (verified, invalid, unverifiable or not_checked). It never means trusted.
+// (verified, does_not_verify, unverifiable or not_checked). A relationship that
+// does not verify says nothing about the candidate certificate itself, and a
+// verified one never means trusted.
 type jsonRelationship struct {
 	Type      string             `json:"type"`
 	Child     jsonCertificateRef `json:"child"`
 	Candidate jsonCertificateRef `json:"candidate"`
 	Evidence  []string           `json:"evidence"`
 	State     string             `json:"state"`
-	Reason    string             `json:"reason,omitempty"`
-	Detail    string             `json:"detail,omitempty"` // engine message; for humans, not a contract
+	Reason    string             `json:"reason,omitempty"` // stable code; engine messages are never part of the contract
 }
 
 type jsonCertificateRef struct {
@@ -273,9 +274,6 @@ func relationshipJSON(r issuerlinks.Relationship) jsonRelationship {
 	}
 	for _, e := range r.Evidence {
 		out.Evidence = append(out.Evidence, string(e))
-	}
-	if r.State != issuerlinks.Verified {
-		out.Detail = r.Detail
 	}
 	return out
 }

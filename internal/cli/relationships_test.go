@@ -81,7 +81,7 @@ func TestRelationshipsJSONContract(t *testing.T) {
 
 	_, out, _ = run(t, nil, "inspect", "--output", "json", "testdata/certs/leaf.pem")
 	r = decodeRelationships(t, out)
-	if r.Relationships == nil || len(r.Relationships) != 0 || r.Artifacts[0].Summary.IssuerInInput != "not_present" {
-		t.Errorf("a lone certificate has an empty relationships array and not_present: %s", out)
+	if r.Relationships == nil || len(r.Relationships) != 0 || r.Artifacts[0].Summary.IssuerInInput != "no_candidate_found" {
+		t.Errorf("a lone certificate has an empty relationships array and no_candidate_found: %s", out)
 	}
 }

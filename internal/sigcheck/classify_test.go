@@ -22,12 +22,12 @@ func TestClassify(t *testing.T) {
 		{"insecure algorithm", x509.InsecureAlgorithmError(x509.MD5WithRSA), Unverifiable, ReasonInsecureAlgorithm},
 		{"wrapped insecure algorithm", fmt.Errorf("context: %w", x509.InsecureAlgorithmError(x509.SHA1WithRSA)), Unverifiable, ReasonInsecureAlgorithm},
 		{"unsupported algorithm", x509.ErrUnsupportedAlgorithm, Unverifiable, ReasonUnsupportedAlgorithm},
-		{"RSA mismatch", rsa.ErrVerification, Invalid, ReasonSignatureMismatch},
-		{"ECDSA mismatch", errors.New("x509: ECDSA verification failure"), Invalid, ReasonSignatureMismatch},
-		{"Ed25519 mismatch", errors.New("x509: Ed25519 verification failure"), Invalid, ReasonSignatureMismatch},
-		{"ML-DSA mismatch", fmt.Errorf("x509: ML-DSA verification failure: %w", errors.New("mldsa: invalid signature")), Invalid, ReasonSignatureMismatch},
-		{"key algorithm mismatch", errors.New("x509: signature algorithm specifies an RSA public key, but have public key of type *ecdsa.PublicKey"), Invalid, ReasonKeyAlgorithmMismatch},
-		{"ML-DSA parameter mismatch", errors.New("x509: signature algorithm specifies an ML-DSA public key with ML-DSA-65 parameters, but have a public key with ML-DSA-44 parameters"), Invalid, ReasonKeyAlgorithmMismatch},
+		{"RSA mismatch", rsa.ErrVerification, DoesNotVerify, ReasonSignatureMismatch},
+		{"ECDSA mismatch", errors.New("x509: ECDSA verification failure"), DoesNotVerify, ReasonSignatureMismatch},
+		{"Ed25519 mismatch", errors.New("x509: Ed25519 verification failure"), DoesNotVerify, ReasonSignatureMismatch},
+		{"ML-DSA mismatch", fmt.Errorf("x509: ML-DSA verification failure: %w", errors.New("mldsa: invalid signature")), DoesNotVerify, ReasonSignatureMismatch},
+		{"key algorithm mismatch", errors.New("x509: signature algorithm specifies an RSA public key, but have public key of type *ecdsa.PublicKey"), DoesNotVerify, ReasonKeyAlgorithmMismatch},
+		{"ML-DSA parameter mismatch", errors.New("x509: signature algorithm specifies an ML-DSA public key with ML-DSA-65 parameters, but have a public key with ML-DSA-44 parameters"), DoesNotVerify, ReasonKeyAlgorithmMismatch},
 		{"insecure RSA key size", errors.New("crypto/rsa: 1023-bit keys are insecure"), Unverifiable, ReasonEngineError},
 		{"anything unrecognised", errors.New("something Go will say one day"), Unverifiable, ReasonEngineError},
 	} {
@@ -42,7 +42,7 @@ func TestClassify(t *testing.T) {
 
 // TestPanicDuringVerificationIsContained proves the recovery boundary: a
 // panic inside the verification engine becomes an unverifiable result with a
-// stable reason callers can count, never "invalid".
+// stable reason callers can count, never "does_not_verify".
 func TestPanicDuringVerificationIsContained(t *testing.T) {
 	original := checkSignature
 	t.Cleanup(func() { checkSignature = original })

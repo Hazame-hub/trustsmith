@@ -145,7 +145,7 @@ func TestIssuerNameMatchWithWrongKeyIsNotVerified(t *testing.T) {
 	c := newChain(t)
 	impostor := issueCA(t, "Intermediate", testpki.ECDSAKey(t), c.root) // same name, different key and SKI
 	res := resolve(t, c.leaf.DER, impostor.DER)
-	assertRelationships(t, res, "[0]->[1]:invalid:issuer_dn_match")
+	assertRelationships(t, res, "[0]->[1]:does_not_verify:issuer_dn_match")
 	if res.Relationships[0].Reason != sigcheck.ReasonSignatureMismatch {
 		t.Errorf("reason %s", res.Relationships[0].Reason)
 	}
@@ -153,18 +153,18 @@ func TestIssuerNameMatchWithWrongKeyIsNotVerified(t *testing.T) {
 
 // TestAuthorityKeyIDMatchIsNotVerification makes it impossible to replace the
 // signature check with key-identifier matching: every heuristic matches, and
-// the relationship must still be invalid.
+// the relationship must still not verify.
 func TestAuthorityKeyIDMatchIsNotVerification(t *testing.T) {
 	c := newChain(t)
 	sameSKI := caTemplate("Intermediate", 1)
 	sameSKI.SubjectKeyID = c.inter.Cert.SubjectKeyId
 	impostor := testpki.Issue(t, sameSKI, testpki.ECDSAKey(t), c.root)
-	assertRelationships(t, resolve(t, c.leaf.DER, impostor.DER), "[0]->[1]:invalid:"+bothEvidence)
+	assertRelationships(t, resolve(t, c.leaf.DER, impostor.DER), "[0]->[1]:does_not_verify:"+bothEvidence)
 
 	differentName := caTemplate("Unrelated Name", 1)
 	differentName.SubjectKeyID = c.inter.Cert.SubjectKeyId
 	onlyKeyID := testpki.Issue(t, differentName, testpki.ECDSAKey(t), c.root)
-	assertRelationships(t, resolve(t, c.leaf.DER, onlyKeyID.DER), "[0]->[1]:invalid:authority_key_id_match")
+	assertRelationships(t, resolve(t, c.leaf.DER, onlyKeyID.DER), "[0]->[1]:does_not_verify:authority_key_id_match")
 }
 
 // TestSignatureNotEvidenceDecidesTheState: the right key with a mismatching
@@ -213,7 +213,7 @@ func TestSelfIssuedButNotSelfSigned(t *testing.T) {
 	base := issueCA(t, "Same Name", key, nil)
 	notSelfSigned := testpki.Resign(t, base.DER, nil, testpki.ECDSAWithSHA256, testpki.ECDSAKey(t))
 	f := x509facts.FromDER(notSelfSigned).Certificate
-	if !f.SelfIssued || f.SelfSignature != x509facts.SignatureFailed {
+	if !f.SelfIssued || f.SelfSignature != x509facts.SignatureDoesNotVerify {
 		t.Errorf("self-issued %v, self-signature %s; want self-issued but not self-signed", f.SelfIssued, f.SelfSignature)
 	}
 	assertRelationships(t, resolve(t, notSelfSigned))
@@ -238,7 +238,7 @@ func TestCandidateLimits(t *testing.T) {
 		impostors = append(impostors, testpki.Issue(t, caTemplate("Intermediate", int64(100+i)), testpki.ECDSAKey(t), c.root).DER)
 	}
 	res := issuerlinks.Resolve(inputs(t, impostors...), issuerlinks.Limits{MaxCandidatesPerCertificate: 2, MaxVerifications: 1})
-	assertRelationships(t, res, "[0]->[1]:invalid:issuer_dn_match", "[0]->[2]:not_checked:issuer_dn_match")
+	assertRelationships(t, res, "[0]->[1]:does_not_verify:issuer_dn_match", "[0]->[2]:not_checked:issuer_dn_match")
 	leafFP := fingerprint.CertFromDER(c.leaf.DER)
 	if !res.CandidatesOmitted[leafFP] {
 		t.Error("the omitted third candidate must be reported")

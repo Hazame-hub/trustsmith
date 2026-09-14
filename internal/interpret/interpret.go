@@ -45,10 +45,10 @@ const (
 type SelfSigned string
 
 const (
-	SelfSignedNo           SelfSigned = "no"
-	SelfSignedVerified     SelfSigned = "verified"
-	SelfSignedInvalid      SelfSigned = "signature_invalid"
-	SelfSignedUnverifiable SelfSigned = "signature_unverifiable"
+	SelfSignedNo            SelfSigned = "no"
+	SelfSignedVerified      SelfSigned = "verified"
+	SelfSignedDoesNotVerify SelfSigned = "signature_does_not_verify"
+	SelfSignedUnverifiable  SelfSigned = "signature_unverifiable"
 )
 
 // ChainState is the result of chain verification.
@@ -74,11 +74,13 @@ const (
 	// IssuerCandidateNotChecked: matching certificates exist but were not all
 	// checked (limits); none verified.
 	IssuerCandidateNotChecked IssuerInInput = "candidate_not_checked"
-	// IssuerCandidateInvalid: certificates match by name or key identifier,
+	// IssuerCandidateSignatureMismatch: certificates match by name or key identifier,
 	// but none of their keys verifies the signature.
-	IssuerCandidateInvalid IssuerInInput = "candidate_invalid"
-	// IssuerNotPresent: no certificate in the input matches the issuer.
-	IssuerNotPresent IssuerInInput = "not_present"
+	IssuerCandidateSignatureMismatch IssuerInInput = "candidate_signature_mismatch"
+	// IssuerNoCandidateFound: no certificate in the input was found as an
+	// issuer candidate. Matching is by exact issuer name and key identifier,
+	// so this does not prove the issuer's certificate is absent.
+	IssuerNoCandidateFound IssuerInInput = "no_candidate_found"
 )
 
 // Issuers is what issuer resolution found for one certificate.
@@ -281,7 +283,7 @@ func resolveIssuer(c *x509facts.Certificate, issuers Issuers) issuerStatus {
 			}
 		case issuerlinks.NotChecked:
 			s.notChecked++
-		case issuerlinks.Invalid:
+		case issuerlinks.DoesNotVerify:
 			invalid = true
 		}
 	}
@@ -296,9 +298,9 @@ func resolveIssuer(c *x509facts.Certificate, issuers Issuers) issuerStatus {
 	case s.notChecked > 0 || s.omitted:
 		s.state = IssuerCandidateNotChecked
 	case invalid:
-		s.state = IssuerCandidateInvalid
+		s.state = IssuerCandidateSignatureMismatch
 	default:
-		s.state = IssuerNotPresent
+		s.state = IssuerNoCandidateFound
 	}
 	return s
 }
@@ -392,11 +394,11 @@ func describeKind(c *x509facts.Certificate, isCA bool) (string, []string) {
 	if isCA {
 		switch {
 		case c.SelfIssued && c.SelfSignature == x509facts.SignatureVerified:
-			return "Root certificate authority", purposes
+			return "Self-signed CA certificate", purposes
 		case c.SelfIssued:
-			return "Self-issued certificate authority (signature not verified)", purposes
+			return "Self-issued CA certificate (self-signature not verified)", purposes
 		default:
-			return "Intermediate certificate authority", purposes
+			return "CA certificate", purposes
 		}
 	}
 
@@ -437,8 +439,8 @@ func selfSigned(c *x509facts.Certificate) SelfSigned {
 	switch c.SelfSignature {
 	case x509facts.SignatureVerified:
 		return SelfSignedVerified
-	case x509facts.SignatureFailed:
-		return SelfSignedInvalid
+	case x509facts.SignatureDoesNotVerify:
+		return SelfSignedDoesNotVerify
 	case x509facts.SignatureUnverifiable:
 		return SelfSignedUnverifiable
 	}

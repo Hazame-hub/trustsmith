@@ -42,9 +42,9 @@ const (
 type State string
 
 const (
-	Verified     State = State(sigcheck.Verified)
-	Invalid      State = State(sigcheck.Invalid)
-	Unverifiable State = State(sigcheck.Unverifiable)
+	Verified      State = State(sigcheck.Verified)
+	DoesNotVerify State = State(sigcheck.DoesNotVerify)
+	Unverifiable  State = State(sigcheck.Unverifiable)
 	// NotChecked: the verification budget was exhausted before this
 	// candidate could be checked. Unknown, not absent.
 	NotChecked State = "not_checked"

@@ -163,7 +163,7 @@ func TestSelfIssuedSignedByAnotherKeyFailsVerification(t *testing.T) {
 	der := testpki.Resign(t, base.DER, nil, testpki.ECDSAWithSHA256, testpki.ECDSAKey(t))
 
 	c := mustCertificate(t, der)
-	if !c.SelfIssued || c.SelfSignature != x509facts.SignatureFailed {
+	if !c.SelfIssued || c.SelfSignature != x509facts.SignatureDoesNotVerify {
 		t.Errorf("self-signature %s, want failed", c.SelfSignature)
 	}
 }

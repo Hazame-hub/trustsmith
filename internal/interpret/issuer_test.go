@@ -67,11 +67,11 @@ func TestIssuerVerifiedInInput(t *testing.T) {
 	}
 }
 
-func TestIssuerNotPresentIsNotAFinding(t *testing.T) {
+func TestIssuerNoCandidateFoundIsNotAFinding(t *testing.T) {
 	inter := testpki.Issue(t, caTemplate("Intermediate"), testpki.ECDSAKey(t), nil)
 	leaf := testpki.Issue(t, serverTemplate("api.example.test"), testpki.ECDSAKey(t), inter)
 	e := interpretInput(t, leaf.DER)
-	assertIssuer(t, e[0], interpret.IssuerNotPresent, []int{}, []int{})
+	assertIssuer(t, e[0], interpret.IssuerNoCandidateFound, []int{}, []int{})
 	assertCodes(t, e[0].Findings)
 }
 
@@ -81,7 +81,7 @@ func TestCandidateThatDoesNotVerifyIsNotAWarning(t *testing.T) {
 	impostor := testpki.Issue(t, caTemplate("Intermediate"), testpki.ECDSAKey(t), nil)
 
 	e := interpretInput(t, leaf.DER, impostor.DER)
-	assertIssuer(t, e[0], interpret.IssuerCandidateInvalid, []int{}, []int{1})
+	assertIssuer(t, e[0], interpret.IssuerCandidateSignatureMismatch, []int{}, []int{1})
 	assertCodes(t, e[0].Findings)
 }
 
@@ -139,10 +139,10 @@ func TestSelfIssuedButNotSelfSignedIsNotASelfSignedLeaf(t *testing.T) {
 	der := testpki.Resign(t, base.DER, nil, testpki.ECDSAWithSHA256, testpki.ECDSAKey(t))
 
 	e := interpretInput(t, der)
-	if e[0].Summary.SelfSigned != interpret.SelfSignedInvalid {
+	if e[0].Summary.SelfSigned != interpret.SelfSignedDoesNotVerify {
 		t.Errorf("self-signed %s", e[0].Summary.SelfSigned)
 	}
-	assertIssuer(t, e[0], interpret.IssuerNotPresent, []int{}, []int{})
+	assertIssuer(t, e[0], interpret.IssuerNoCandidateFound, []int{}, []int{})
 	assertCodes(t, e[0].Findings)
 
 	selfSigned := interpretInput(t, base.DER)

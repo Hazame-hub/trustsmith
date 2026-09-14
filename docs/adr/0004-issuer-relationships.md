@@ -34,16 +34,16 @@ A `certificate_issuer` relationship links a **child** certificate to a
 | State | Meaning |
 |---|---|
 | `verified` | The candidate's key verifies the child's signature over its exact TBSCertificate bytes. |
-| `invalid` | The engine evaluated the signature under that key and it does not verify, or that key type cannot have produced it. |
-| `unverifiable` | The engine could not decide (for example an algorithm it refuses). Never treated as invalid. |
+| `does_not_verify` | The engine evaluated the signature under that key and it does not verify, or that key type cannot have produced it. |
+| `unverifiable` | The engine could not decide (for example an algorithm it refuses). Never treated as a signature mismatch. |
 | `not_checked` | A work limit was reached before this candidate was checked. Unknown, not absent. |
 
 - **Reason** is a stable code for non-verified states:
 
 | Reason | State |
 |---|---|
-| `signature_mismatch` | invalid |
-| `key_algorithm_mismatch` | invalid |
+| `signature_mismatch` | does_not_verify |
+| `key_algorithm_mismatch` | does_not_verify |
 | `insecure_algorithm` | unverifiable |
 | `unsupported_algorithm` | unverifiable |
 | `engine_error` | unverifiable |
@@ -68,12 +68,12 @@ the algorithm is implied. A verified SHA-1 signature still carries the
 - **Classifier.** `sigcheck.classify` maps errors to states:
   - `InsecureAlgorithmError` becomes `unverifiable/insecure_algorithm`.
   - `ErrUnsupportedAlgorithm` becomes `unverifiable/unsupported_algorithm`.
-  - `rsa.ErrVerification` becomes `invalid/signature_mismatch`.
+  - `rsa.ErrVerification` becomes `does_not_verify/signature_mismatch`.
   - For failures crypto/x509 reports as untyped errors, the classifier is the
     only code that matches Go's message text: the ECDSA, Ed25519 and ML-DSA
     verification-failure messages, and the key-algorithm and ML-DSA-parameter
     mismatch messages.
-  - Anything unrecognised is `unverifiable/engine_error`, never `invalid`.
+  - Anything unrecognised is `unverifiable/engine_error`, never `does_not_verify`.
   - Real-signature tests across RSA, ECDSA, Ed25519 and ML-DSA detect if Go
     changes its messages.
 - **Pinned Go 1.27.1 behaviour.**
@@ -91,8 +91,9 @@ the algorithm is implied. A verified SHA-1 signature still carries the
 - **Self-signed:** a self-issued certificate whose own public key verifies its
   signature. This follows RFC 5280 and uses the same `sigcheck` call.
   - x509facts records it as `SelfSignature` with the values `verified`,
-    `failed`, `unverifiable` or `not_applicable`. `failed` is the
-    self-signature spelling of `invalid`, and is kept for v1 compatibility.
+    `does_not_verify`, `unverifiable` or `not_applicable`. As with
+    relationships, `does_not_verify` describes the signature check, not the
+    certificate.
 - **A certificate is never its own relationship candidate.**
 - `cert.self_signed_leaf` and the `self_signed` issuer state both require a
   verified self-signature. A self-issued certificate signed by another key is
@@ -129,7 +130,7 @@ certificates and CSRs take no part.
   produce no finding.
 - **Summary.** `issuer_in_input` takes, in precedence order: `verified`,
   `self_signed`, `candidate_unverifiable`, `candidate_not_checked`,
-  `candidate_invalid`, `not_present`. It comes with `verified_issuer_entries`
+  `candidate_signature_mismatch`, `no_candidate_found`. It comes with `verified_issuer_entries`
   and `candidate_issuer_entries`.
 - **JSON.** `trustsmith.inspect/v1` gains a top-level `relationships` array and
   these summary fields. Both are additive, so the schema version is unchanged.

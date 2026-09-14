@@ -76,7 +76,7 @@ func TestAnotherKeyOfTheSameTypeIsInvalid(t *testing.T) {
 		t.Run(kt.name, func(t *testing.T) {
 			child := leaf(t, ca(t, "CA", kt.key(t)))
 			impostor := ca(t, "CA", kt.key(t)) // same name, different key
-			assertResult(t, sigcheck.Certificate(child.Cert, impostor.Cert), sigcheck.Invalid, sigcheck.ReasonSignatureMismatch)
+			assertResult(t, sigcheck.Certificate(child.Cert, impostor.Cert), sigcheck.DoesNotVerify, sigcheck.ReasonSignatureMismatch)
 		})
 	}
 }
@@ -85,12 +85,12 @@ func TestKeyAlgorithmMismatchIsInvalid(t *testing.T) {
 	t.Run("ECDSA signature, RSA key", func(t *testing.T) {
 		child := leaf(t, ca(t, "CA", testpki.ECDSAKey(t)))
 		other := ca(t, "CA", testpki.RSAKey(t, 2048))
-		assertResult(t, sigcheck.Certificate(child.Cert, other.Cert), sigcheck.Invalid, sigcheck.ReasonKeyAlgorithmMismatch)
+		assertResult(t, sigcheck.Certificate(child.Cert, other.Cert), sigcheck.DoesNotVerify, sigcheck.ReasonKeyAlgorithmMismatch)
 	})
 	t.Run("ML-DSA-65 signature, ML-DSA-44 key", func(t *testing.T) {
 		child := leaf(t, ca(t, "CA", testpki.MLDSAKey(t, mldsa.MLDSA65())))
 		other := ca(t, "CA", testpki.MLDSAKey(t, mldsa.MLDSA44()))
-		assertResult(t, sigcheck.Certificate(child.Cert, other.Cert), sigcheck.Invalid, sigcheck.ReasonKeyAlgorithmMismatch)
+		assertResult(t, sigcheck.Certificate(child.Cert, other.Cert), sigcheck.DoesNotVerify, sigcheck.ReasonKeyAlgorithmMismatch)
 	})
 }
 
@@ -131,7 +131,7 @@ func TestMD5IsUnverifiableNotInvalid(t *testing.T) {
 	assertResult(t, sigcheck.Certificate(child, issuer.Cert), sigcheck.Unverifiable, sigcheck.ReasonInsecureAlgorithm)
 
 	// Even the wrong key cannot turn an algorithm the engine refuses into
-	// "invalid": Go never evaluates the signature.
+	// "does_not_verify": Go never evaluates the signature.
 	other := ca(t, "MD5 CA", testpki.RSAKey(t, 2048))
 	assertResult(t, sigcheck.Certificate(child, other.Cert), sigcheck.Unverifiable, sigcheck.ReasonInsecureAlgorithm)
 }
@@ -169,5 +169,5 @@ func TestVerificationUsesTheExactSignedBytes(t *testing.T) {
 	tampered := *child.Cert
 	tampered.RawTBSCertificate = append([]byte{}, child.Cert.RawTBSCertificate...)
 	tampered.RawTBSCertificate[len(tampered.RawTBSCertificate)-1] ^= 0x01
-	assertResult(t, sigcheck.Certificate(&tampered, issuer.Cert), sigcheck.Invalid, sigcheck.ReasonSignatureMismatch)
+	assertResult(t, sigcheck.Certificate(&tampered, issuer.Cert), sigcheck.DoesNotVerify, sigcheck.ReasonSignatureMismatch)
 }

@@ -30,7 +30,7 @@ This describes the implementation today, which offers only
   - An issuer relationship between certificates of the same input is reported
     as verified only when the candidate's key cryptographically verifies the
     signature. An algorithm the engine refuses is reported as unverifiable,
-    never as invalid.
+    never as a signature mismatch.
   - A verified signature is not a trust decision: no trust anchors, CA
     constraints or chain validation are applied, and the chain is reported as
     "not checked".

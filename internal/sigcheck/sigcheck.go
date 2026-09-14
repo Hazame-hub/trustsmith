@@ -18,9 +18,9 @@ const (
 	// Verified: the signer's public key verifies the child's signature over
 	// its exact TBSCertificate bytes.
 	Verified State = "verified"
-	// Invalid: the engine evaluated the signature under that key and it does
+	// DoesNotVerify: the engine evaluated the signature under that key and it does
 	// not verify (or the key cannot have produced it).
-	Invalid State = "invalid"
+	DoesNotVerify State = "does_not_verify"
 	// Unverifiable: the engine could not decide — the algorithm is refused or
 	// unsupported, or an unrecognised error occurred. Never a failed check.
 	Unverifiable State = "unverifiable"
@@ -31,8 +31,8 @@ type Reason string
 
 const (
 	ReasonNone                 Reason = ""
-	ReasonSignatureMismatch    Reason = "signature_mismatch"     // Invalid
-	ReasonKeyAlgorithmMismatch Reason = "key_algorithm_mismatch" // Invalid
+	ReasonSignatureMismatch    Reason = "signature_mismatch"     // DoesNotVerify
+	ReasonKeyAlgorithmMismatch Reason = "key_algorithm_mismatch" // DoesNotVerify
 	ReasonInsecureAlgorithm    Reason = "insecure_algorithm"     // Unverifiable: the engine refuses the algorithm (e.g. MD5)
 	ReasonUnsupportedAlgorithm Reason = "unsupported_algorithm"  // Unverifiable: algorithm or signer key not supported
 	ReasonEngineError          Reason = "engine_error"           // Unverifiable: unrecognised error
@@ -80,7 +80,7 @@ func Certificate(child, signer *x509.Certificate) (res Result) {
 
 // classify maps a verification error to a state. It is the only code that
 // inspects Go's error text, for the failures crypto/x509 reports as untyped
-// errors. Anything it does not recognise is Unverifiable, never Invalid.
+// errors. Anything it does not recognise is Unverifiable, never DoesNotVerify.
 func classify(err error) (State, Reason) {
 	var insecure x509.InsecureAlgorithmError
 	switch {
@@ -91,16 +91,16 @@ func classify(err error) (State, Reason) {
 	case errors.Is(err, x509.ErrUnsupportedAlgorithm):
 		return Unverifiable, ReasonUnsupportedAlgorithm
 	case errors.Is(err, rsa.ErrVerification):
-		return Invalid, ReasonSignatureMismatch
+		return DoesNotVerify, ReasonSignatureMismatch
 	}
 	msg := err.Error()
 	switch {
 	case msg == "x509: ECDSA verification failure",
 		msg == "x509: Ed25519 verification failure",
 		strings.HasPrefix(msg, "x509: ML-DSA verification failure"):
-		return Invalid, ReasonSignatureMismatch
+		return DoesNotVerify, ReasonSignatureMismatch
 	case strings.HasPrefix(msg, "x509: signature algorithm specifies an "):
-		return Invalid, ReasonKeyAlgorithmMismatch
+		return DoesNotVerify, ReasonKeyAlgorithmMismatch
 	}
 	return Unverifiable, ReasonEngineError
 }

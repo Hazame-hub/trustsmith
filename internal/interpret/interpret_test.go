@@ -168,7 +168,7 @@ func TestSelfSigned(t *testing.T) {
 		root := testpki.Issue(t, caTemplate("Root"), testpki.ECDSAKey(t), nil)
 		e := inspect(t, root.DER, now)
 		assertCodes(t, e.Findings)
-		if e.Summary.Kind != "Root certificate authority" || !slices.Contains(e.Summary.Purposes, "ca") {
+		if e.Summary.Kind != "Self-signed CA certificate" || !slices.Contains(e.Summary.Purposes, "ca") {
 			t.Errorf("kind %q purposes %v", e.Summary.Kind, e.Summary.Purposes)
 		}
 	})
@@ -263,7 +263,7 @@ func TestSummaryKinds(t *testing.T) {
 		kind     string
 		purposes []string
 	}{
-		{inter.DER, "Intermediate certificate authority", []string{"ca"}},
+		{inter.DER, "CA certificate", []string{"ca"}},
 		{withEKU(x509.ExtKeyUsageServerAuth), "TLS server certificate", []string{"tls_server"}},
 		{withEKU(x509.ExtKeyUsageClientAuth), "TLS client certificate", []string{"tls_client"}},
 		{withEKU(x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth), "TLS server and client certificate", []string{"tls_server", "tls_client"}},

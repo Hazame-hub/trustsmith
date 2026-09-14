@@ -81,10 +81,10 @@ Codes in this revision:
     not exist yet, so the chain is always reported as `not_checked`.
 - **Self-signature is a cryptographic fact.** It is computed with
   `Certificate.CheckSignature` over the certificate's own key:
-  - The result is `verified`, `failed` or `unverifiable`.
+  - The result is `verified`, `does_not_verify` or `unverifiable`.
   - Go still accepts SHA-1 signatures in `CheckSignature`, so a SHA-1
     self-signature can be `verified`; `sig.sha1` flags the algorithm.
-  - Go refuses MD5, so an MD5 self-signature is `unverifiable`, never `failed`.
+  - Go refuses MD5, so an MD5 self-signature is `unverifiable`, never `does_not_verify`.
 
 ### JSON output: `trustsmith.inspect/v1`
 

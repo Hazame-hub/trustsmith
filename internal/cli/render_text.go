@@ -88,10 +88,10 @@ func issuerInInputText(s *interpret.Summary) string {
 		return "a matching certificate is in " + entries(s.CandidateEntries) + " of this input, but this engine could not check the signature with it"
 	case interpret.IssuerCandidateNotChecked:
 		return "matching certificates are in this input, but not all of them were checked"
-	case interpret.IssuerCandidateInvalid:
-		return "a certificate in " + entries(s.CandidateEntries) + " matches the issuer, but its key does not verify this signature"
+	case interpret.IssuerCandidateSignatureMismatch:
+		return "a certificate in " + entries(s.CandidateEntries) + " matches the issuer name or key identifier, but its key does not verify this signature"
 	}
-	return "issuer certificate not present in this input"
+	return "no matching issuer candidate found in this input"
 }
 
 func writeRelationships(b *strings.Builder, rels []issuerlinks.Relationship) {
@@ -168,7 +168,7 @@ func writeCertificate(b *strings.Builder, a inspectsvc.Artifact, advanced bool) 
 		field(b, "Self-signed", "yes (signature verified)")
 	case interpret.SelfSignedUnverifiable:
 		field(b, "Self-signed", "self-issued; its signature could not be verified")
-	case interpret.SelfSignedInvalid:
+	case interpret.SelfSignedDoesNotVerify:
 		field(b, "Self-signed", "self-issued, but its signature does not verify")
 	}
 	field(b, "Valid", validityText(s.Validity))

@@ -79,7 +79,7 @@
   },
   "cert.self_signed_leaf": {
     "title": "Self-signed end-entity certificate",
-    "explanation": "The certificate is not a CA certificate and is signed by its own key. Clients accept it only if it is trusted explicitly, one certificate at a time; it does not chain to any authority.",
+    "explanation": "The certificate is not a CA certificate and is signed by its own key. Clients accept it only if they are configured to accept this specific certificate; it is not issued by any certificate authority.",
     "remediation": [
       {"code": "issue_from_ca", "text": "Issue the certificate from a private or public CA that the clients already trust."}
     ]

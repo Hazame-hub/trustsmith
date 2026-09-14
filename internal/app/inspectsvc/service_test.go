@@ -70,8 +70,8 @@ var corpusExpectations = map[string]expectation{
 	// Issuer relationships inside one input.
 	"bundle-reversed.pem":               {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[1]->[0]:verified", "[2]->[1]:verified"}},
 	"bundle-duplicate.pem":              {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[0 2]->[1]:verified"}},
-	"issuer-name-match-wrong-key.pem":   {types: []inspectsvc.ArtifactType{cert, cert}, relationships: []string{"[0]->[1]:invalid"}},
-	"issuer-key-id-match-wrong-key.pem": {types: []inspectsvc.ArtifactType{cert, cert}, relationships: []string{"[0]->[1]:invalid"}},
+	"issuer-name-match-wrong-key.pem":   {types: []inspectsvc.ArtifactType{cert, cert}, relationships: []string{"[0]->[1]:does_not_verify"}},
+	"issuer-key-id-match-wrong-key.pem": {types: []inspectsvc.ArtifactType{cert, cert}, relationships: []string{"[0]->[1]:does_not_verify"}},
 	"sha1-with-issuer.pem":              {types: []inspectsvc.ArtifactType{cert, cert}, findings: []string{"0:sig.sha1:critical"}, relationships: []string{"[0]->[1]:verified"}},
 	"md5-with-issuer.pem":               {types: []inspectsvc.ArtifactType{cert, cert}, findings: []string{"0:sig.md5:critical", "0:issuer.candidate_unverifiable:info"}, relationships: []string{"[0]->[1]:unverifiable"}},
 	"self-issued-not-self-signed.pem":   {types: []inspectsvc.ArtifactType{cert}},

@@ -54,10 +54,10 @@ const (
 type SignatureCheck string
 
 const (
-	SignatureNotApplicable SignatureCheck = "not_applicable" // not self-issued: issuer and subject names differ
-	SignatureVerified      SignatureCheck = "verified"       // self-signed
-	SignatureFailed        SignatureCheck = "failed"         // self-issued, but its own key does not verify the signature
-	SignatureUnverifiable  SignatureCheck = "unverifiable"   // the engine could not decide (e.g. MD5)
+	SignatureNotApplicable SignatureCheck = "not_applicable"  // not self-issued: issuer and subject names differ
+	SignatureVerified      SignatureCheck = "verified"        // self-signed
+	SignatureDoesNotVerify SignatureCheck = "does_not_verify" // self-issued, but its own key does not verify the signature
+	SignatureUnverifiable  SignatureCheck = "unverifiable"    // the engine could not decide (e.g. MD5)
 )
 
 // Identity holds the fingerprints of a certificate-framed object.
@@ -272,8 +272,8 @@ func fromCertificate(cert *x509.Certificate) *Certificate {
 		switch result.State {
 		case sigcheck.Verified:
 			c.SelfSignature = SignatureVerified
-		case sigcheck.Invalid:
-			c.SelfSignature = SignatureFailed
+		case sigcheck.DoesNotVerify:
+			c.SelfSignature = SignatureDoesNotVerify
 		default:
 			c.SelfSignature = SignatureUnverifiable
 		}

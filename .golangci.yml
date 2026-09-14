@@ -1,0 +1,30 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - errorlint
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+    - unused
+  exclusions:
+    rules:
+      # Tests and the test-certificate builder deliberately use weak
+      # algorithms and read fixture files by path.
+      - path: _test\.go
+        linters: [gosec]
+      - path: internal/testpki/
+        linters: [gosec]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/Hazame-hub/trustsmith

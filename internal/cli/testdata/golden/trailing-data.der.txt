@@ -1,0 +1,17 @@
+Inspected testdata/certs/trailing-data.der (DER, 1 entry) at 2026-09-14 12:00:00 UTC
+
+[0] TLS server certificate
+    Identifies     api.example.test, www.example.test, 192.0.2.10
+    Issuer         CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests (as stated in the certificate; not verified)
+    Valid          yes, until 2026-12-01 00:00:00 UTC (77 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not checked (chain verification is not available in this version)
+    Certificate    sha256:37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff
+    Key identity   sha256:43cf39723dae7709bde52e224ef9b7f74cac1a9b579882721bad854291b96a6d (x509-spki-sha256)
+
+Findings (1)
+  WARNING   input  Extra data outside certificates [input.trailing_data]
+            The input contains data that belongs to no certificate, such as text around PEM blocks or bytes after a DER certificate. Strict software may reject files like this.
+            Evidence: offset=464; length=2
+            Fix: Remove the extra data if the file is read by strict software.

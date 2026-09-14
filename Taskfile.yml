@@ -1,0 +1,44 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build the trustsmith binary into bin/
+    cmds:
+      - go build -o bin/trustsmith{{exeExt}} ./cmd/trustsmith
+
+  test:
+    desc: Run all tests, including fuzz seed corpora
+    cmds:
+      - go test -count=1 ./...
+
+  test:race:
+    desc: Run all tests with the race detector (needs cgo)
+    cmds:
+      - go test -race -count=1 ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  fuzz:short:
+    desc: Fuzz every target briefly (FUZZTIME, default 30s each)
+    vars:
+      FUZZTIME: '{{.FUZZTIME | default "30s"}}'
+    cmds:
+      - go test -run '^$' -fuzz '^FuzzCanonicalSPKI$' -fuzztime {{.FUZZTIME}} ./internal/fingerprint
+      - go test -run '^$' -fuzz '^FuzzDecode$' -fuzztime {{.FUZZTIME}} ./internal/artifact
+      - go test -run '^$' -fuzz '^FuzzFromDER$' -fuzztime {{.FUZZTIME}} ./internal/x509facts
+      - go test -run '^$' -fuzz '^FuzzInspectBytes$' -fuzztime {{.FUZZTIME}} ./internal/app/inspectsvc
+
+  golden:update:
+    desc: Re-record golden files after an intentional output change
+    cmds:
+      - go test -count=1 ./internal/cli ./internal/findings
+    env:
+      UPDATE_GOLDEN: '1'
+
+  fixtures:
+    desc: Regenerate the inspection corpus (changes fingerprints; update goldens afterwards)
+    cmds:
+      - go run ./internal/testpki/genfixtures -out testdata/certs

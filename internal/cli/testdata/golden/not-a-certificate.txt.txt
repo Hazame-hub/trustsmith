@@ -1,0 +1,7 @@
+Inspected testdata/certs/not-a-certificate.txt (unrecognised format, 0 entries) at 2026-09-14 12:00:00 UTC
+
+Findings (1)
+  CRITICAL  input  Unsupported input [input.unsupported_format]
+            This input, or one block in it, is not something this version of Trustsmith inspects. This version inspects X.509 certificates in PEM or DER form. Other PEM blocks, such as private keys or certificate requests, are reported by their label only and are not decoded.
+            Evidence: detail=neither PEM nor DER
+            Fix: Provide a PEM or DER certificate, or a PEM bundle of certificates.

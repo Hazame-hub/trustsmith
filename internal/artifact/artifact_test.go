@@ -125,13 +125,13 @@ func TestPEMFormattingDoesNotAffectIdentity(t *testing.T) {
 	body := strings.TrimSuffix(strings.TrimPrefix(lf, "-----BEGIN CERTIFICATE-----\n"), "-----END CERTIFICATE-----\n")
 
 	variants := map[string]string{
-		"LF":       lf,
-		"CRLF":     strings.ReplaceAll(lf, "\n", "\r\n"),
+		"LF":               lf,
+		"CRLF":             strings.ReplaceAll(lf, "\n", "\r\n"),
 		"no final newline": strings.TrimSuffix(lf, "\n"),
 		"rewrapped": "-----BEGIN CERTIFICATE-----\n" + strings.Join(chunk(strings.ReplaceAll(body, "\n", ""), 40), "\n") +
 			"\n-----END CERTIFICATE-----\n",
-		"headers":  string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Headers: map[string]string{"Source": "test"}, Bytes: der})),
-		"BOM":      "\xef\xbb\xbf" + lf,
+		"headers":                         string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Headers: map[string]string{"Source": "test"}, Bytes: der})),
+		"BOM":                             "\xef\xbb\xbf" + lf,
 		"trailing spaces on armour lines": "-----BEGIN CERTIFICATE-----  \n" + body + "-----END CERTIFICATE----- \t\n",
 	}
 	for name, v := range variants {
@@ -250,9 +250,9 @@ func TestUnknownAndEmptyInput(t *testing.T) {
 		data   string
 		format artifact.Format
 	}{
-		"empty":       {"", artifact.FormatEmpty},
-		"whitespace":  {" \r\n\t\n", artifact.FormatEmpty},
-		"plain text":  {"hello, this is not a certificate\n", artifact.FormatUnknown},
+		"empty":          {"", artifact.FormatEmpty},
+		"whitespace":     {" \r\n\t\n", artifact.FormatEmpty},
+		"plain text":     {"hello, this is not a certificate\n", artifact.FormatUnknown},
 		"mid-line BEGIN": {"see -----BEGIN CERTIFICATE----- here\n", artifact.FormatUnknown},
 	} {
 		t.Run(name, func(t *testing.T) {

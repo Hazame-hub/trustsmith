@@ -28,7 +28,7 @@ import (
 
 type fatal struct{}
 
-func (fatal) Helper()                              {}
+func (fatal) Helper()                           {}
 func (fatal) Fatalf(format string, args ...any) { log.Fatalf(format, args...) }
 
 var f fatal

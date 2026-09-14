@@ -9,6 +9,7 @@ import (
 
 	"github.com/Hazame-hub/trustsmith/internal/app/inspectsvc"
 	"github.com/Hazame-hub/trustsmith/internal/artifact"
+	"github.com/Hazame-hub/trustsmith/internal/chainpath"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
@@ -33,6 +34,10 @@ func renderText(w io.Writer, res inspectsvc.Result, advanced bool) error {
 	if len(res.Relationships) > 0 {
 		b.WriteString("\n")
 		writeRelationships(&b, res.Relationships)
+	}
+	if showPaths(res) {
+		b.WriteString("\n")
+		writePaths(&b, res)
 	}
 	b.WriteString("\n")
 	writeFindings(&b, res.Findings)
@@ -111,6 +116,148 @@ func writeRelationships(b *strings.Builder, rels []issuerlinks.Relationship) {
 	}
 }
 
+// showPaths: a path of one certificate is already fully described by that
+// certificate's own entry, so the section appears only when some path links
+// certificates, or construction hit a cycle or a limit.
+func showPaths(res inspectsvc.Result) bool {
+	if res.PathLimitReached {
+		return true
+	}
+	for _, p := range res.Paths {
+		if len(p.Certificates) > 1 || p.Completeness == chainpath.Cycle || p.Completeness == chainpath.LimitReached {
+			return true
+		}
+	}
+	return false
+}
+
+func writePaths(b *strings.Builder, res inspectsvc.Result) {
+	names := map[int]string{}
+	for _, a := range res.Artifacts {
+		if a.Certificate != nil {
+			names[a.Entry] = subjectName(a.Certificate)
+		}
+	}
+	fmt.Fprintf(b, "Included certification paths (%d)\n", len(res.Paths))
+	b.WriteString("  Built only from certificates in this input, linked by verified signatures. Trust is not evaluated:\n")
+	b.WriteString("  no certificate is treated as a trust anchor, including self-signed ones.\n")
+	if res.PathLimitReached {
+		b.WriteString("  A path construction limit was reached: not all paths are shown, and some may be cut short.\n")
+	}
+	for i, p := range res.Paths {
+		steps := make([]string, len(p.Certificates))
+		for j := range p.Certificates {
+			first := p.Entries[j][0]
+			steps[j] = fmt.Sprintf("entry %d (%s)", first, names[first])
+		}
+		fmt.Fprintf(b, "  Path %d: %s\n", i+1, strings.Join(steps, " > "))
+		field(b, "Ends", pathEndText(p))
+		field(b, "Completeness", pathCompletenessText(p.Completeness))
+		if len(p.Certificates) > 1 {
+			field(b, "Signatures", "verified: each certificate's signature verifies with the key of the next")
+		} else {
+			field(b, "Signatures", "not applicable (no issuer on this path)")
+		}
+		field(b, "CA constraints", pathStructureText(p.Structure))
+		for _, is := range p.Issues {
+			field(b, "", fmt.Sprintf("entry %d: %s", p.Entries[is.Position][0], pathIssueText(is)))
+		}
+		if p.Validity == chainpath.ValiditySatisfied {
+			field(b, "Validity", "every certificate on the path is within its validity period")
+		} else {
+			field(b, "Validity", "not every certificate on the path is within its validity period")
+			for _, nv := range p.NotValid {
+				state := "not yet valid"
+				if nv.Expired {
+					state = "expired"
+				}
+				field(b, "", fmt.Sprintf("entry %d: %s", p.Entries[nv.Position][0], state))
+			}
+		}
+		field(b, "Trust", "not evaluated")
+	}
+}
+
+func subjectName(c *x509facts.Certificate) string {
+	switch {
+	case c.Subject.CommonName != "":
+		return c.Subject.CommonName
+	case c.Subject.DN != "":
+		return c.Subject.DN
+	}
+	return "empty subject"
+}
+
+func pathEndText(p chainpath.Path) string {
+	switch p.End {
+	case chainpath.EndSelfSignedTerminal:
+		return "at a self-signed certificate in this input"
+	case chainpath.EndNoIssuerCandidate:
+		return "no matching issuer candidate found in this input"
+	case chainpath.EndIssuerCandidatesNotVerify:
+		return "no issuer candidate in this input verified the last certificate's signature"
+	case chainpath.EndIssuerCandidatesUnchecked:
+		return "issuer candidates in this input were not all checked (limit reached)"
+	case chainpath.EndCycle:
+		return fmt.Sprintf("the next issuer, entry %d, is already on this path", p.Entries[p.CycleTo][0])
+	case chainpath.EndDepthLimit:
+		return "the maximum path length for construction was reached"
+	}
+	return string(p.End)
+}
+
+func pathCompletenessText(c chainpath.Completeness) string {
+	switch c {
+	case chainpath.CompleteInInput:
+		return "complete in this input (not a trust decision)"
+	case chainpath.Partial:
+		return "partial"
+	case chainpath.Cycle:
+		return "cycle"
+	case chainpath.LimitReached:
+		return "limit reached; the path may continue"
+	}
+	return string(c)
+}
+
+func pathStructureText(s chainpath.StructureState) string {
+	switch s {
+	case chainpath.StructureSatisfied:
+		return "satisfied (basic constraints, key usage, path length)"
+	case chainpath.StructureFailed:
+		return "failed"
+	case chainpath.StructureUnverifiable:
+		return "not fully evaluated"
+	case chainpath.StructureNotApplicable:
+		return "not applicable (no issuer on this path)"
+	}
+	return string(s)
+}
+
+func pathIssueText(is chainpath.Issue) string {
+	switch is.Kind {
+	case chainpath.IssueIssuerNotCA:
+		if is.BasicConstraintsPresent {
+			return "issues a certificate on this path but is not a CA certificate (basic constraints CA: no)"
+		}
+		return "issues a certificate on this path but is not a CA certificate (no basic constraints)"
+	case chainpath.IssueIssuerKeyUsageNoCertSign:
+		return "key usage does not include certificate signing"
+	case chainpath.IssuePathLengthExceeded:
+		return fmt.Sprintf("path length constraint %d exceeded by %s below it", is.PathLenConstraint,
+			plural(is.FollowingIntermediates, "intermediate CA certificate", "intermediate CA certificates"))
+	case chainpath.IssueIssuerCAStatusNotEvaluated:
+		return "CA status not evaluated (version 1 or 2 certificate)"
+	case chainpath.IssueNameConstraintsNotEvaluated:
+		return "name constraints not evaluated (" + is.ExtensionOID + ")"
+	case chainpath.IssuePolicyConstraintsNotEvaluated:
+		return "policy constraints not evaluated (" + is.ExtensionOID + ")"
+	case chainpath.IssueCriticalExtensionNotProcessed:
+		return "critical extension " + is.ExtensionOID + " not processed"
+	}
+	return string(is.Kind)
+}
+
 func writeArtifact(b *strings.Builder, a inspectsvc.Artifact, advanced bool) {
 	switch a.Type {
 	case inspectsvc.TypeCertificate:
@@ -174,7 +321,7 @@ func writeCertificate(b *strings.Builder, a inspectsvc.Artifact, advanced bool) 
 	field(b, "Valid", validityText(s.Validity))
 	field(b, "Key", s.Key)
 	field(b, "Signature", s.Signature)
-	field(b, "Chain", "not checked (chain verification is not available in this version)")
+	field(b, "Chain", "not validated against trust anchors (not available in this version)")
 	field(b, "Certificate", c.Fingerprint.String())
 	field(b, "Key identity", keyIdentityText(c.Identity))
 

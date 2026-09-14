@@ -26,6 +26,15 @@ Validity periods are relative to the test clock 2026-09-14T12:00:00Z.
 | `noncanonical-rsa-key.pem` | RSA key encoded without NULL parameters (Go rejects the certificate) |
 | `not-a-certificate.txt` | plain text |
 | `not-yet-valid.pem` | valid from 2026-10-01 |
+| `path-critical-extension.pem` | leaf, an intermediate with an unknown critical extension, root: not fully evaluated |
+| `path-cross-signed.pem` | leaf, intermediate, root A, root A's key certified by root B, root B: two paths |
+| `path-cycle.pem` | two CA certificates that issued each other: construction stops at the cycle |
+| `path-expired-intermediate.pem` | leaf, an intermediate that expired on 2026-06-01, root |
+| `path-key-usage-no-certsign.pem` | leaf, a CA whose key usage lacks keyCertSign, root: the structure fails |
+| `path-length-exceeded.pem` | leaf, intermediate, root with pathLenConstraint 0: the constraint is exceeded |
+| `path-length-self-issued.pem` | leaf, a self-issued intermediate, root with pathLenConstraint 0: not exceeded |
+| `path-no-basic-constraints.pem` | leaf, an issuer without basic constraints, root: the structure fails |
+| `path-not-ca.pem` | leaf, an issuer with basic constraints CA:FALSE, root: the structure fails |
 | `private-key-only.pem` | only a private key block: no certificates |
 | `reissued-intermediates.pem` | leaf and two certificates for the same intermediate key: both verify the leaf |
 | `root-ca.pem` | self-signed root CA |

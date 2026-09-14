@@ -3,6 +3,12 @@ cert.expired
 cert.expiring_soon
 cert.not_yet_valid
 cert.self_signed_leaf
+chain.cycle
+chain.issuer_key_usage
+chain.issuer_not_ca
+chain.path_length_exceeded
+chain.path_limit_reached
+chain.structure_unverifiable
 input.empty
 input.malformed_der
 input.malformed_pem

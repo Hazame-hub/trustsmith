@@ -163,6 +163,7 @@ func main() {
 		pemOf(testpki.Resign(f, odd.DER, xspki, testpki.ECDSAWithSHA256, inter.Key)))
 
 	relationshipFixtures(*out, write, pemOf)
+	pathFixtures(write, pemOf)
 
 	names := make([]string, 0, len(files))
 	for n := range files {

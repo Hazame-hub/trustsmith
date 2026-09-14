@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Hazame-hub/trustsmith/internal/app/inspectsvc"
+	"github.com/Hazame-hub/trustsmith/internal/chainpath"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
@@ -25,6 +26,7 @@ type jsonInspect struct {
 	Overview      jsonOverview       `json:"overview"`
 	Artifacts     []jsonArtifact     `json:"artifacts"`
 	Relationships []jsonRelationship `json:"relationships"`
+	Paths         []jsonPath         `json:"paths"`
 	Findings      []jsonFinding      `json:"findings"`
 }
 
@@ -40,6 +42,10 @@ type jsonOverview struct {
 	Certificates    int    `json:"certificates"`
 	Findings        int    `json:"findings"`
 	HighestSeverity string `json:"highest_severity"`
+	// IncludedPaths counts the certification paths built inside the input;
+	// PathLimitReached says that list is incomplete.
+	IncludedPaths    int  `json:"included_paths"`
+	PathLimitReached bool `json:"path_limit_reached"`
 }
 
 type jsonArtifact struct {
@@ -160,6 +166,52 @@ type jsonRelationship struct {
 	Reason    string             `json:"reason,omitempty"` // stable code; engine messages are never part of the contract
 }
 
+// jsonPath is an included certification path: certificates of this input,
+// from the one furthest from any issuer towards its issuers, each linked to the
+// next by a verified issuer relationship. complete_in_input means the path
+// reaches a self-signed certificate contained in the input — never that it is
+// trusted: trust is always not_evaluated, and no path field asserts validity or
+// trust. signatures is "verified" when the path has issuer links (every link is
+// a verified signature by construction) and "not_applicable" otherwise.
+type jsonPath struct {
+	Type            string               `json:"type"`
+	Certificates    []jsonCertificateRef `json:"certificates"`
+	Completeness    string               `json:"completeness"`
+	End             string               `json:"end"`
+	CycleToPosition *int                 `json:"cycle_to_position"` // null unless completeness is cycle
+	Signatures      string               `json:"signatures"`
+	Structure       jsonPathStructure    `json:"structure"`
+	Validity        jsonPathValidity     `json:"validity"`
+	Trust           string               `json:"trust"`
+}
+
+type jsonPathStructure struct {
+	State  string          `json:"state"` // satisfied, failed, structurally_unverifiable, not_applicable
+	Issues []jsonPathIssue `json:"issues"`
+}
+
+type jsonPathIssue struct {
+	Kind                    string `json:"kind"`
+	Outcome                 string `json:"outcome"` // violation or not_evaluated
+	Position                int    `json:"position"`
+	Certificate             string `json:"x509-cert-sha256"`
+	BasicConstraintsPresent *bool  `json:"basic_constraints_present,omitempty"`
+	PathLenConstraint       *int   `json:"path_len_constraint,omitempty"`
+	FollowingIntermediates  *int   `json:"following_intermediates,omitempty"`
+	ExtensionOID            string `json:"extension_oid,omitempty"`
+}
+
+type jsonPathValidity struct {
+	State                 string                `json:"state"` // satisfied or failed, at inspected_at
+	OutsideValidityPeriod []jsonOutsideValidity `json:"outside_validity_period"`
+}
+
+type jsonOutsideValidity struct {
+	Position    int    `json:"position"`
+	Certificate string `json:"x509-cert-sha256"`
+	State       string `json:"state"` // expired or not_yet_valid
+}
+
 type jsonCertificateRef struct {
 	Fingerprint string `json:"x509-cert-sha256"`
 	Entries     []int  `json:"entries"`
@@ -196,9 +248,11 @@ func renderJSON(w io.Writer, res inspectsvc.Result) error {
 		Overview: jsonOverview{
 			Artifacts: len(res.Artifacts), Findings: len(res.Findings),
 			HighestSeverity: string(res.Highest),
+			IncludedPaths:   len(res.Paths), PathLimitReached: res.PathLimitReached,
 		},
 		Artifacts:     []jsonArtifact{},
 		Relationships: []jsonRelationship{},
+		Paths:         []jsonPath{},
 		Findings:      []jsonFinding{},
 	}
 	if doc.Overview.HighestSeverity == "" {
@@ -212,6 +266,9 @@ func renderJSON(w io.Writer, res inspectsvc.Result) error {
 	}
 	for _, r := range res.Relationships {
 		doc.Relationships = append(doc.Relationships, relationshipJSON(r))
+	}
+	for _, p := range res.Paths {
+		doc.Paths = append(doc.Paths, pathJSON(p))
 	}
 	for _, f := range res.Findings {
 		doc.Findings = append(doc.Findings, findingJSON(f))
@@ -274,6 +331,51 @@ func relationshipJSON(r issuerlinks.Relationship) jsonRelationship {
 	}
 	for _, e := range r.Evidence {
 		out.Evidence = append(out.Evidence, string(e))
+	}
+	return out
+}
+
+func pathJSON(p chainpath.Path) jsonPath {
+	out := jsonPath{
+		Type:         "included_certification_path",
+		Certificates: []jsonCertificateRef{},
+		Completeness: string(p.Completeness),
+		End:          string(p.End),
+		Signatures:   "not_applicable",
+		Structure:    jsonPathStructure{State: string(p.Structure), Issues: []jsonPathIssue{}},
+		Validity:     jsonPathValidity{State: string(p.Validity), OutsideValidityPeriod: []jsonOutsideValidity{}},
+		Trust:        "not_evaluated",
+	}
+	for i, fp := range p.Certificates {
+		out.Certificates = append(out.Certificates, jsonCertificateRef{Fingerprint: fp.Hex(), Entries: intsOrEmpty(p.Entries[i])})
+	}
+	if len(p.Certificates) > 1 {
+		out.Signatures = "verified"
+	}
+	if p.Completeness == chainpath.Cycle {
+		at := p.CycleTo
+		out.CycleToPosition = &at
+	}
+	for _, is := range p.Issues {
+		j := jsonPathIssue{Kind: string(is.Kind), Outcome: string(is.Outcome), Position: is.Position,
+			Certificate: is.Certificate.Hex(), ExtensionOID: is.ExtensionOID}
+		switch is.Kind {
+		case chainpath.IssueIssuerNotCA:
+			present := is.BasicConstraintsPresent
+			j.BasicConstraintsPresent = &present
+		case chainpath.IssuePathLengthExceeded:
+			limit, following := is.PathLenConstraint, is.FollowingIntermediates
+			j.PathLenConstraint, j.FollowingIntermediates = &limit, &following
+		}
+		out.Structure.Issues = append(out.Structure.Issues, j)
+	}
+	for _, nv := range p.NotValid {
+		state := "not_yet_valid"
+		if nv.Expired {
+			state = "expired"
+		}
+		out.Validity.OutsideValidityPeriod = append(out.Validity.OutsideValidityPeriod,
+			jsonOutsideValidity{Position: nv.Position, Certificate: nv.Certificate.Hex(), State: state})
 	}
 	return out
 }

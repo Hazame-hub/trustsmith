@@ -136,7 +136,7 @@ func TestOutputNeverClaimsTrustOrValidity(t *testing.T) {
 	}
 }
 
-func walkKeys(t *testing.T, name string, v any) {
+func walkKeys(t *testing.T, name string, v any, path ...string) {
 	t.Helper()
 	switch v := v.(type) {
 	case map[string]any:
@@ -149,17 +149,26 @@ func walkKeys(t *testing.T, name string, v any) {
 				if child != "not_evaluated" {
 					t.Errorf("%s: trust is %v, want not_evaluated", name, child)
 				}
-			case strings.Contains(lower, "trust"):
+			case strings.Contains(lower, "trust") && lower != "trust_evaluation":
 				t.Errorf("%s: key %q", name, k)
 			}
 			if _, isBool := child.(bool); isBool && (strings.Contains(lower, "valid") || strings.Contains(lower, "trust")) {
 				t.Errorf("%s: boolean %q reads as a verdict", name, k)
 			}
-			walkKeys(t, name, child)
+			walkKeys(t, name, child, append(slices.Clone(path), k)...)
 		}
 	case []any:
 		for _, child := range v {
-			walkKeys(t, name, child)
+			walkKeys(t, name, child, path...)
+		}
+	case string:
+		// Trust results always name their source (trust_evaluation), so no
+		// value may be a bare trust verdict. "valid" is allowed only as a
+		// certificate's validity-period state (summary.validity.state).
+		lv := strings.ToLower(v)
+		validityState := len(path) >= 2 && path[len(path)-2] == "validity" && path[len(path)-1] == "state"
+		if lv == "trusted" || lv == "untrusted" || ((lv == "valid" || lv == "invalid") && !validityState) {
+			t.Errorf("%s: value %q at %s reads as a verdict", name, v, strings.Join(path, "."))
 		}
 	}
 }

@@ -1,0 +1,96 @@
+Inspected testdata/certs/path-cross-signed.pem (PEM, 5 entries) at 2026-09-14 12:00:00 UTC
+
+[0] TLS server certificate
+    Identifies     cross.path.example.test
+    Issuer         CN=Trustsmith Path Cross Intermediate,O=Trustsmith Path Tests
+                   signature verified with the key of the certificate in entry 1 of this input
+    Valid          yes, until 2027-09-01 00:00:00 UTC (351 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          verified to the explicitly supplied roots (see Trust evaluation)
+    Certificate    sha256:3935a48be86f7713e54c853952d6389ce68c884b6d88ed84c251e370cda49218
+    Key identity   sha256:96d2124dd133d771325d44672a9091860bd3c28601218aba6ddd93dd41ec76f2 (x509-spki-sha256)
+
+[1] CA certificate
+    Identifies     CN=Trustsmith Path Cross Intermediate
+    Issuer         CN=Trustsmith Path Root A,O=Trustsmith Path Tests
+                   signature verified with the key of the certificate in entries 2, 3 of this input
+    Valid          yes, until 2031-01-01 00:00:00 UTC (1569 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated on its own: it issues another certificate in this input
+    Certificate    sha256:d9f9007d9190f4db0a7b130127dede8a4ac5f85301909ef43410493136d4230c
+    Key identity   sha256:81e024d88059725d0bf52e7384210fc8b62a2e58b2b284e209ae34a03e880c6d (x509-spki-sha256)
+
+[2] Self-signed CA certificate
+    Identifies     CN=Trustsmith Path Root A
+    Issuer         CN=Trustsmith Path Root A,O=Trustsmith Path Tests
+                   signature verified with the key of the certificate in entry 3 of this input
+    Self-signed    yes (signature verified)
+    Valid          yes, until 2031-01-01 00:00:00 UTC (1569 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated on its own: it issues another certificate in this input
+    Certificate    sha256:4d43ce23a952834f00d536bfe63b28bc7a13289e8cd991b1faa484338c960d0a
+    Key identity   sha256:e7b0cdcab2fb3ecde00d15a8fb1ad1a5326a13fdd2209d36f8cb1175206370ad (x509-spki-sha256)
+
+[3] CA certificate
+    Identifies     CN=Trustsmith Path Root A
+    Issuer         CN=Trustsmith Path Root B,O=Trustsmith Path Tests
+                   signature verified with the key of the certificate in entry 4 of this input
+    Valid          yes, until 2031-01-01 00:00:00 UTC (1569 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated on its own: it issues another certificate in this input
+    Certificate    sha256:769500b982f55c469d8fc128a7e8871cd96dc2cff11c7b52958f7ee4b5fc1a47
+    Key identity   sha256:e7b0cdcab2fb3ecde00d15a8fb1ad1a5326a13fdd2209d36f8cb1175206370ad (x509-spki-sha256)
+
+[4] Self-signed CA certificate
+    Identifies     CN=Trustsmith Path Root B
+    Issuer         CN=Trustsmith Path Root B,O=Trustsmith Path Tests
+                   this certificate names itself as issuer and its own key verifies its signature
+    Self-signed    yes (signature verified)
+    Valid          yes, until 2031-01-01 00:00:00 UTC (1569 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated on its own: it issues another certificate in this input
+    Certificate    sha256:2e4ab1b5e077e2b85974f560fc60372c04ccb32c5dd1ddc0623e3d593e4e6f52
+    Key identity   sha256:88572ad4c13e282a78b9faa98f37781f9e5a7a9f5d12df1a62b06d21b096c6b6 (x509-spki-sha256)
+
+Issuer relationships (5)
+  Signature checks between certificates of this input. A verified signature is not a trust decision.
+  entry 0, candidate issuer entry 1: verified; evidence: issuer_dn_match, authority_key_id_match
+  entry 1, candidate issuer entry 2: verified; evidence: issuer_dn_match, authority_key_id_match
+  entry 1, candidate issuer entry 3: verified; evidence: issuer_dn_match, authority_key_id_match
+  entry 2, candidate issuer entry 3: verified; evidence: issuer_dn_match
+  entry 3, candidate issuer entry 4: verified; evidence: issuer_dn_match, authority_key_id_match
+
+Included certification paths (2)
+  Built only from certificates in this input, linked by verified signatures. Trust is not evaluated:
+  no certificate is treated as a trust anchor, including self-signed ones.
+  Path 1: entry 0 (cross.path.example.test) > entry 1 (Trustsmith Path Cross Intermediate) > entry 2 (Trustsmith Path Root A)
+    Ends           at a self-signed certificate in this input
+    Completeness   complete in this input (not a trust decision)
+    Signatures     verified: each certificate's signature verifies with the key of the next
+    CA constraints satisfied (basic constraints, key usage, path length)
+    Validity       every certificate on the path is within its validity period
+    Trust          not evaluated by this layer (see Trust evaluation)
+  Path 2: entry 0 (cross.path.example.test) > entry 1 (Trustsmith Path Cross Intermediate) > entry 3 (Trustsmith Path Root A) > entry 4 (Trustsmith Path Root B)
+    Ends           at a self-signed certificate in this input
+    Completeness   complete in this input (not a trust decision)
+    Signatures     verified: each certificate's signature verifies with the key of the next
+    CA constraints satisfied (basic constraints, key usage, path length)
+    Validity       every certificate on the path is within its validity period
+    Trust          not evaluated by this layer (see Trust evaluation)
+
+Trust evaluation
+  Source           explicitly supplied roots: testdata/roots/path-cross-roots.pem (2 certificates)
+  Verifier         Go crypto/x509 (GO_VERSION), any extended key usage, no host name
+  Anchor           Trustsmith Path Root A (sha256:4d43ce23a952834f00d536bfe63b28bc7a13289e8cd991b1faa484338c960d0a), entry 0 of testdata/roots/path-cross-roots.pem; also entry 2 of this input
+  Anchor           Trustsmith Path Root B (sha256:2e4ab1b5e077e2b85974f560fc60372c04ccb32c5dd1ddc0623e3d593e4e6f52), entry 1 of testdata/roots/path-cross-roots.pem; also entry 4 of this input
+  Entry 0 (cross.path.example.test)
+    Result         verified against the explicitly supplied roots
+    Chain 1        entry 0 (cross.path.example.test) > entry 1 (Trustsmith Path Cross Intermediate) > anchor Trustsmith Path Root A
+    Chain 2        entry 0 (cross.path.example.test) > entry 1 (Trustsmith Path Cross Intermediate) > entry 3 (Trustsmith Path Root A) > anchor Trustsmith Path Root B
+
+No findings.

@@ -70,6 +70,8 @@ Codes in this revision:
 | `chain.structure_unverifiable` | info | no structural violation, but part of a path's structure could not be evaluated (ADR-0005) |
 | `chain.cycle` | info | verified issuer relationships form a cycle (ADR-0005) |
 | `chain.path_limit_reached` | info | path construction limits were reached; paths are incomplete (ADR-0005) |
+| `trust.failed` | critical | validation against explicitly supplied roots failed; evidence `reason` (ADR-0006) |
+| `trust.unverifiable` | warning | validation against explicitly supplied roots was inconclusive; evidence `reason` (ADR-0006) |
 
 ### Semantics this revision commits to
 
@@ -83,9 +85,11 @@ Codes in this revision:
   (ADR-0004).
   - The summary reports the issuer name as stated in the certificate, plus what
     the input shows about it (`issuer_in_input`).
-  - No trust, CA validity or chain validity is asserted. Validation against
-    trust anchors does not exist yet, so the summary's `chain` is always
-    `not_checked`.
+  - Relationships assert no trust, CA validity or chain validity.
+- **Trust is evaluated only against explicitly supplied roots** (ADR-0006).
+  The summary's `chain` is `not_checked` unless the certificate was validated;
+  otherwise it is `verified_to_supplied_roots`, `failed_against_supplied_roots`
+  or `unverifiable_against_supplied_roots`, each naming its trust source.
 - **Certification paths are structural and inside the input only**
   (ADR-0005). A path's `trust` is always `not_evaluated`, and path findings
   never repeat a certificate's own validity findings.
@@ -101,11 +105,12 @@ Codes in this revision:
 - **The schema is its own set of types in `internal/cli/render_json.go`.**
   Internal structs are never serialised.
 - **Top-level fields:** `schema`, `inspected_at`, `input`, `overview`,
-  `artifacts`, `relationships`, `paths`, `findings`. `relationships` and the
+  `artifacts`, `relationships`, `paths`, `trust_evaluation`, `findings`. `relationships` and the
   summary fields `issuer_in_input`, `verified_issuer_entries` and
   `candidate_issuer_entries` were added compatibly within v1 (ADR-0004), as
   were `paths`, `overview.included_paths` and `overview.path_limit_reached`
-  (ADR-0005).
+  (ADR-0005). `trust_evaluation` and the qualified summary `chain` values
+  were added within v1 (ADR-0006).
 - **Fingerprints** are keyed by ADR-0002 scheme name. A missing key identity is
   `null`.
 - **Findings** include the rendered catalog text and codes. Their `entry` is
@@ -123,7 +128,7 @@ Codes in this revision:
 | Code | Meaning |
 |---|---|
 | 0 | success; no finding at or above `--fail-on` (default `critical`) |
-| 1 | operational error (unreadable, missing or oversized input, directory given) |
+| 1 | operational error (unreadable, missing or oversized input, directory given, unusable `--roots` file) |
 | 2 | usage error (flags, arguments, unknown command, endpoint argument while probing is unimplemented) |
 | 3 | inspection completed and the highest finding reached `--fail-on` |
 

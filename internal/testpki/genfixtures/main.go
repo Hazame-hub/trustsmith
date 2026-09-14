@@ -42,6 +42,7 @@ const rfc8410TestKey = "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEINTuctv
 func main() {
 	out := flag.String("out", filepath.Join("testdata", "certs"), "output directory")
 	force := flag.Bool("force", false, "rewrite existing fixtures (changes their fingerprints and every golden)")
+	rootsOut := flag.String("roots-out", filepath.Join("testdata", "roots"), "output directory for trust-anchor files")
 	flag.Parse()
 	if err := os.MkdirAll(*out, 0o755); err != nil {
 		log.Fatal(err)
@@ -180,4 +181,6 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("corpus has %d fixtures; wrote %d to %s\n", len(names), written, *out)
+
+	rootsFixtures(*out, *rootsOut, *force, pemOf)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/app/inspectsvc"
 	"github.com/Hazame-hub/trustsmith/internal/chainpath"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
+	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
 )
@@ -27,7 +28,60 @@ type jsonInspect struct {
 	Artifacts     []jsonArtifact     `json:"artifacts"`
 	Relationships []jsonRelationship `json:"relationships"`
 	Paths         []jsonPath         `json:"paths"`
-	Findings      []jsonFinding      `json:"findings"`
+	// TrustEvaluation is validation against explicitly supplied trust
+	// anchors. It is separate from paths, whose trust is never evaluated.
+	TrustEvaluation jsonTrustEvaluation `json:"trust_evaluation"`
+	Findings        []jsonFinding       `json:"findings"`
+}
+
+// jsonTrustEvaluation is validation against trust anchors supplied with
+// --roots. state is not_evaluated when no roots were supplied (source, engine
+// and engine_version are then null and the arrays empty), or evaluated, in
+// which case every target has its own result. An anchor is always a
+// certificate from a roots file, never one inferred from the input.
+type jsonTrustEvaluation struct {
+	State                      string            `json:"state"`
+	Source                     *string           `json:"source"`
+	Engine                     *string           `json:"engine"`
+	EngineVersion              *string           `json:"engine_version"`
+	RequestedExtendedKeyUsages []string          `json:"requested_extended_key_usages"`
+	RootsFiles                 []jsonRootsFile   `json:"roots_files"`
+	Anchors                    []jsonAnchor      `json:"anchors"`
+	Targets                    []jsonTrustTarget `json:"targets"`
+}
+
+type jsonRootsFile struct {
+	Locator      string `json:"locator"`
+	Certificates int    `json:"certificates"`
+}
+
+type jsonAnchor struct {
+	Fingerprint   string             `json:"x509-cert-sha256"`
+	Subject       string             `json:"subject"`
+	SelfSignature string             `json:"self_signature"` // a fact about the certificate, not why it is an anchor
+	Sources       []jsonAnchorSource `json:"sources"`
+	InputEntries  []int              `json:"input_entries"` // entries of the inspected input holding the same certificate
+}
+
+type jsonAnchorSource struct {
+	RootsFile string `json:"roots_file"`
+	Entry     int    `json:"entry"`
+}
+
+// jsonTrustTarget is one certificate validated by Go's crypto/x509 verifier:
+// state verified, failed or unverifiable, with a stable reason unless
+// verified. chains lists every chain the verifier built, shortest first, then
+// by fingerprint.
+type jsonTrustTarget struct {
+	Certificate jsonCertificateRef `json:"certificate"`
+	State       string             `json:"state"`
+	Reason      string             `json:"reason,omitempty"`
+	Chains      []jsonTrustChain   `json:"chains"`
+}
+
+type jsonTrustChain struct {
+	Certificates []jsonCertificateRef `json:"certificates"` // the target first, the anchor last; entries are input entries
+	Anchor       string               `json:"anchor"`
 }
 
 type jsonInput struct {
@@ -270,6 +324,7 @@ func renderJSON(w io.Writer, res inspectsvc.Result) error {
 	for _, p := range res.Paths {
 		doc.Paths = append(doc.Paths, pathJSON(p))
 	}
+	doc.TrustEvaluation = trustJSON(res)
 	for _, f := range res.Findings {
 		doc.Findings = append(doc.Findings, findingJSON(f))
 	}
@@ -331,6 +386,65 @@ func relationshipJSON(r issuerlinks.Relationship) jsonRelationship {
 	}
 	for _, e := range r.Evidence {
 		out.Evidence = append(out.Evidence, string(e))
+	}
+	return out
+}
+
+// inputEntries maps each parsed certificate of the input to its entries.
+func inputEntries(res inspectsvc.Result) map[fingerprint.Cert][]int {
+	m := map[fingerprint.Cert][]int{}
+	for _, a := range res.Artifacts {
+		if a.Certificate != nil {
+			m[a.Certificate.Fingerprint] = append(m[a.Certificate.Fingerprint], a.Entry)
+		}
+	}
+	return m
+}
+
+func trustJSON(res inspectsvc.Result) jsonTrustEvaluation {
+	t := res.Trust
+	out := jsonTrustEvaluation{
+		State:                      string(t.State),
+		RequestedExtendedKeyUsages: []string{},
+		RootsFiles:                 []jsonRootsFile{},
+		Anchors:                    []jsonAnchor{},
+		Targets:                    []jsonTrustTarget{},
+	}
+	if t.State != inspectsvc.TrustEvaluated {
+		return out
+	}
+	source, engine, version := t.Source, t.Engine, t.EngineVersion
+	out.Source, out.Engine, out.EngineVersion = &source, &engine, &version
+	out.RequestedExtendedKeyUsages = []string{"any"}
+	inInput := inputEntries(res)
+	for _, f := range t.Roots.Files {
+		out.RootsFiles = append(out.RootsFiles, jsonRootsFile{Locator: f.Locator, Certificates: f.Certificates})
+	}
+	for _, a := range t.Roots.Anchors {
+		j := jsonAnchor{
+			Fingerprint: a.Certificate.Fingerprint.Hex(), Subject: a.Certificate.Subject.DN,
+			SelfSignature: string(a.Certificate.SelfSignature), Sources: []jsonAnchorSource{},
+			InputEntries: intsOrEmpty(inInput[a.Certificate.Fingerprint]),
+		}
+		for _, s := range a.Sources {
+			j.Sources = append(j.Sources, jsonAnchorSource{RootsFile: s.File, Entry: s.Entry})
+		}
+		out.Anchors = append(out.Anchors, j)
+	}
+	for _, target := range t.Targets {
+		j := jsonTrustTarget{
+			Certificate: jsonCertificateRef{Fingerprint: target.Certificate.Hex(), Entries: intsOrEmpty(target.Entries)},
+			State:       string(target.Result.State), Reason: string(target.Result.Reason),
+			Chains: []jsonTrustChain{},
+		}
+		for _, c := range target.Result.Chains {
+			chain := jsonTrustChain{Certificates: []jsonCertificateRef{}, Anchor: c.Anchor().Hex()}
+			for _, fp := range c.Certificates {
+				chain.Certificates = append(chain.Certificates, jsonCertificateRef{Fingerprint: fp.Hex(), Entries: intsOrEmpty(inInput[fp])})
+			}
+			j.Chains = append(j.Chains, chain)
+		}
+		out.Targets = append(out.Targets, j)
 	}
 	return out
 }

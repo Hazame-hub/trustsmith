@@ -18,6 +18,16 @@
   "artifacts": [],
   "relationships": [],
   "paths": [],
+  "trust_evaluation": {
+    "state": "not_evaluated",
+    "source": null,
+    "engine": null,
+    "engine_version": null,
+    "requested_extended_key_usages": [],
+    "roots_files": [],
+    "anchors": [],
+    "targets": []
+  },
   "findings": [
     {
       "code": "input.unsupported_format",

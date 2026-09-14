@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,6 +18,7 @@ func newInspectCommand(stdin io.Reader, stdout io.Writer, env Env) *cobra.Comman
 		output   string
 		failOn   string
 		advanced bool
+		roots    []string
 	)
 	cmd := &cobra.Command{
 		Use:   "inspect <file|->",
@@ -26,6 +28,11 @@ func newInspectCommand(stdin io.Reader, stdout io.Writer, env Env) *cobra.Comman
 Accepts a PEM certificate, a DER certificate or a PEM bundle; "-" reads
 standard input. Other PEM blocks (such as private keys) are reported by
 label and never decoded. Inspecting TLS endpoints is not supported yet.
+
+Trust is evaluated only against trust anchors you supply with --roots: a
+certificate file or bundle, repeatable. Certificates in the inspected input,
+self-signed or not, are never trust anchors, and no system trust store is
+used. Without --roots, trust is not evaluated.
 
 Exit codes: 0 no finding at or above --fail-on, 1 operational error,
 2 usage error, 3 findings reached --fail-on.`,
@@ -44,7 +51,20 @@ Exit codes: 0 no finding at or above --fail-on, 1 operational error,
 				return usageError{err}
 			}
 
-			svc := inspectsvc.New(env.Now)
+			var opts []inspectsvc.Option
+			if len(roots) > 0 {
+				for _, r := range roots {
+					if strings.TrimSpace(r) == "" {
+						return usageError{errors.New("--roots needs a certificate file name")}
+					}
+				}
+				loaded, loadErr := inspectsvc.LoadRoots(roots)
+				if loadErr != nil {
+					return operationalError{loadErr}
+				}
+				opts = append(opts, inspectsvc.WithRoots(loaded))
+			}
+			svc := inspectsvc.New(env.Now, opts...)
 			var res inspectsvc.Result
 			target := args[0]
 			switch resolveTarget(target, fileExists) {
@@ -80,6 +100,7 @@ Exit codes: 0 no finding at or above --fail-on, 1 operational error,
 	cmd.Flags().StringVar(&output, "output", "text", "output format: text or json")
 	cmd.Flags().StringVar(&failOn, "fail-on", "critical", "exit 3 when a finding is at least this severe: info, warning, critical or never")
 	cmd.Flags().BoolVar(&advanced, "advanced", false, "include technical details in text output")
+	cmd.Flags().StringArrayVar(&roots, "roots", nil, "validate against the trust anchors in this certificate file (repeatable); without it, trust is not evaluated")
 	return cmd
 }
 

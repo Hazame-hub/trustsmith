@@ -86,14 +86,14 @@
   },
   "sig.sha1": {
     "title": "SHA-1 signature",
-    "explanation": "The certificate is signed with SHA-1, which is no longer collision resistant, and current software rejects SHA-1 certificate signatures. On a self-signed CA certificate (a trust anchor) the signature is not checked during validation, so there it is informational.",
+    "explanation": "The certificate is signed with SHA-1, which is no longer collision resistant, and current software rejects SHA-1 certificate signatures. On a self-signed CA certificate the signature is not checked when that certificate is used as a trust anchor, so there it is informational.",
     "remediation": [
       {"code": "reissue_sha256", "text": "Reissue the certificate with a SHA-256 or stronger signature."}
     ]
   },
   "sig.md5": {
     "title": "MD5 signature",
-    "explanation": "The certificate is signed with MD5, which is broken, and certificate signatures using it can be forged. On a self-signed CA certificate (a trust anchor) the signature is not checked during validation, so there it is informational.",
+    "explanation": "The certificate is signed with MD5, which is broken, and certificate signatures using it can be forged. On a self-signed CA certificate the signature is not checked when that certificate is used as a trust anchor, so there it is informational.",
     "remediation": [
       {"code": "reissue_sha256", "text": "Reissue the certificate with a SHA-256 or stronger signature."}
     ]
@@ -170,6 +170,18 @@
     "remediation": [
       {"code": "split_input", "text": "Inspect a smaller bundle that contains only the certificates of interest."}
     ]
+  },
+  "trust.failed": {
+    "title": "Not verified against the supplied roots",
+    "explanation": "Trustsmith asked Go's crypto/x509 verifier to validate this certificate against the trust anchors supplied with --roots, and the verifier rejected it. The reason evidence is a stable code, such as no_explicit_anchor_path or certificate_expired. Only the supplied roots were considered: no system trust store was used, and certificates in the inspected input are never anchors themselves.",
+    "remediation": [
+      {"code": "check_roots", "text": "Check that the roots file holds the intended trust anchors and that the inspected input includes the intermediate certificates the chain needs."}
+    ]
+  },
+  "trust.unverifiable": {
+    "title": "Validation against the supplied roots was inconclusive",
+    "explanation": "Go's crypto/x509 verifier did not reach a conclusion Trustsmith can classify, for example because a work limit was reached. This is not evidence that the certificate would be rejected or accepted.",
+    "remediation": []
   },
   "issuer.candidates_not_checked": {
     "title": "Some possible issuers were not checked",

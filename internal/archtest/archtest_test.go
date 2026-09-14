@@ -32,6 +32,7 @@ var domain = []string{
 	module + "/internal/sigcheck",
 	module + "/internal/issuerlinks",
 	module + "/internal/chainpath",
+	module + "/internal/trustverify",
 }
 
 // forbiddenDirectImports are standard-library packages domain code must not

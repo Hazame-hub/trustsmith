@@ -11,8 +11,10 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/artifact"
 	"github.com/Hazame-hub/trustsmith/internal/chainpath"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
+	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
+	"github.com/Hazame-hub/trustsmith/internal/trustverify"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
 )
 
@@ -27,9 +29,10 @@ func renderText(w io.Writer, res inspectsvc.Result, advanced bool) error {
 	fmt.Fprintf(&b, "Inspected %s (%s, %s) at %s\n", source, formatName(res.Format),
 		plural(len(res.Artifacts), "entry", "entries"), res.InspectedAt.UTC().Format(humanTime))
 
+	trustEvaluated := res.Trust.State == inspectsvc.TrustEvaluated
 	for _, a := range res.Artifacts {
 		b.WriteString("\n")
-		writeArtifact(&b, a, advanced)
+		writeArtifact(&b, a, advanced, trustEvaluated)
 	}
 	if len(res.Relationships) > 0 {
 		b.WriteString("\n")
@@ -39,6 +42,8 @@ func renderText(w io.Writer, res inspectsvc.Result, advanced bool) error {
 		b.WriteString("\n")
 		writePaths(&b, res)
 	}
+	b.WriteString("\n")
+	writeTrust(&b, res)
 	b.WriteString("\n")
 	writeFindings(&b, res.Findings)
 
@@ -67,6 +72,11 @@ func plural(n int, one, many string) string {
 
 func field(b *strings.Builder, label, value string) {
 	fmt.Fprintf(b, "    %-15s%s\n", label, value)
+}
+
+// topField is a section-level field; its value aligns with field's.
+func topField(b *strings.Builder, label, value string) {
+	fmt.Fprintf(b, "  %-17s%s\n", label, value)
 }
 
 // entries renders "entry 1" or "entries 1, 3".
@@ -174,7 +184,7 @@ func writePaths(b *strings.Builder, res inspectsvc.Result) {
 				field(b, "", fmt.Sprintf("entry %d: %s", p.Entries[nv.Position][0], state))
 			}
 		}
-		field(b, "Trust", "not evaluated")
+		field(b, "Trust", "not evaluated by this layer (see Trust evaluation)")
 	}
 }
 
@@ -258,10 +268,133 @@ func pathIssueText(is chainpath.Issue) string {
 	return string(is.Kind)
 }
 
-func writeArtifact(b *strings.Builder, a inspectsvc.Artifact, advanced bool) {
+// writeTrust renders validation against explicitly supplied roots. It always
+// names where trust came from, and never prints a bare "trusted".
+func writeTrust(b *strings.Builder, res inspectsvc.Result) {
+	t := res.Trust
+	b.WriteString("Trust evaluation\n")
+	if t.State != inspectsvc.TrustEvaluated {
+		b.WriteString("  Not evaluated: no trust anchors were supplied (use --roots <file>).\n")
+		b.WriteString("  Certificates in the inspected input are never used as trust anchors.\n")
+		return
+	}
+	names := map[int]string{}
+	for _, a := range res.Artifacts {
+		if a.Certificate != nil {
+			names[a.Entry] = subjectName(a.Certificate)
+		}
+	}
+	inInput := inputEntries(res)
+
+	files := make([]string, len(t.Roots.Files))
+	for i, f := range t.Roots.Files {
+		files[i] = fmt.Sprintf("%s (%s)", f.Locator, plural(f.Certificates, "certificate", "certificates"))
+	}
+	topField(b, "Source", "explicitly supplied roots: "+strings.Join(files, ", "))
+	topField(b, "Verifier", "Go crypto/x509 ("+t.EngineVersion+"), any extended key usage, no host name")
+	anchorNames := map[fingerprint.Cert]string{}
+	for _, a := range t.Roots.Anchors {
+		fp := a.Certificate.Fingerprint
+		anchorNames[fp] = subjectName(a.Certificate)
+		where := make([]string, len(a.Sources))
+		for i, s := range a.Sources {
+			where[i] = fmt.Sprintf("entry %d of %s", s.Entry, s.File)
+		}
+		text := fmt.Sprintf("%s (%s), %s", anchorNames[fp], fp, strings.Join(where, ", "))
+		if e := inInput[fp]; len(e) > 0 {
+			text += "; also " + entries(e) + " of this input"
+		}
+		topField(b, "Anchor", text)
+	}
+
+	for _, target := range t.Targets {
+		first := target.Entries[0]
+		fmt.Fprintf(b, "  Entry %d (%s)\n", first, names[first])
+		r := target.Result
+		switch r.State {
+		case trustverify.Verified:
+			field(b, "Result", "verified against the explicitly supplied roots")
+			for i, c := range r.Chains {
+				field(b, fmt.Sprintf("Chain %d", i+1), trustChainText(c, first, names, inInput, anchorNames))
+			}
+		case trustverify.Failed:
+			field(b, "Result", "could not validate to the explicitly supplied roots")
+			field(b, "Reason", trustReasonText(r.Reason))
+		default:
+			field(b, "Result", "inconclusive: the verifier reached no conclusion Trustsmith can classify")
+			field(b, "Reason", trustReasonText(r.Reason))
+		}
+	}
+}
+
+func trustChainText(c trustverify.Chain, target int, names map[int]string, inInput map[fingerprint.Cert][]int, anchorNames map[fingerprint.Cert]string) string {
+	if len(c.Certificates) == 1 {
+		return fmt.Sprintf("entry %d (%s), itself a supplied anchor", target, names[target])
+	}
+	steps := make([]string, len(c.Certificates))
+	for i, fp := range c.Certificates {
+		switch e := inInput[fp]; {
+		case i == len(c.Certificates)-1:
+			steps[i] = "anchor " + anchorNames[fp]
+		case len(e) > 0:
+			steps[i] = fmt.Sprintf("entry %d (%s)", e[0], names[e[0]])
+		default:
+			steps[i] = fp.String()
+		}
+	}
+	return strings.Join(steps, " > ")
+}
+
+func trustReasonText(r trustverify.Reason) string {
+	switch r {
+	case trustverify.ReasonNoAnchorPath:
+		return "no chain to any of the supplied roots could be built"
+	case trustverify.ReasonExpired:
+		return "certificate expired"
+	case trustverify.ReasonNotYetValid:
+		return "certificate not yet valid"
+	case trustverify.ReasonIssuerNotAuthorized:
+		return "an issuer is not allowed to sign certificates"
+	case trustverify.ReasonNameConstraints:
+		return "a name is not permitted by a CA certificate's name constraints"
+	case trustverify.ReasonPathLength:
+		return "path length constraint exceeded"
+	case trustverify.ReasonUnhandledCriticalExtension:
+		return "unhandled critical extension"
+	case trustverify.ReasonIncompatibleUsage:
+		return "incompatible key usage"
+	case trustverify.ReasonInsecureSignatureAlgorithm:
+		return "signature algorithm rejected by the Go verifier"
+	case trustverify.ReasonPolicy:
+		return "certificate policy validation failed"
+	case trustverify.ReasonEngineLimit:
+		return "a verifier work limit was reached"
+	case trustverify.ReasonEngineError:
+		return "the verifier returned an error Trustsmith does not classify"
+	}
+	return string(r)
+}
+
+// chainText is the per-certificate Chain line.
+func chainText(c interpret.ChainState, trustEvaluated bool) string {
+	switch c {
+	case interpret.ChainVerifiedToSuppliedRoots:
+		return "verified to the explicitly supplied roots (see Trust evaluation)"
+	case interpret.ChainFailedAgainstSuppliedRoots:
+		return "could not validate to the explicitly supplied roots (see Trust evaluation)"
+	case interpret.ChainUnverifiableAgainstSuppliedRoots:
+		return "validation against the explicitly supplied roots was inconclusive (see Trust evaluation)"
+	}
+	if trustEvaluated {
+		return "not validated on its own: it issues another certificate in this input"
+	}
+	return "not validated against trust anchors (none supplied; see --roots)"
+}
+
+func writeArtifact(b *strings.Builder, a inspectsvc.Artifact, advanced, trustEvaluated bool) {
 	switch a.Type {
 	case inspectsvc.TypeCertificate:
-		writeCertificate(b, a, advanced)
+		writeCertificate(b, a, advanced, trustEvaluated)
 	case inspectsvc.TypeUnparseableCertificate:
 		fmt.Fprintf(b, "[%d] Certificate that could not be parsed\n", a.Entry)
 		field(b, "Parse error", a.Unparseable.ParseError)
@@ -299,7 +432,7 @@ func problemText(p artifact.Problem) string {
 	return string(p)
 }
 
-func writeCertificate(b *strings.Builder, a inspectsvc.Artifact, advanced bool) {
+func writeCertificate(b *strings.Builder, a inspectsvc.Artifact, advanced, trustEvaluated bool) {
 	c, s := a.Certificate, a.Summary
 	fmt.Fprintf(b, "[%d] %s\n", a.Entry, s.Kind)
 
@@ -321,7 +454,7 @@ func writeCertificate(b *strings.Builder, a inspectsvc.Artifact, advanced bool) 
 	field(b, "Valid", validityText(s.Validity))
 	field(b, "Key", s.Key)
 	field(b, "Signature", s.Signature)
-	field(b, "Chain", "not validated against trust anchors (not available in this version)")
+	field(b, "Chain", chainText(s.Chain, trustEvaluated))
 	field(b, "Certificate", c.Fingerprint.String())
 	field(b, "Key identity", keyIdentityText(c.Identity))
 

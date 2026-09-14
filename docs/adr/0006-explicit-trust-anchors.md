@@ -63,7 +63,7 @@ matters is set deliberately:
 | `Roots` | a pool of the supplied anchors, never nil | nil Roots load the system store (the platform verifier on Windows and macOS) |
 | `Intermediates` | the input's certificates that are not anchors | nothing fetched, no system pool |
 | `CurrentTime` | the injected inspection time | a zero time reads the system clock |
-| `KeyUsages` | `[ExtKeyUsageAny]` | an empty list means server authentication; generic inspection is not purpose validation |
+| `KeyUsages` | the requested purpose's extended key usage: `[ExtKeyUsageAny]` for `any` (the default), otherwise per ADR-0007 | an empty list means server authentication; generic inspection is not purpose validation |
 | `MaxConstraintComparisions` | 250000 | Go 1.27.1 does not read this field; it is set anyway so that no bound is ever implicit |
 | `DNSName` | not set | host name validation is a later slice |
 | `CertificatePolicies` | not set | Go's default: any valid policy is acceptable |
@@ -97,8 +97,9 @@ implementation. Behaviour pinned by tests:
 - **Signature algorithms.** SHA-1 and MD5 certificate signatures are rejected.
   Go's `CheckSignature` still verifies SHA-1, which is what ADR-0004 relies
   on.
-- **Not evaluated:** revocation, extended key usage (any is requested), host
-  names, and AIA fetching.
+- **Not evaluated:** revocation, host names, and AIA fetching. Extended key
+  usage is enforced only for a purpose requested with `--purpose` (ADR-0007);
+  by default any usage is requested.
 
 ### States and reasons
 
@@ -182,7 +183,7 @@ additively:
 - `state`;
 - `source` (`supplied_roots`), `engine` (`go-x509`) and `engine_version`,
   each null when not evaluated;
-- `requested_extended_key_usages` (`["any"]`);
+- `requested_purpose` and `requested_extended_key_usages` (`["any"]` by default; ADR-0007);
 - `roots_files`;
 - `anchors`, each with its fingerprint, subject, `self_signature` fact, roots
   sources and the input entries holding the same certificate;

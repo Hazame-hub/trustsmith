@@ -1,0 +1,61 @@
+Inspected testdata/certs/purpose-key-usage-conflict.pem (PEM, 2 entries) at 2026-09-14 12:00:00 UTC
+
+[0] Code signing certificate
+    Identifies     https://mismatched.example.test/
+    Issuer         CN=Trustsmith Purpose Intermediate CA,O=Trustsmith Purpose Tests
+                   signature verified with the key of the certificate in entry 1 of this input
+    Valid          yes, until 2027-09-01 00:00:00 UTC (351 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          verified to the explicitly supplied roots (see Trust evaluation)
+    Certificate    sha256:d8cc790da95ff901852e800db549ada93738bcde9b5b67d02c67289d94b4ffbc
+    Key identity   sha256:c5aee5583a57851a4b5dc6fa780933fe20f2ca3a543e5bae029193bb196f8ed6 (x509-spki-sha256)
+
+[1] CA certificate
+    Identifies     CN=Trustsmith Purpose Intermediate CA
+    Issuer         CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests
+                   no matching issuer candidate found in this input
+    Valid          yes, until 2031-01-01 00:00:00 UTC (1569 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated on its own: it issues another certificate in this input
+    Certificate    sha256:cdd28547cb450f03688489bcbfe903312099818aa824ab1c4b8f136cf1e83c55
+    Key identity   sha256:20aa109500bc2e68c7ebe4ff3f5e55009852d3b56dcb5a9231e04a843624a8eb (x509-spki-sha256)
+
+Issuer relationships (1)
+  Signature checks between certificates of this input. A verified signature is not a trust decision.
+  entry 0, candidate issuer entry 1: verified; evidence: issuer_dn_match, authority_key_id_match
+
+Included certification paths (1)
+  Built only from certificates in this input, linked by verified signatures. Trust is not evaluated:
+  no certificate is treated as a trust anchor, including self-signed ones.
+  Path 1: entry 0 (Trustsmith Test Mismatched Signer) > entry 1 (Trustsmith Purpose Intermediate CA)
+    Ends           no matching issuer candidate found in this input
+    Completeness   partial
+    Signatures     verified: each certificate's signature verifies with the key of the next
+    CA constraints satisfied (basic constraints, key usage, path length)
+    Validity       every certificate on the path is within its validity period
+    Trust          not evaluated by this layer (see Trust evaluation)
+
+Trust evaluation
+  Source           explicitly supplied roots: testdata/roots/purpose-root.pem (1 certificate)
+  Verifier         Go crypto/x509 (GO_VERSION), extended key usage code signing (code-signing), no host name
+  Anchor           Trustsmith Purpose Root CA (sha256:8e7c4823bf49738b364dbc23852849ac6b0b699d50a321b6fd6383fb95f5c6a5), entry 0 of testdata/roots/purpose-root.pem
+  Entry 0 (Trustsmith Test Mismatched Signer)
+    Result         verified for code signing use against the explicitly supplied roots
+    Chain 1        entry 0 (Trustsmith Test Mismatched Signer) > entry 1 (Trustsmith Purpose Intermediate CA) > anchor Trustsmith Purpose Root CA
+
+Purpose
+  Requested        code signing (code-signing)
+  Host name        not evaluated: --purpose does not check host names
+  Entry 0 (Trustsmith Test Mismatched Signer)
+    Usage          unsuitable: the certificate's own fields do not permit code signing use
+    Ext. key usage permits code signing
+    Key usage      sets key encipherment; none is consistent with code signing use (consistent: digital signature)
+    Anchored path  verified for code signing use against the explicitly supplied roots
+
+Findings (1)
+  CRITICAL  entry 0  Key usage does not permit the requested purpose [purpose.key_usage_disallows_usage]
+            The certificate's key usage extension sets none of the key usage bits RFC 5280 names as consistent with the purpose requested with --purpose. Go's certificate verifier does not check a certificate's key usage bits for this, but other software may refuse the certificate.
+            Evidence: requested=code-signing; key_usage=key_encipherment; consistent_key_usage=digital_signature
+            Fix: Reissue the certificate with a key usage consistent with the purpose, or check that the intended purpose was requested.

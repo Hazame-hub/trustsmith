@@ -1,0 +1,53 @@
+Inspected testdata/certs/purpose-email.pem (PEM, 2 entries) at 2026-09-14 12:00:00 UTC
+
+[0] Email (S/MIME) certificate
+    Identifies     signer@example.test
+    Issuer         CN=Trustsmith Purpose Intermediate CA,O=Trustsmith Purpose Tests
+                   signature verified with the key of the certificate in entry 1 of this input
+    Valid          yes, until 2027-09-01 00:00:00 UTC (351 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated against trust anchors (none supplied; see --roots)
+    Certificate    sha256:623a325c906e9695b850de3f0c461f0b942dd2d18266203b2f34d34aec9a73dd
+    Key identity   sha256:161956fb2dca651b82a8e4990398a6158989fc0c72f9014001a25693bbc355d8 (x509-spki-sha256)
+
+[1] CA certificate
+    Identifies     CN=Trustsmith Purpose Intermediate CA
+    Issuer         CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests
+                   no matching issuer candidate found in this input
+    Valid          yes, until 2031-01-01 00:00:00 UTC (1569 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated against trust anchors (none supplied; see --roots)
+    Certificate    sha256:cdd28547cb450f03688489bcbfe903312099818aa824ab1c4b8f136cf1e83c55
+    Key identity   sha256:20aa109500bc2e68c7ebe4ff3f5e55009852d3b56dcb5a9231e04a843624a8eb (x509-spki-sha256)
+
+Issuer relationships (1)
+  Signature checks between certificates of this input. A verified signature is not a trust decision.
+  entry 0, candidate issuer entry 1: verified; evidence: issuer_dn_match, authority_key_id_match
+
+Included certification paths (1)
+  Built only from certificates in this input, linked by verified signatures. Trust is not evaluated:
+  no certificate is treated as a trust anchor, including self-signed ones.
+  Path 1: entry 0 (signer@example.test) > entry 1 (Trustsmith Purpose Intermediate CA)
+    Ends           no matching issuer candidate found in this input
+    Completeness   partial
+    Signatures     verified: each certificate's signature verifies with the key of the next
+    CA constraints satisfied (basic constraints, key usage, path length)
+    Validity       every certificate on the path is within its validity period
+    Trust          not evaluated by this layer (see Trust evaluation)
+
+Trust evaluation
+  Not evaluated: no trust anchors were supplied (use --roots <file>).
+  Certificates in the inspected input are never used as trust anchors.
+
+Purpose
+  Requested        email protection (email)
+  Host name        not evaluated: --purpose does not check host names
+  Entry 0 (signer@example.test)
+    Usage          suitable: the certificate's own fields permit email protection use
+    Ext. key usage permits email protection
+    Key usage      sets digital signature, key encipherment, consistent with email protection use
+    Anchored path  not evaluated: no trust anchors were supplied
+
+No findings.

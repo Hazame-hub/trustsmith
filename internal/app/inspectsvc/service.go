@@ -17,6 +17,7 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
+	"github.com/Hazame-hub/trustsmith/internal/purpose"
 	"github.com/Hazame-hub/trustsmith/internal/sigcheck"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
 )
@@ -80,6 +81,9 @@ type Result struct {
 	// Trust is the validation against explicitly supplied trust anchors. Its
 	// State is not_evaluated unless roots were supplied.
 	Trust Trust
+	// Purpose is the evaluation for the explicitly requested purpose. Its
+	// State is not_evaluated for purpose.Any.
+	Purpose PurposeEvaluation
 	// RecoveredPanics counts panics contained at the untrusted-input
 	// boundaries: the standard-library X.509 parser and the signature
 	// verification engine. It is always zero unless one of them has a bug;
@@ -94,6 +98,7 @@ type Service struct {
 	limits     issuerlinks.Limits
 	pathLimits chainpath.Limits
 	roots      *Roots // nil: trust is not evaluated
+	purpose    purpose.Purpose
 }
 
 // Option configures a Service.
@@ -102,7 +107,7 @@ type Option func(*Service)
 // New returns a service that reads the inspection time from now.
 func New(now func() time.Time, opts ...Option) *Service {
 	s := &Service{now: now, thresholds: interpret.DefaultThresholds(),
-		limits: issuerlinks.DefaultLimits(), pathLimits: chainpath.DefaultLimits()}
+		limits: issuerlinks.DefaultLimits(), pathLimits: chainpath.DefaultLimits(), purpose: purpose.Any}
 	for _, o := range opts {
 		o(s)
 	}
@@ -192,11 +197,16 @@ func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 	}
 	res.Findings = append(res.Findings, interpret.Paths(paths, first)...)
 
-	res.Trust = s.evaluateTrust(inputs, links, now)
+	targets, intermediates := selectTargets(inputs, links)
+	res.Trust = s.evaluateTrust(targets, intermediates, now)
+	res.Purpose = s.evaluatePurpose(targets, res.Trust)
 	chainState := map[fingerprint.Cert]interpret.ChainState{}
 	for _, t := range res.Trust.Targets {
 		chainState[t.Certificate] = interpret.ChainFromTrust(t.Result.State)
-		res.Findings = append(res.Findings, interpret.Trust(t.Entries[0], t.Result)...)
+		res.Findings = append(res.Findings, interpret.Trust(t.Entries[0], t.Result, res.Trust.Purpose)...)
+	}
+	for _, t := range res.Purpose.Targets {
+		res.Findings = append(res.Findings, interpret.Purpose(t.Entries[0], t.Usage)...)
 	}
 
 	for i, b := range decoded.Blocks {

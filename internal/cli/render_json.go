@@ -31,7 +31,47 @@ type jsonInspect struct {
 	// TrustEvaluation is validation against explicitly supplied trust
 	// anchors. It is separate from paths, whose trust is never evaluated.
 	TrustEvaluation jsonTrustEvaluation `json:"trust_evaluation"`
-	Findings        []jsonFinding       `json:"findings"`
+	// PurposeEvaluation is suitability for the purpose requested with
+	// --purpose. It is separate from trust_evaluation.
+	PurposeEvaluation jsonPurposeEvaluation `json:"purpose_evaluation"`
+	Findings          []jsonFinding         `json:"findings"`
+}
+
+// jsonPurposeEvaluation is the evaluation for an explicitly requested purpose.
+// requested is the exact --purpose value. state is not_evaluated for "any"
+// (targets is then empty) or evaluated. hostname_evaluated is always false:
+// no purpose checks host names.
+type jsonPurposeEvaluation struct {
+	Requested         string              `json:"requested"`
+	State             string              `json:"state"`
+	HostnameEvaluated bool                `json:"hostname_evaluated"`
+	Targets           []jsonPurposeTarget `json:"targets"`
+}
+
+// jsonPurposeTarget keeps two facts apart: certificate_usage is what the
+// certificate's own fields permit; anchored_path is the trust_evaluation
+// result for the same certificate and purpose (not_evaluated without roots).
+type jsonPurposeTarget struct {
+	Certificate      jsonCertificateRef   `json:"certificate"`
+	CertificateUsage jsonCertificateUsage `json:"certificate_usage"`
+	AnchoredPath     jsonAnchoredPath     `json:"anchored_path"`
+}
+
+type jsonCertificateUsage struct {
+	State               string   `json:"state"`   // suitable, unsuitable or unverifiable
+	Reasons             []string `json:"reasons"` // ext_key_usage_disallows_usage, key_usage_disallows_usage, ...
+	RequiredExtKeyUsage string   `json:"required_ext_key_usage"`
+	ExtKeyUsagePresent  bool     `json:"ext_key_usage_present"`
+	ExtKeyUsage         []string `json:"ext_key_usage"`
+	KeyUsagePresent     bool     `json:"key_usage_present"`
+	KeyUsage            []string `json:"key_usage"`
+	ConsistentKeyUsage  []string `json:"consistent_key_usage"` // RFC 5280 4.2.1.12 bits consistent with the purpose
+	CACertificate       bool     `json:"ca_certificate"`       // a fact; not decisive
+}
+
+type jsonAnchoredPath struct {
+	State  string `json:"state"`
+	Reason string `json:"reason,omitempty"`
 }
 
 // jsonTrustEvaluation is validation against trust anchors supplied with
@@ -44,6 +84,7 @@ type jsonTrustEvaluation struct {
 	Source                     *string           `json:"source"`
 	Engine                     *string           `json:"engine"`
 	EngineVersion              *string           `json:"engine_version"`
+	RequestedPurpose           *string           `json:"requested_purpose"`
 	RequestedExtendedKeyUsages []string          `json:"requested_extended_key_usages"`
 	RootsFiles                 []jsonRootsFile   `json:"roots_files"`
 	Anchors                    []jsonAnchor      `json:"anchors"`
@@ -325,6 +366,7 @@ func renderJSON(w io.Writer, res inspectsvc.Result) error {
 		doc.Paths = append(doc.Paths, pathJSON(p))
 	}
 	doc.TrustEvaluation = trustJSON(res)
+	doc.PurposeEvaluation = purposeJSON(res)
 	for _, f := range res.Findings {
 		doc.Findings = append(doc.Findings, findingJSON(f))
 	}
@@ -413,9 +455,9 @@ func trustJSON(res inspectsvc.Result) jsonTrustEvaluation {
 	if t.State != inspectsvc.TrustEvaluated {
 		return out
 	}
-	source, engine, version := t.Source, t.Engine, t.EngineVersion
-	out.Source, out.Engine, out.EngineVersion = &source, &engine, &version
-	out.RequestedExtendedKeyUsages = []string{"any"}
+	source, engine, version, requested := t.Source, t.Engine, t.EngineVersion, string(t.Purpose)
+	out.Source, out.Engine, out.EngineVersion, out.RequestedPurpose = &source, &engine, &version, &requested
+	out.RequestedExtendedKeyUsages = []string{t.Purpose.ExtKeyUsageName()}
 	inInput := inputEntries(res)
 	for _, f := range t.Roots.Files {
 		out.RootsFiles = append(out.RootsFiles, jsonRootsFile{Locator: f.Locator, Certificates: f.Certificates})
@@ -445,6 +487,29 @@ func trustJSON(res inspectsvc.Result) jsonTrustEvaluation {
 			j.Chains = append(j.Chains, chain)
 		}
 		out.Targets = append(out.Targets, j)
+	}
+	return out
+}
+
+func purposeJSON(res inspectsvc.Result) jsonPurposeEvaluation {
+	e := res.Purpose
+	out := jsonPurposeEvaluation{Requested: string(e.Requested), State: string(e.State), Targets: []jsonPurposeTarget{}}
+	for _, t := range e.Targets {
+		u := t.Usage
+		reasons := make([]string, len(u.Reasons))
+		for i, r := range u.Reasons {
+			reasons[i] = string(r)
+		}
+		out.Targets = append(out.Targets, jsonPurposeTarget{
+			Certificate: jsonCertificateRef{Fingerprint: t.Certificate.Hex(), Entries: intsOrEmpty(t.Entries)},
+			CertificateUsage: jsonCertificateUsage{
+				State: string(u.State), Reasons: reasons, RequiredExtKeyUsage: u.Purpose.ExtKeyUsageName(),
+				ExtKeyUsagePresent: u.ExtKeyUsagePresent, ExtKeyUsage: orEmpty(u.ExtKeyUsages),
+				KeyUsagePresent: u.KeyUsagePresent, KeyUsage: orEmpty(u.KeyUsages),
+				ConsistentKeyUsage: orEmpty(u.Purpose.ConsistentKeyUsages()), CACertificate: u.CA,
+			},
+			AnchoredPath: jsonAnchoredPath{State: string(t.AnchoredPath), Reason: string(t.AnchoredPathReason)},
+		})
 	}
 	return out
 }

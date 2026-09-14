@@ -33,8 +33,11 @@ type Trust struct {
 	Source        string // TrustSourceSuppliedRoots when evaluated
 	Engine        string // trustverify.Engine when evaluated
 	EngineVersion string
-	Roots         Roots
-	Targets       []TrustTarget
+	// Purpose is the purpose the anchors were validated for when evaluated;
+	// purpose.Any requests any extended key usage.
+	Purpose purposeName
+	Roots   Roots
+	Targets []TrustTarget
 }
 
 // TrustTarget is one certificate validated against the anchors.
@@ -50,40 +53,27 @@ func WithRoots(r Roots) Option {
 	return func(s *Service) { s.roots = &r }
 }
 
-// evaluateTrust validates the input's targets against the supplied anchors.
+// target is a certificate the trust and purpose layers evaluate.
+type target struct {
+	cert    *x509facts.Certificate
+	entries []int
+}
+
+// selectTargets returns the certificates to evaluate, and every distinct
+// parsed certificate of the input as a candidate intermediate.
 //
 // Targets are the certificates that issued no other certificate of the input
 // (end entities and the ends of partial bundles), or every certificate when
-// all of them issue another (a cycle). All certificates of the input are
-// offered to the verifier as candidate intermediates. None of them is ever an
-// anchor unless it is also in the supplied roots, in which case it is only an
-// anchor.
-func (s *Service) evaluateTrust(inputs []issuerlinks.Input, links issuerlinks.Resolution, now time.Time) Trust {
-	if s.roots == nil {
-		return Trust{State: TrustNotEvaluated, Roots: Roots{Files: []RootsFile{}, Anchors: []Anchor{}}, Targets: []TrustTarget{}}
-	}
-	trust := Trust{
-		State: TrustEvaluated, Source: TrustSourceSuppliedRoots,
-		Engine: trustverify.Engine, EngineVersion: trustverify.EngineVersion(),
-		Roots: *s.roots, Targets: []TrustTarget{},
-	}
-	anchors := make([]*x509.Certificate, 0, len(s.roots.Anchors))
-	for _, a := range s.roots.Anchors {
-		anchors = append(anchors, a.Certificate.Parsed)
-	}
-
+// all of them issue another (a cycle).
+func selectTargets(inputs []issuerlinks.Input, links issuerlinks.Resolution) ([]*target, []*x509.Certificate) {
 	issuesAnother := map[fingerprint.Cert]bool{}
 	for _, r := range links.Relationships {
 		if r.State == issuerlinks.Verified && r.Candidate != r.Child {
 			issuesAnother[r.Candidate] = true
 		}
 	}
-	type candidate struct {
-		cert    *x509facts.Certificate
-		entries []int
-	}
-	var distinct []*candidate
-	byFP := map[fingerprint.Cert]*candidate{}
+	var distinct []*target
+	byFP := map[fingerprint.Cert]*target{}
 	intermediates := []*x509.Certificate{}
 	for _, in := range inputs {
 		fp := in.Certificate.Fingerprint
@@ -91,12 +81,12 @@ func (s *Service) evaluateTrust(inputs []issuerlinks.Input, links issuerlinks.Re
 			c.entries = append(c.entries, in.Entry)
 			continue
 		}
-		c := &candidate{cert: in.Certificate, entries: []int{in.Entry}}
+		c := &target{cert: in.Certificate, entries: []int{in.Entry}}
 		byFP[fp] = c
 		distinct = append(distinct, c)
 		intermediates = append(intermediates, in.Certificate.Parsed)
 	}
-	var targets []*candidate
+	var targets []*target
 	for _, c := range distinct {
 		if !issuesAnother[c.cert.Fingerprint] {
 			targets = append(targets, c)
@@ -105,11 +95,31 @@ func (s *Service) evaluateTrust(inputs []issuerlinks.Input, links issuerlinks.Re
 	if len(targets) == 0 {
 		targets = distinct
 	}
+	return targets, intermediates
+}
+
+// evaluateTrust validates the targets against the supplied anchors, for the
+// requested purpose. All certificates of the input are offered to the
+// verifier as candidate intermediates. None of them is ever an anchor unless
+// it is also in the supplied roots, in which case it is only an anchor.
+func (s *Service) evaluateTrust(targets []*target, intermediates []*x509.Certificate, now time.Time) Trust {
+	if s.roots == nil {
+		return Trust{State: TrustNotEvaluated, Roots: Roots{Files: []RootsFile{}, Anchors: []Anchor{}}, Targets: []TrustTarget{}}
+	}
+	trust := Trust{
+		State: TrustEvaluated, Source: TrustSourceSuppliedRoots,
+		Engine: trustverify.Engine, EngineVersion: trustverify.EngineVersion(),
+		Purpose: s.purpose, Roots: *s.roots, Targets: []TrustTarget{},
+	}
+	anchors := make([]*x509.Certificate, 0, len(s.roots.Anchors))
+	for _, a := range s.roots.Anchors {
+		anchors = append(anchors, a.Certificate.Parsed)
+	}
 	for _, c := range targets {
 		trust.Targets = append(trust.Targets, TrustTarget{
 			Certificate: c.cert.Fingerprint,
 			Entries:     c.entries,
-			Result:      trustverify.Verify(c.cert.Parsed, anchors, intermediates, now),
+			Result:      trustverify.Verify(c.cert.Parsed, anchors, intermediates, now, s.purpose),
 		})
 	}
 	return trust

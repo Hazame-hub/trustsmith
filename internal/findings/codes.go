@@ -60,3 +60,9 @@ const (
 	TrustFailed       Code = "trust.failed"
 	TrustUnverifiable Code = "trust.unverifiable"
 )
+
+// Suitability for an explicitly requested purpose (the certificate's own fields).
+const (
+	PurposeEKUDisallowsUsage      Code = "purpose.eku_disallows_usage"
+	PurposeKeyUsageDisallowsUsage Code = "purpose.key_usage_disallows_usage"
+)

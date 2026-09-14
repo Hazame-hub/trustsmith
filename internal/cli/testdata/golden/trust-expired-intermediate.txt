@@ -59,6 +59,9 @@ Trust evaluation
     Result         could not validate to the explicitly supplied roots
     Reason         certificate expired
 
+Purpose
+  Not evaluated for a specific application (use --purpose).
+
 Findings (2)
   CRITICAL  entry 0  Not verified against the supplied roots [trust.failed]
             Trustsmith asked Go's crypto/x509 verifier to validate this certificate against the trust anchors supplied with --roots, and the verifier rejected it. The reason evidence is a stable code, such as no_explicit_anchor_path or certificate_expired. Only the supplied roots were considered: no system trust store was used, and certificates in the inspected input are never anchors themselves.

@@ -72,6 +72,8 @@ Codes in this revision:
 | `chain.path_limit_reached` | info | path construction limits were reached; paths are incomplete (ADR-0005) |
 | `trust.failed` | critical | validation against explicitly supplied roots failed; evidence `reason` (ADR-0006) |
 | `trust.unverifiable` | warning | validation against explicitly supplied roots was inconclusive; evidence `reason` (ADR-0006) |
+| `purpose.eku_disallows_usage` | critical | the certificate's extended key usage does not permit the requested `--purpose` (ADR-0007) |
+| `purpose.key_usage_disallows_usage` | critical | the certificate's key usage sets no bit consistent with the requested `--purpose` (ADR-0007) |
 
 ### Semantics this revision commits to
 
@@ -105,12 +107,14 @@ Codes in this revision:
 - **The schema is its own set of types in `internal/cli/render_json.go`.**
   Internal structs are never serialised.
 - **Top-level fields:** `schema`, `inspected_at`, `input`, `overview`,
-  `artifacts`, `relationships`, `paths`, `trust_evaluation`, `findings`. `relationships` and the
+  `artifacts`, `relationships`, `paths`, `trust_evaluation`,
+  `purpose_evaluation`, `findings`. `relationships` and the
   summary fields `issuer_in_input`, `verified_issuer_entries` and
   `candidate_issuer_entries` were added compatibly within v1 (ADR-0004), as
   were `paths`, `overview.included_paths` and `overview.path_limit_reached`
   (ADR-0005). `trust_evaluation` and the qualified summary `chain` values
-  were added within v1 (ADR-0006).
+  were added within v1 (ADR-0006), as were `purpose_evaluation` and
+  `trust_evaluation.requested_purpose` (ADR-0007).
 - **Fingerprints** are keyed by ADR-0002 scheme name. A missing key identity is
   `null`.
 - **Findings** include the rendered catalog text and codes. Their `entry` is
@@ -129,7 +133,7 @@ Codes in this revision:
 |---|---|
 | 0 | success; no finding at or above `--fail-on` (default `critical`) |
 | 1 | operational error (unreadable, missing or oversized input, directory given, unusable `--roots` file) |
-| 2 | usage error (flags, arguments, unknown command, endpoint argument while probing is unimplemented) |
+| 2 | usage error (flags, arguments, unknown command, unknown `--purpose`, endpoint argument while probing is unimplemented) |
 | 3 | inspection completed and the highest finding reached `--fail-on` |
 
 `--fail-on never` disables 3. The output format does not affect the exit code.

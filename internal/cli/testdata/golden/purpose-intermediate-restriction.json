@@ -1,0 +1,393 @@
+{
+  "schema": "trustsmith.inspect/v1",
+  "inspected_at": "2026-09-14T12:00:00Z",
+  "input": {
+    "kind": "file",
+    "locator": "testdata/certs/purpose-server-only-intermediate.pem",
+    "format": "pem",
+    "size_bytes": 1483
+  },
+  "overview": {
+    "artifacts": 2,
+    "certificates": 2,
+    "findings": 1,
+    "highest_severity": "critical",
+    "included_paths": 1,
+    "path_limit_reached": false
+  },
+  "artifacts": [
+    {
+      "entry": 0,
+      "type": "certificate",
+      "pem_label": "CERTIFICATE",
+      "offset": 0,
+      "fingerprints": {
+        "x509-cert-sha256": "314066ae7b01aadbe7f8edd875e0af28b392a8a7d907c6c70b46e1d24db93826",
+        "x509-spki-sha256": "3f6e4ef48c516e510fe5978a60dd32d225f4555a0797dfba644e7941bac8b684",
+        "x509-spki-encoded-sha256": "3f6e4ef48c516e510fe5978a60dd32d225f4555a0797dfba644e7941bac8b684"
+      },
+      "key_identity": {
+        "status": "canonical"
+      },
+      "summary": {
+        "kind": "TLS client certificate",
+        "purposes": [
+          "tls_client"
+        ],
+        "identifies": [
+          "spiffe://example.test/purpose-client"
+        ],
+        "issuer_as_stated": "CN=Trustsmith Purpose Server-Only Intermediate CA,O=Trustsmith Purpose Tests",
+        "self_signed": "no",
+        "validity": {
+          "state": "valid",
+          "not_before": "2026-09-01T00:00:00Z",
+          "not_after": "2027-09-01T00:00:00Z",
+          "days_remaining": 351
+        },
+        "key": "ECDSA P-256",
+        "signature": "ECDSA-SHA256",
+        "chain": "failed_against_supplied_roots",
+        "issuer_in_input": "verified",
+        "verified_issuer_entries": [
+          1
+        ],
+        "candidate_issuer_entries": []
+      },
+      "technical": {
+        "version": 3,
+        "serial": "0bc7",
+        "subject": "CN=purpose-client",
+        "issuer": "CN=Trustsmith Purpose Server-Only Intermediate CA,O=Trustsmith Purpose Tests",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "public_key": {
+          "algorithm": "ECDSA",
+          "detail": "P-256",
+          "bits": 256
+        },
+        "signature_algorithm": {
+          "name": "ECDSA-SHA256",
+          "oid": "1.2.840.10045.4.3.2"
+        },
+        "key_usage": [
+          "digitalSignature"
+        ],
+        "extended_key_usage": [
+          "clientAuth"
+        ],
+        "basic_constraints": {
+          "present": false,
+          "is_ca": false,
+          "max_path_len": null
+        },
+        "authority_key_id": "8df6e43908197e4d385f46cb73d0c0c261b3880e",
+        "subject_alt_names": {
+          "dns": [],
+          "ip": [],
+          "email": [],
+          "uri": [
+            "spiffe://example.test/purpose-client"
+          ]
+        },
+        "extensions": [
+          {
+            "oid": "2.5.29.15",
+            "critical": true,
+            "name": "keyUsage"
+          },
+          {
+            "oid": "2.5.29.37",
+            "critical": false,
+            "name": "extKeyUsage"
+          },
+          {
+            "oid": "2.5.29.35",
+            "critical": false,
+            "name": "authorityKeyIdentifier"
+          },
+          {
+            "oid": "2.5.29.17",
+            "critical": false,
+            "name": "subjectAltName"
+          }
+        ],
+        "crl_distribution_points": [],
+        "ocsp_servers": [],
+        "issuing_certificate_urls": [],
+        "policy_oids": [],
+        "self_issued": false,
+        "self_signature": "not_applicable",
+        "pin_sha256": "P25O9IxRblEP5ZeKYN0y0iX0VVoHl9+6ZE55QbrItoQ="
+      }
+    },
+    {
+      "entry": 1,
+      "type": "certificate",
+      "pem_label": "CERTIFICATE",
+      "offset": 709,
+      "fingerprints": {
+        "x509-cert-sha256": "49c4df20e2ab58827f39b6ceaf67c1302458f39fa42aa81df04f5fec2ae9d4ca",
+        "x509-spki-sha256": "c6c0f139b3f55ea46b4a785b9807f4ad3adfc7fecf90da3c2d40989aa56dcb9e",
+        "x509-spki-encoded-sha256": "c6c0f139b3f55ea46b4a785b9807f4ad3adfc7fecf90da3c2d40989aa56dcb9e"
+      },
+      "key_identity": {
+        "status": "canonical"
+      },
+      "summary": {
+        "kind": "CA certificate",
+        "purposes": [
+          "ca",
+          "tls_server"
+        ],
+        "identifies": [
+          "CN=Trustsmith Purpose Server-Only Intermediate CA"
+        ],
+        "issuer_as_stated": "CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests",
+        "self_signed": "no",
+        "validity": {
+          "state": "valid",
+          "not_before": "2026-01-01T00:00:00Z",
+          "not_after": "2031-01-01T00:00:00Z",
+          "days_remaining": 1569
+        },
+        "key": "ECDSA P-256",
+        "signature": "ECDSA-SHA256",
+        "chain": "not_checked",
+        "issuer_in_input": "no_candidate_found",
+        "verified_issuer_entries": [],
+        "candidate_issuer_entries": []
+      },
+      "technical": {
+        "version": 3,
+        "serial": "0bba",
+        "subject": "CN=Trustsmith Purpose Server-Only Intermediate CA,O=Trustsmith Purpose Tests",
+        "issuer": "CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "public_key": {
+          "algorithm": "ECDSA",
+          "detail": "P-256",
+          "bits": 256
+        },
+        "signature_algorithm": {
+          "name": "ECDSA-SHA256",
+          "oid": "1.2.840.10045.4.3.2"
+        },
+        "key_usage": [
+          "keyCertSign",
+          "cRLSign"
+        ],
+        "extended_key_usage": [
+          "serverAuth"
+        ],
+        "basic_constraints": {
+          "present": true,
+          "is_ca": true,
+          "max_path_len": 0
+        },
+        "subject_key_id": "8df6e43908197e4d385f46cb73d0c0c261b3880e",
+        "authority_key_id": "42e912621c579617fa8d7e6780d10b4588810d67",
+        "subject_alt_names": {
+          "dns": [],
+          "ip": [],
+          "email": [],
+          "uri": []
+        },
+        "extensions": [
+          {
+            "oid": "2.5.29.15",
+            "critical": true,
+            "name": "keyUsage"
+          },
+          {
+            "oid": "2.5.29.37",
+            "critical": false,
+            "name": "extKeyUsage"
+          },
+          {
+            "oid": "2.5.29.19",
+            "critical": true,
+            "name": "basicConstraints"
+          },
+          {
+            "oid": "2.5.29.14",
+            "critical": false,
+            "name": "subjectKeyIdentifier"
+          },
+          {
+            "oid": "2.5.29.35",
+            "critical": false,
+            "name": "authorityKeyIdentifier"
+          }
+        ],
+        "crl_distribution_points": [],
+        "ocsp_servers": [],
+        "issuing_certificate_urls": [],
+        "policy_oids": [],
+        "self_issued": false,
+        "self_signature": "not_applicable",
+        "pin_sha256": "xsDxObP1XqRrSnhbmAf0rTrfx/7PkNo8LUCYmqVty54="
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "certificate_issuer",
+      "child": {
+        "x509-cert-sha256": "314066ae7b01aadbe7f8edd875e0af28b392a8a7d907c6c70b46e1d24db93826",
+        "entries": [
+          0
+        ]
+      },
+      "candidate": {
+        "x509-cert-sha256": "49c4df20e2ab58827f39b6ceaf67c1302458f39fa42aa81df04f5fec2ae9d4ca",
+        "entries": [
+          1
+        ]
+      },
+      "evidence": [
+        "issuer_dn_match",
+        "authority_key_id_match"
+      ],
+      "state": "verified"
+    }
+  ],
+  "paths": [
+    {
+      "type": "included_certification_path",
+      "certificates": [
+        {
+          "x509-cert-sha256": "314066ae7b01aadbe7f8edd875e0af28b392a8a7d907c6c70b46e1d24db93826",
+          "entries": [
+            0
+          ]
+        },
+        {
+          "x509-cert-sha256": "49c4df20e2ab58827f39b6ceaf67c1302458f39fa42aa81df04f5fec2ae9d4ca",
+          "entries": [
+            1
+          ]
+        }
+      ],
+      "completeness": "partial",
+      "end": "no_issuer_candidate",
+      "cycle_to_position": null,
+      "signatures": "verified",
+      "structure": {
+        "state": "satisfied",
+        "issues": []
+      },
+      "validity": {
+        "state": "satisfied",
+        "outside_validity_period": []
+      },
+      "trust": "not_evaluated"
+    }
+  ],
+  "trust_evaluation": {
+    "state": "evaluated",
+    "source": "supplied_roots",
+    "engine": "go-x509",
+    "engine_version": "GO_VERSION",
+    "requested_purpose": "tls-client",
+    "requested_extended_key_usages": [
+      "client_auth"
+    ],
+    "roots_files": [
+      {
+        "locator": "testdata/roots/purpose-root.pem",
+        "certificates": 1
+      }
+    ],
+    "anchors": [
+      {
+        "x509-cert-sha256": "8e7c4823bf49738b364dbc23852849ac6b0b699d50a321b6fd6383fb95f5c6a5",
+        "subject": "CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests",
+        "self_signature": "verified",
+        "sources": [
+          {
+            "roots_file": "testdata/roots/purpose-root.pem",
+            "entry": 0
+          }
+        ],
+        "input_entries": []
+      }
+    ],
+    "targets": [
+      {
+        "certificate": {
+          "x509-cert-sha256": "314066ae7b01aadbe7f8edd875e0af28b392a8a7d907c6c70b46e1d24db93826",
+          "entries": [
+            0
+          ]
+        },
+        "state": "failed",
+        "reason": "incompatible_usage",
+        "chains": []
+      }
+    ]
+  },
+  "purpose_evaluation": {
+    "requested": "tls-client",
+    "state": "evaluated",
+    "hostname_evaluated": false,
+    "targets": [
+      {
+        "certificate": {
+          "x509-cert-sha256": "314066ae7b01aadbe7f8edd875e0af28b392a8a7d907c6c70b46e1d24db93826",
+          "entries": [
+            0
+          ]
+        },
+        "certificate_usage": {
+          "state": "suitable",
+          "reasons": [],
+          "required_ext_key_usage": "client_auth",
+          "ext_key_usage_present": true,
+          "ext_key_usage": [
+            "client_auth"
+          ],
+          "key_usage_present": true,
+          "key_usage": [
+            "digital_signature"
+          ],
+          "consistent_key_usage": [
+            "digital_signature",
+            "key_agreement"
+          ],
+          "ca_certificate": false
+        },
+        "anchored_path": {
+          "state": "failed",
+          "reason": "incompatible_usage"
+        }
+      }
+    ]
+  },
+  "findings": [
+    {
+      "code": "trust.failed",
+      "severity": "critical",
+      "entry": 0,
+      "title": "Not verified against the supplied roots",
+      "explanation": "Trustsmith asked Go's crypto/x509 verifier to validate this certificate against the trust anchors supplied with --roots, and the verifier rejected it. The reason evidence is a stable code, such as no_explicit_anchor_path or certificate_expired. Only the supplied roots were considered: no system trust store was used, and certificates in the inspected input are never anchors themselves.",
+      "evidence": [
+        {
+          "key": "reason",
+          "value": "incompatible_usage"
+        },
+        {
+          "key": "purpose",
+          "value": "tls-client"
+        }
+      ],
+      "remediation": [
+        {
+          "code": "check_roots",
+          "text": "Check that the roots file holds the intended trust anchors and that the inspected input includes the intermediate certificates the chain needs."
+        }
+      ]
+    }
+  ]
+}

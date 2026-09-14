@@ -58,4 +58,7 @@ Trust evaluation
     Result         verified against the explicitly supplied roots
     Chain 1        entry 0 (api.example.test) > entry 1 (Trustsmith Test Intermediate CA) > anchor Trustsmith Test Root CA
 
+Purpose
+  Not evaluated for a specific application (use --purpose).
+
 No findings.

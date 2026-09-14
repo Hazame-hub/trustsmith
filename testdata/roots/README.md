@@ -11,6 +11,7 @@ Files supplied with `trustsmith inspect --roots` in the trust evaluation tests.
 | `malformed.pem` | a single corrupt certificate block (refused) |
 | `path-cross-roots.pem` | root A and root B of path-cross-signed.pem |
 | `path-expired-root.pem` | the root CA of path-expired-intermediate.pem |
+| `purpose-root.pem` | the root CA of the purpose fixtures (purpose-root-ca.pem) |
 | `test-root.pem` | the root CA of bundle.pem |
 | `unrelated-root.pem` | a self-signed root CA that issued nothing in the corpus |
 | `with-private-key.pem` | the root of bundle.pem followed by a private key block (refused, never decoded) |

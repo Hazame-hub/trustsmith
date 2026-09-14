@@ -11,8 +11,8 @@ public issue.
 This describes the implementation today, which offers only
 `trustsmith inspect`.
 
-- **Reads only what you ask.** It reads the single file named on the command
-  line, or standard input. It does not scan directories, open other files, make
+- **Reads only what you ask.** It reads the file named on the command line,
+  or standard input, and the `--roots` files you name. It does not scan directories, open other files, make
   network connections or send telemetry.
 - **Handles no private keys.** PEM blocks other than `CERTIFICATE` are reported
   by label and never decoded. The tool stores nothing and writes nothing except
@@ -34,21 +34,28 @@ This describes the implementation today, which offers only
   - A verified signature is not a trust decision.
   - Certification paths are built only from certificates in the input. A
     self-signed certificate ends a path but is never used as a trust anchor,
-    and a path's trust is always reported as "not evaluated". The standard
-    verifier (`Certificate.Verify`, `VerifyOptions`, certificate pools) is
-    not used anywhere, and an architecture test enforces this, so no included
-    certificate can become trusted as a side effect.
+    and a path's trust is always reported as "not evaluated".
   - Structural issuer checks report anything they do not evaluate, such as an
     unknown critical extension or name constraints. A path structure is
     therefore never reported as satisfied by omission.
+  - Trust is evaluated only against trust anchors you supply with `--roots`.
+    A roots file may contain only certificates: a private key or any other
+    block refuses the whole file without being decoded, and nothing falls back
+    to a system or platform trust store. Go's verifier runs in one package,
+    with its roots, intermediates, time and key usages set explicitly; an
+    architecture test enforces this and forbids `SystemCertPool` everywhere.
+  - Trust results name their source and engine (`supplied_roots`, `go-x509`).
+    Failure reasons are stable codes; verifier messages are not part of the
+    output.
   - A self-signature is reported as verified only when it verifies
     cryptographically.
 
 ## Limitations
 
-- **No trust judgement.** Inspection does not tell you whether to trust a
-  certificate. It has no trust store, trust anchors, name or policy constraint
-  processing, or revocation checking yet.
+- **Trust only from what you supply.** Without `--roots`, inspection does not
+  tell you whether to trust a certificate. With it, the result is what Go's
+  crypto/x509 verifier concludes against those roots, not an independent
+  RFC 5280 implementation, and there is no revocation checking yet.
 - **Parser-dependent fields.** Findings based on Go's X.509 parser inherit its
   behaviour. Certificates it rejects are reported as unparseable, with
   fingerprints computed from their bytes where possible.

@@ -1,0 +1,57 @@
+Inspected testdata/certs/sha1-with-issuer.pem (PEM, 2 entries) at 2026-09-14 12:00:00 UTC
+
+[0] TLS server certificate
+    Identifies     legacy-signed.example.test
+    Issuer         CN=Trustsmith Test Legacy Signing CA,O=Trustsmith Tests
+                   signature verified with the key of the certificate in entry 1 of this input
+    Valid          yes, until 2027-09-01 00:00:00 UTC (351 days left)
+    Key            ECDSA P-256
+    Signature      SHA1-RSA
+    Chain          could not validate to the explicitly supplied roots (see Trust evaluation)
+    Certificate    sha256:d2257da2a021dbbbb781a081249d8a4ce77d1c075b668ea94742be6e715565ea
+    Key identity   sha256:acea4d0389abb5ddd4d5ec0c1eeeaf977116e06396bd6bf89ab54a5ac687cdb2 (x509-spki-sha256)
+
+[1] Self-signed CA certificate
+    Identifies     CN=Trustsmith Test Legacy Signing CA
+    Issuer         CN=Trustsmith Test Legacy Signing CA,O=Trustsmith Tests
+                   this certificate names itself as issuer and its own key verifies its signature
+    Self-signed    yes (signature verified)
+    Valid          yes, until 2031-01-01 00:00:00 UTC (1569 days left)
+    Key            RSA 2048
+    Signature      SHA256-RSA
+    Chain          not validated on its own: it issues another certificate in this input
+    Certificate    sha256:55fbb9ffb5e74806ea39a9baaa53704bdfaacfce622c815b7a0a52d00d6351dc
+    Key identity   sha256:3f90554396218a54ae2caee0c9a4da7c3a70fc5bfadb21f15a42b466c0db93a9 (x509-spki-sha256)
+
+Issuer relationships (1)
+  Signature checks between certificates of this input. A verified signature is not a trust decision.
+  entry 0, candidate issuer entry 1: verified; evidence: issuer_dn_match, authority_key_id_match
+
+Included certification paths (1)
+  Built only from certificates in this input, linked by verified signatures. Trust is not evaluated:
+  no certificate is treated as a trust anchor, including self-signed ones.
+  Path 1: entry 0 (legacy-signed.example.test) > entry 1 (Trustsmith Test Legacy Signing CA)
+    Ends           at a self-signed certificate in this input
+    Completeness   complete in this input (not a trust decision)
+    Signatures     verified: each certificate's signature verifies with the key of the next
+    CA constraints satisfied (basic constraints, key usage, path length)
+    Validity       every certificate on the path is within its validity period
+    Trust          not evaluated by this layer (see Trust evaluation)
+
+Trust evaluation
+  Source           explicitly supplied roots: testdata/roots/legacy-signing-ca.pem (1 certificate)
+  Verifier         Go crypto/x509 (GO_VERSION), any extended key usage, no host name
+  Anchor           Trustsmith Test Legacy Signing CA (sha256:55fbb9ffb5e74806ea39a9baaa53704bdfaacfce622c815b7a0a52d00d6351dc), entry 0 of testdata/roots/legacy-signing-ca.pem; also entry 1 of this input
+  Entry 0 (legacy-signed.example.test)
+    Result         could not validate to the explicitly supplied roots
+    Reason         signature algorithm rejected by the Go verifier
+
+Findings (2)
+  CRITICAL  entry 0  SHA-1 signature [sig.sha1]
+            The certificate is signed with SHA-1, which is no longer collision resistant, and current software rejects SHA-1 certificate signatures. On a self-signed CA certificate the signature is not checked when that certificate is used as a trust anchor, so there it is informational.
+            Evidence: signature_algorithm=SHA1-RSA
+            Fix: Reissue the certificate with a SHA-256 or stronger signature.
+  CRITICAL  entry 0  Not verified against the supplied roots [trust.failed]
+            Trustsmith asked Go's crypto/x509 verifier to validate this certificate against the trust anchors supplied with --roots, and the verifier rejected it. The reason evidence is a stable code, such as no_explicit_anchor_path or certificate_expired. Only the supplied roots were considered: no system trust store was used, and certificates in the inspected input are never anchors themselves.
+            Evidence: reason=insecure_signature_algorithm
+            Fix: Check that the roots file holds the intended trust anchors and that the inspected input includes the intermediate certificates the chain needs.

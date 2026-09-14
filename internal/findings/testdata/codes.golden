@@ -25,3 +25,5 @@ key.unsupported_for_identity
 name.cn_only_no_san
 sig.md5
 sig.sha1
+trust.failed
+trust.unverifiable

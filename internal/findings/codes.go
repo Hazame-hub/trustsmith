@@ -54,3 +54,9 @@ const (
 	ChainCycle                 Code = "chain.cycle"
 	ChainPathLimitReached      Code = "chain.path_limit_reached"
 )
+
+// Validation against explicitly supplied trust anchors (never system roots).
+const (
+	TrustFailed       Code = "trust.failed"
+	TrustUnverifiable Code = "trust.unverifiable"
+)

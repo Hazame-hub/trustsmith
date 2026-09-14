@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -34,6 +35,10 @@ func run(t *testing.T, stdin []byte, args ...string) (int, string, string) {
 
 func golden(t *testing.T, name, got string) {
 	t.Helper()
+	// The Go release that performed trust validation is part of the output.
+	// Goldens record a placeholder so they do not change with every toolchain
+	// update; TestTrustJSONContract checks the real value.
+	got = strings.ReplaceAll(got, runtime.Version(), "GO_VERSION")
 	path := filepath.Join(goldenDir, name)
 	if os.Getenv("UPDATE_GOLDEN") == "1" {
 		if err := os.MkdirAll(goldenDir, 0o755); err != nil {

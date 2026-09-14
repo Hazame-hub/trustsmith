@@ -40,6 +40,7 @@ internal/cli            argument parsing, text and JSON rendering, exit codes
 internal/app/inspectsvc the inspect application service (one code path for every interface)
 internal/interpret      facts + relationships + paths + time → friendly summary and findings (pure)
 internal/chainpath      certification paths and structural issuer checks inside one input (ADR-0005)
+internal/trustverify    validation against explicitly supplied trust anchors; the only Go verifier call (ADR-0006)
 internal/issuerlinks    issuer relationships between the certificates of one input (ADR-0004)
 internal/sigcheck       does one certificate's key verify another's signature (no policy)
 internal/findings       stable codes, severities, evidence, catalog
@@ -51,12 +52,13 @@ internal/archtest       architecture tests
 testdata/certs          committed inspection corpus
 ```
 
-Dependencies point inward only: `cmd → cli → app → interpret → chainpath →
-issuerlinks → {x509facts → sigcheck, artifact, findings} → fingerprint`.
+Dependencies point inward only: `cmd → cli → app → interpret → {chainpath →
+issuerlinks, trustverify} → {x509facts → sigcheck, artifact, findings} →
+fingerprint`.
 `internal/archtest` enforces:
 
 - **Domain packages** (`fingerprint`, `artifact`, `x509facts`, `findings`,
-  `interpret`, `sigcheck`, `issuerlinks`, `chainpath`):
+  `interpret`, `sigcheck`, `issuerlinks`, `chainpath`, `trustverify`):
   - do not import `os`, `os/exec`, `net`, `net/http`, `database/sql`,
     `syscall` or `io/fs` directly;
   - do not depend on cobra, the CLI, application services, `cmd` or `testpki`.
@@ -67,9 +69,12 @@ issuerlinks → {x509facts → sigcheck, artifact, findings} → fingerprint`.
 - **`recover()`** appears only at the two untrusted-input boundaries: the
   standard-library X.509 parser in `x509facts` and the signature engine in
   `sigcheck` (ADR-0004). A panic anywhere else surfaces as a bug.
-- **No production code** uses `x509.VerifyOptions`, `x509.CertPool`,
-  `x509.NewCertPool`, `x509.SystemCertPool` or calls `.Verify(`. Trust anchors
-  must never enter implicitly (ADR-0005).
+- **The Go verifier** (`Certificate.Verify`, `x509.VerifyOptions`,
+  certificate pools) is used only in `internal/trustverify`, where every Verify
+  call takes a `VerifyOptions` literal setting non-nil `Roots`,
+  `Intermediates`, `CurrentTime`, `KeyUsages` and `MaxConstraintComparisions`,
+  and no `DNSName`. `x509.SystemCertPool` is forbidden everywhere, tests
+  included. Trust anchors never enter implicitly (ADR-0006).
 
 Application-service packages use a `svc` suffix. This avoids name collisions
 with domain packages that later slices add (for example `inventory` and
@@ -112,6 +117,5 @@ with domain packages that later slices add (for example `inventory` and
   type arrives with the first non-generic policy.
 - **`time.Now` rule:** the architecture test forbids `time.Now` across all of
   `internal/`, which is stricter than the plan's list of domain packages. The
-  `VerifyOptions.CurrentTime` and `tls.Config.Time` checks wait until
-  trust-anchor validation and TLS probing exist; until then `VerifyOptions` is
-  forbidden outright.
+  `VerifyOptions.CurrentTime` check applies to the single verifier call
+  site (ADR-0006); the `tls.Config.Time` check waits until TLS probing exists.

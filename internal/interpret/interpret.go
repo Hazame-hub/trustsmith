@@ -54,8 +54,9 @@ const (
 // ChainState is the result of chain verification.
 type ChainState string
 
-// ChainNotChecked: this version does not verify chains, and says so rather
-// than implying a result.
+// ChainNotChecked: the certificate was not validated against trust anchors,
+// because none were supplied or it was not a validation target. The
+// validated states are in trust.go.
 const ChainNotChecked ChainState = "not_checked"
 
 // IssuerInInput summarises what the rest of the input says about a

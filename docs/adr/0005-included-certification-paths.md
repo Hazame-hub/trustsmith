@@ -124,12 +124,11 @@ This is deliberately **not** RFC 5280 path validation: no names such as
 
 - `internal/chainpath` does not call `Certificate.Verify` and builds no
   `VerifyOptions` or `CertPool`.
-- `internal/archtest` forbids `x509.VerifyOptions`, `x509.CertPool`,
-  `x509.NewCertPool`, `x509.SystemCertPool`, and any `.Verify(` call, in all
-  production code.
 - None of the structural checks needed the verifier.
-- Trust anchors, when they arrive, will be an explicit input and will lift this
-  rule deliberately.
+- Trust anchors arrived as an explicit input in ADR-0006. `internal/archtest`
+  confines `Certificate.Verify`, `VerifyOptions` and certificate pools to
+  `internal/trustverify`, and forbids `x509.SystemCertPool` everywhere. Paths
+  still report `trust: not_evaluated`: this layer never evaluates trust.
 
 ### Findings
 

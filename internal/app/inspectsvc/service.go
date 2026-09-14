@@ -77,6 +77,9 @@ type Result struct {
 	// PathLimitReached: a path-construction limit was reached, so Paths is
 	// incomplete.
 	PathLimitReached bool
+	// Trust is the validation against explicitly supplied trust anchors. Its
+	// State is not_evaluated unless roots were supplied.
+	Trust Trust
 	// RecoveredPanics counts panics contained at the untrusted-input
 	// boundaries: the standard-library X.509 parser and the signature
 	// verification engine. It is always zero unless one of them has a bug;
@@ -90,12 +93,20 @@ type Service struct {
 	thresholds interpret.Thresholds
 	limits     issuerlinks.Limits
 	pathLimits chainpath.Limits
+	roots      *Roots // nil: trust is not evaluated
 }
 
+// Option configures a Service.
+type Option func(*Service)
+
 // New returns a service that reads the inspection time from now.
-func New(now func() time.Time) *Service {
-	return &Service{now: now, thresholds: interpret.DefaultThresholds(),
+func New(now func() time.Time, opts ...Option) *Service {
+	s := &Service{now: now, thresholds: interpret.DefaultThresholds(),
 		limits: issuerlinks.DefaultLimits(), pathLimits: chainpath.DefaultLimits()}
+	for _, o := range opts {
+		o(s)
+	}
+	return s
 }
 
 // InspectFile inspects the file at path.
@@ -181,6 +192,13 @@ func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 	}
 	res.Findings = append(res.Findings, interpret.Paths(paths, first)...)
 
+	res.Trust = s.evaluateTrust(inputs, links, now)
+	chainState := map[fingerprint.Cert]interpret.ChainState{}
+	for _, t := range res.Trust.Targets {
+		chainState[t.Certificate] = interpret.ChainFromTrust(t.Result.State)
+		res.Findings = append(res.Findings, interpret.Trust(t.Entries[0], t.Result)...)
+	}
+
 	for i, b := range decoded.Blocks {
 		a := Artifact{Entry: b.Entry, Label: b.Label, Offset: b.Offset, Problem: b.Problem}
 		var issuers interpret.Issuers
@@ -203,6 +221,11 @@ func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 		}
 		entry := interpret.Block(b, parsed[i], issuers, now, s.thresholds)
 		a.Summary = entry.Summary
+		if a.Summary != nil {
+			if state, ok := chainState[a.Certificate.Fingerprint]; ok {
+				a.Summary.Chain = state
+			}
+		}
 		res.Artifacts = append(res.Artifacts, a)
 		res.Findings = append(res.Findings, entry.Findings...)
 	}

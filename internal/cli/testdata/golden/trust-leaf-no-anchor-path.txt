@@ -1,0 +1,26 @@
+Inspected testdata/certs/leaf.pem (PEM, 1 entry) at 2026-09-14 12:00:00 UTC
+
+[0] TLS server certificate
+    Identifies     api.example.test, www.example.test, 192.0.2.10
+    Issuer         CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests
+                   no matching issuer candidate found in this input
+    Valid          yes, until 2026-12-01 00:00:00 UTC (77 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          could not validate to the explicitly supplied roots (see Trust evaluation)
+    Certificate    sha256:37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff
+    Key identity   sha256:43cf39723dae7709bde52e224ef9b7f74cac1a9b579882721bad854291b96a6d (x509-spki-sha256)
+
+Trust evaluation
+  Source           explicitly supplied roots: testdata/roots/test-root.pem (1 certificate)
+  Verifier         Go crypto/x509 (GO_VERSION), any extended key usage, no host name
+  Anchor           Trustsmith Test Root CA (sha256:9ccfee007ad73eced4df32fc914d882dee1b6d8a2557e3036b14d7dd41ca7c39), entry 0 of testdata/roots/test-root.pem
+  Entry 0 (api.example.test)
+    Result         could not validate to the explicitly supplied roots
+    Reason         no chain to any of the supplied roots could be built
+
+Findings (1)
+  CRITICAL  entry 0  Not verified against the supplied roots [trust.failed]
+            Trustsmith asked Go's crypto/x509 verifier to validate this certificate against the trust anchors supplied with --roots, and the verifier rejected it. The reason evidence is a stable code, such as no_explicit_anchor_path or certificate_expired. Only the supplied roots were considered: no system trust store was used, and certificates in the inspected input are never anchors themselves.
+            Evidence: reason=no_explicit_anchor_path
+            Fix: Check that the roots file holds the intended trust anchors and that the inspected input includes the intermediate certificates the chain needs.

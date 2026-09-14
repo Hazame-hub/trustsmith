@@ -20,7 +20,8 @@ certificate bundles.
 ### Language, toolchain, dependencies
 
 - **Go 1.27**, with `toolchain go1.27.1` in `go.mod`. No GODEBUG settings are
-  used, and none may be added to `go.mod`.
+  used: `internal/archtest` forbids a `godebug` block in `go.mod`, `//go:debug`
+  directives and GODEBUG literals (ADR-0009).
 - **Standard-library cryptography first.** `crypto/x509` parses certificates.
   `golang.org/x/crypto/cryptobyte` handles DER where Trustsmith must be stricter
   or more lenient than `crypto/x509`: canonical key identity, PEM-independent
@@ -40,6 +41,8 @@ certificate bundles.
 cmd/trustsmith          composition root; the only place the real clock is read
 internal/cli            argument parsing, text and JSON rendering, exit codes
 internal/app/inspectsvc the inspect application service (one code path for every interface)
+internal/probe          TLS endpoint acquisition: the only network and crypto/tls code; no certificate decisions (ADR-0009)
+internal/endpoint       parsing of TLS endpoint arguments (ADR-0009)
 internal/interpret      facts + relationships + paths + time → friendly summary and findings (pure)
 internal/chainpath      certification paths and structural issuer checks inside one input (ADR-0005)
 internal/trustverify    validation against explicitly supplied trust anchors; the only Go verifier call (ADR-0006)
@@ -58,7 +61,9 @@ testdata/certs          committed inspection corpus
 
 Dependencies point inward only: `cmd → cli → app → interpret → {chainpath →
 issuerlinks, trustverify → purpose, hostname} → {x509facts → sigcheck,
-artifact, findings} → fingerprint`.
+artifact, findings} → fingerprint`. `app` also composes `endpoint → hostname`
+and `probe`; `probe` depends on no other Trustsmith package, so acquisition
+cannot reach an evaluation layer.
 `internal/archtest` enforces:
 
 - **Domain packages** (`fingerprint`, `artifact`, `x509facts`, `findings`,

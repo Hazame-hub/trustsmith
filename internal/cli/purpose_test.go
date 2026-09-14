@@ -109,7 +109,8 @@ func TestPurposeGoldens(t *testing.T) {
 	}
 }
 
-// 1, 2. Without --purpose the output is exactly that of --purpose any.
+// 1, 2. Without --purpose the output is that of --purpose any, except that
+// JSON records the purpose's source: default rather than explicit.
 func TestPurposeDefaultIsAny(t *testing.T) {
 	chdirRoot(t)
 	for _, args := range [][]string{
@@ -121,6 +122,13 @@ func TestPurposeDefaultIsAny(t *testing.T) {
 			base := append([]string{"inspect", "--fail-on", "never", "--output", output}, args...)
 			codeA, outA, _ := run(t, nil, base...)
 			codeB, outB, _ := run(t, nil, append(base, "--purpose", "any")...)
+			if output == "json" {
+				explicit, def := `"source": "explicit",`, `"source": "default",`
+				if strings.Count(outB, explicit) != 1 || strings.Contains(outB, def) {
+					t.Errorf("%v: --purpose any must record an explicit source", args)
+				}
+				outB = strings.Replace(outB, explicit, def, 1)
+			}
 			if codeA != codeB || outA != outB {
 				t.Errorf("%v (%s): --purpose any differs from the default", args, output)
 			}

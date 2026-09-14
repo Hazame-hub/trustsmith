@@ -166,6 +166,7 @@ func main() {
 	relationshipFixtures(*out, write, pemOf)
 	pathFixtures(write, pemOf)
 	purposeFixtures(write, pemOf)
+	tlsEndpointFixtures(write, pemOf)
 
 	names := make([]string, 0, len(files))
 	for n := range files {

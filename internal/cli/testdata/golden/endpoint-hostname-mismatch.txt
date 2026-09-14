@@ -1,0 +1,76 @@
+Inspected tls://other.example.test:443 (TLS peer certificates, 2 entries) at 2026-09-14 12:00:00 UTC
+
+TLS probe
+  Endpoint         tls://other.example.test:443
+  Policy           modern v1 (TLS 1.2 to TLS 1.3; engine GO_VERSION)
+  Result           handshake completed; peer certificates acquired
+  Stage            complete
+  Server name      other.example.test
+  Negotiated       TLS 1.3, TLS_AES_128_GCM_SHA256, X25519MLKEM768
+  ALPN             none offered
+  Certificates     2 certificates received, in the server's order
+  Elapsed          0 ms
+  The handshake was not authenticated: completing it is not trust, host name
+  identity or suitability, which are evaluated below. No application data was sent.
+
+[0] TLS server certificate
+    Identifies     api.example.test, xn--bcher-kva.example, 192.0.2.10
+    Issuer         CN=Trustsmith Test Endpoint Intermediate CA,O=Trustsmith Tests
+                   signature verified with the key of the certificate in entry 1 of this input
+    Valid          yes, until 2026-12-01 00:00:00 UTC (77 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated against trust anchors (none supplied; see --roots)
+    Certificate    sha256:d53628434b6bd0f1f0b09d79d1713a952f418c5b4f1fda36c6c5aa47453483cf
+    Key identity   sha256:b2b04340cfaee616ec9c2c62d261b208e54bb197498df52e8cadede23ac0ba5e (x509-spki-sha256)
+
+[1] CA certificate
+    Identifies     CN=Trustsmith Test Endpoint Intermediate CA
+    Issuer         CN=Trustsmith Test Endpoint Root CA,O=Trustsmith Tests
+                   no matching issuer candidate found in this input
+    Valid          yes, until 2031-01-01 00:00:00 UTC (1569 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated against trust anchors (none supplied; see --roots)
+    Certificate    sha256:cc4cc3f2028ff06b063880990b59a619882a60692bfbfd04fdd1d3fa2cd139ae
+    Key identity   sha256:cd3ffb363ea46effcf687e86b8696fb431eb89810e71b983027c86cd17b4bddf (x509-spki-sha256)
+
+Issuer relationships (1)
+  Signature checks between certificates of this input. A verified signature is not a trust decision.
+  entry 0, candidate issuer entry 1: verified; evidence: issuer_dn_match, authority_key_id_match
+
+Included certification paths (1)
+  Built only from certificates in this input, linked by verified signatures. Trust is not evaluated:
+  no certificate is treated as a trust anchor, including self-signed ones.
+  Path 1: entry 0 (api.example.test) > entry 1 (Trustsmith Test Endpoint Intermediate CA)
+    Ends           no matching issuer candidate found in this input
+    Completeness   partial
+    Signatures     verified: each certificate's signature verifies with the key of the next
+    CA constraints satisfied (basic constraints, key usage, path length)
+    Validity       every certificate on the path is within its validity period
+    Trust          not evaluated by this layer (see Trust evaluation)
+
+Trust evaluation
+  Not evaluated: no trust anchors were supplied (use --roots <file>).
+  Certificates in the inspected input are never used as trust anchors.
+
+Purpose
+  Requested        TLS server (tls-server), implied by the endpoint
+  Entry 0 (api.example.test)
+    Usage          suitable: the certificate's own fields permit TLS server use
+    Ext. key usage permits server authentication
+    Key usage      sets digital signature, consistent with TLS server use
+    Anchored path  not evaluated: no trust anchors were supplied
+
+Hostname
+  Requested        other.example.test (DNS name, the endpoint host)
+  Matcher          Go crypto/x509 VerifyHostname (GO_VERSION): subject alternative names only
+  Entry 0 (api.example.test)
+    Match          no
+    DNS names      api.example.test, xn--bcher-kva.example
+
+Findings (1)
+  CRITICAL  entry 0  Certificate does not identify the requested host name [name.hostname_mismatch]
+            None of the certificate's subject alternative names identifies the host name or IP address requested with --hostname. Matching uses Go's crypto/x509 host name verification: DNS names match without regard to ASCII case, a wildcard matches only as the whole left-most label, an IP address matches only IP address entries, and the Common Name is never used. This concerns identity only; trust and purpose are separate questions.
+            Evidence: requested=other.example.test; normalized=other.example.test; kind=dns; certificate_dns_names=api.example.test,xn--bcher-kva.example
+            Fix: Reissue the certificate with the host name or IP address in its Subject Alternative Name extension, or check that the intended host name was requested.

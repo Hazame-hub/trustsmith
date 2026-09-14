@@ -116,6 +116,12 @@ func init() {
 		}
 	}
 	corpusExpectations["purpose-root-ca.pem"] = expectation{types: []inspectsvc.ArtifactType{cert}, paths: []string{selfSignedAlone}}
+	// The chain served by the in-process TLS endpoint tests.
+	corpusExpectations["tls-endpoint.pem"] = expectation{
+		types:         []inspectsvc.ArtifactType{cert, cert, cert},
+		relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"},
+		paths:         []string{"0>1>2 " + completeSatisfied},
+	}
 }
 
 const (

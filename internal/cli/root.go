@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/Hazame-hub/trustsmith/internal/probe"
 )
 
 // Exit codes.
@@ -25,6 +27,9 @@ const (
 type Env struct {
 	Now     func() time.Time
 	Version string
+	// Dial replaces the TCP dialer of endpoint inspection; nil dials the
+	// endpoint. Tests use it to reach in-process servers only.
+	Dial probe.DialFunc
 }
 
 // operationalError marks failures that are not the user's invocation.

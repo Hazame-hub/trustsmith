@@ -5,15 +5,17 @@ make everyday certificate work understandable to people who are not PKI
 experts, without taking the advanced path away from those who are.
 
 > **Status: early development.** The only command implemented so far is
-> `trustsmith inspect` for certificate files. Everything else in the roadmap
+> `trustsmith inspect`, for certificate files and TLS endpoints. Everything else in the roadmap
 > (private CA, inventory, renewal, discovery, a local UI) is not built yet.
 
 ## What works today
 
-`trustsmith inspect` explains a certificate file:
+`trustsmith inspect` explains a certificate file, or the certificates a TLS
+server presents:
 
-- **Inputs:** PEM certificates, DER certificates, PEM bundles, and standard
-  input (`-`).
+- **Inputs:** PEM certificates, DER certificates, PEM bundles, standard
+  input (`-`), and TLS endpoints (`host:port`, `[IPv6]:port`,
+  `tls://host:port`; port 443 by default).
 - **What it tells you:** what the certificate is for, what it identifies, who it
   says issued it, whether it is valid now, when it expires, its key and
   signature algorithms, and obvious problems with suggested fixes.
@@ -49,11 +51,23 @@ experts, without taking the advanced path away from those who are.
   `x509-cert-sha256` for the certificate, `x509-spki-sha256` (a canonical,
   cross-file key identity), and `x509-spki-encoded-sha256` (the key as encoded,
   for pins).
+- **TLS endpoints:** Trustsmith connects to the endpoint, completes one TLS
+  handshake under the explicit `modern` policy (TLS 1.2 with ECDHE and AEAD
+  suites, and TLS 1.3), keeps the certificates the server presented and closes
+  the connection ([ADR-0009](docs/adr/0009-tls-endpoint-acquisition.md)).
+  - The handshake is **not authenticated**. Completing it does not mean the
+    certificates are trusted, identify the host, suit a purpose or are secure.
+  - Those questions are answered separately, exactly as for a file: an endpoint
+    implies `--purpose tls-server` and `--hostname` set to its host, unless you
+    pass either explicitly.
+  - No application data is sent and no HTTP is spoken. There is no fallback to
+    weaker protocol versions or cipher suites.
 - **Output:** friendly text by default, `--advanced` for technical details, or
   `--output json` for the versioned `trustsmith.inspect/v1` schema.
 
-It works offline and makes no network connections. Other PEM blocks in a file,
-including private keys, are reported by their label and never decoded.
+File inspection works offline. The only network connection Trustsmith ever
+makes is to an endpoint you name. Other PEM blocks in a file, including private
+keys, are reported by their label and never decoded.
 
 ```console
 $ trustsmith inspect testdata/certs/leaf.pem
@@ -63,17 +77,19 @@ $ cat bundle.pem | trustsmith inspect -
 $ trustsmith inspect bundle.pem --roots company-roots.pem
 $ trustsmith inspect server.pem --purpose tls-server --roots company-roots.pem
 $ trustsmith inspect server.pem --hostname api.example.com
+$ trustsmith inspect api.example.com:443 --roots company-roots.pem
+$ trustsmith inspect tls://[2001:db8::1]:8443 --output json
 ```
 
-Not yet supported: system or platform trust stores, revocation, private keys, CSRs, PKCS#12, TLS endpoint probing, and public WebPKI
-policy checks.
+Not yet supported: system or platform trust stores, revocation, private keys, CSRs, PKCS#12, STARTTLS and legacy TLS
+diagnostics, and public WebPKI policy checks.
 
 ### Exit codes
 
 | Code | Meaning |
 |---|---|
 | 0 | no finding at or above `--fail-on` (default `critical`) |
-| 1 | operational error, for example an unreadable file or an unusable `--roots` file |
+| 1 | operational error, for example an unreadable file, an unusable `--roots` file, or a TLS endpoint from which no certificate was acquired |
 | 2 | usage error |
 | 3 | findings reached `--fail-on` (`info`, `warning`, `critical`; `never` disables) |
 
@@ -99,6 +115,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0006: explicitly supplied trust anchors](docs/adr/0006-explicit-trust-anchors.md)
 - [ADR-0007: explicit certificate-purpose validation](docs/adr/0007-explicit-certificate-purpose.md)
 - [ADR-0008: explicit host name identity](docs/adr/0008-hostname-identity.md)
+- [ADR-0009: minimal TLS endpoint acquisition](docs/adr/0009-tls-endpoint-acquisition.md)
 
 ## License
 

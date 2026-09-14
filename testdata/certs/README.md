@@ -51,5 +51,6 @@ Validity periods are relative to the test clock 2026-09-14T12:00:00Z.
 | `sha1-with-issuer.pem` | SHA-1-signed leaf followed by its RSA issuer: the signature verifies |
 | `sha1.pem` | leaf re-signed with sha1WithRSAEncryption |
 | `text-around.pem` | openssl-style text before and after the leaf |
+| `tls-endpoint.pem` | leaf (on the RFC 9500 testECCP256 key), intermediate and root served by the in-process TLS endpoint tests |
 | `trailing-data.der` | leaf.der followed by two stray bytes |
 | `x25519-key.pem` | certificate for an X25519 key (no ADR-0002 key identity) |

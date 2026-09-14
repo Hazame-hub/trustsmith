@@ -26,6 +26,7 @@ const HostnameMatcher = "go-x509-verifyhostname"
 type HostnameEvaluation struct {
 	State         HostnameEvaluationState
 	Request       hostname.Request // zero when not evaluated
+	Source        HostnameSource   // empty when not evaluated
 	Matcher       string
 	EngineVersion string
 	Targets       []HostnameTarget
@@ -38,9 +39,21 @@ type HostnameTarget struct {
 	Result      hostname.Result
 }
 
-// WithHostname makes the service evaluate whether the targets identify r.
+// HostnameSource says where the requested host name came from.
+type HostnameSource string
+
+const (
+	// HostnameSourceExplicit: requested with WithHostname (--hostname).
+	HostnameSourceExplicit HostnameSource = "explicit"
+	// HostnameSourceEndpoint: the host of the inspected TLS endpoint, used
+	// unless a host name was requested explicitly.
+	HostnameSourceEndpoint HostnameSource = "endpoint"
+)
+
+// WithHostname makes the service evaluate whether the targets identify r. It
+// also overrides the host name an endpoint implies.
 func WithHostname(r hostname.Request) Option {
-	return func(s *Service) { s.hostname = &r }
+	return func(s *Service) { s.hostname, s.hostnameSource = &r, HostnameSourceExplicit }
 }
 
 func (s *Service) evaluateHostname(targets []*target) HostnameEvaluation {
@@ -48,7 +61,7 @@ func (s *Service) evaluateHostname(targets []*target) HostnameEvaluation {
 	if s.hostname == nil {
 		return e
 	}
-	e.State, e.Request, e.Matcher, e.EngineVersion = HostnameEvaluated, *s.hostname, HostnameMatcher, runtime.Version()
+	e.State, e.Request, e.Source, e.Matcher, e.EngineVersion = HostnameEvaluated, *s.hostname, s.hostnameSource, HostnameMatcher, runtime.Version()
 	for _, c := range targets {
 		e.Targets = append(e.Targets, HostnameTarget{
 			Certificate: c.cert.Fingerprint,

@@ -1,0 +1,79 @@
+Inspected tls://api.example.test:443 (TLS peer certificates, 2 entries) at 2026-09-14 12:00:00 UTC
+
+TLS probe
+  Endpoint         tls://api.example.test:443
+  Policy           modern v1 (TLS 1.2 to TLS 1.3; engine GO_VERSION)
+  Result           handshake completed; peer certificates acquired
+  Stage            complete
+  Server name      api.example.test
+  Negotiated       TLS 1.3, TLS_AES_128_GCM_SHA256, X25519MLKEM768
+  ALPN             none offered
+  Certificates     2 certificates received, in the server's order
+  Elapsed          0 ms
+  The handshake was not authenticated: completing it is not trust, host name
+  identity or suitability, which are evaluated below. No application data was sent.
+
+[0] TLS server certificate
+    Identifies     api.example.test, xn--bcher-kva.example, 192.0.2.10
+    Issuer         CN=Trustsmith Test Endpoint Intermediate CA,O=Trustsmith Tests
+                   signature verified with the key of the certificate in entry 1 of this input
+    Valid          yes, until 2026-12-01 00:00:00 UTC (77 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          could not validate to the explicitly supplied roots (see Trust evaluation)
+    Certificate    sha256:d53628434b6bd0f1f0b09d79d1713a952f418c5b4f1fda36c6c5aa47453483cf
+    Key identity   sha256:b2b04340cfaee616ec9c2c62d261b208e54bb197498df52e8cadede23ac0ba5e (x509-spki-sha256)
+
+[1] CA certificate
+    Identifies     CN=Trustsmith Test Endpoint Intermediate CA
+    Issuer         CN=Trustsmith Test Endpoint Root CA,O=Trustsmith Tests
+                   no matching issuer candidate found in this input
+    Valid          yes, until 2031-01-01 00:00:00 UTC (1569 days left)
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated on its own: it issues another certificate in this input
+    Certificate    sha256:cc4cc3f2028ff06b063880990b59a619882a60692bfbfd04fdd1d3fa2cd139ae
+    Key identity   sha256:cd3ffb363ea46effcf687e86b8696fb431eb89810e71b983027c86cd17b4bddf (x509-spki-sha256)
+
+Issuer relationships (1)
+  Signature checks between certificates of this input. A verified signature is not a trust decision.
+  entry 0, candidate issuer entry 1: verified; evidence: issuer_dn_match, authority_key_id_match
+
+Included certification paths (1)
+  Built only from certificates in this input, linked by verified signatures. Trust is not evaluated:
+  no certificate is treated as a trust anchor, including self-signed ones.
+  Path 1: entry 0 (api.example.test) > entry 1 (Trustsmith Test Endpoint Intermediate CA)
+    Ends           no matching issuer candidate found in this input
+    Completeness   partial
+    Signatures     verified: each certificate's signature verifies with the key of the next
+    CA constraints satisfied (basic constraints, key usage, path length)
+    Validity       every certificate on the path is within its validity period
+    Trust          not evaluated by this layer (see Trust evaluation)
+
+Trust evaluation
+  Source           explicitly supplied roots: testdata/roots/unrelated-root.pem (1 certificate)
+  Verifier         Go crypto/x509 (GO_VERSION), extended key usage server authentication (tls-server), no host name
+  Anchor           Trustsmith Test Unrelated Root CA (sha256:2349fa4162a3e03a72baac1e24c9cce7f24ad6ac96477ca1a90bedb59c1a4bf8), entry 0 of testdata/roots/unrelated-root.pem
+  Entry 0 (api.example.test)
+    Result         could not validate for TLS server use to the explicitly supplied roots
+    Reason         no chain to any of the supplied roots could be built
+
+Purpose
+  Requested        TLS server (tls-server), implied by the endpoint
+  Entry 0 (api.example.test)
+    Usage          suitable: the certificate's own fields permit TLS server use
+    Ext. key usage permits server authentication
+    Key usage      sets digital signature, consistent with TLS server use
+    Anchored path  could not validate for TLS server use to the explicitly supplied roots: no chain to any of the supplied roots could be built
+
+Hostname
+  Requested        api.example.test (DNS name, the endpoint host)
+  Matcher          Go crypto/x509 VerifyHostname (GO_VERSION): subject alternative names only
+  Entry 0 (api.example.test)
+    Match          yes
+
+Findings (1)
+  CRITICAL  entry 0  Not verified against the supplied roots [trust.failed]
+            Trustsmith asked Go's crypto/x509 verifier to validate this certificate against the trust anchors supplied with --roots, and the verifier rejected it. The reason evidence is a stable code, such as no_explicit_anchor_path or certificate_expired. Only the supplied roots were considered: no system trust store was used, and certificates in the inspected input are never anchors themselves.
+            Evidence: reason=no_explicit_anchor_path; purpose=tls-server
+            Fix: Check that the roots file holds the intended trust anchors and that the inspected input includes the intermediate certificates the chain needs.

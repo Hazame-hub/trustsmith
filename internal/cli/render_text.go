@@ -16,6 +16,7 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/hostname"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
+	"github.com/Hazame-hub/trustsmith/internal/probe"
 	"github.com/Hazame-hub/trustsmith/internal/purpose"
 	"github.com/Hazame-hub/trustsmith/internal/trustverify"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
@@ -31,6 +32,13 @@ func renderText(w io.Writer, res inspectsvc.Result, advanced bool) error {
 	}
 	fmt.Fprintf(&b, "Inspected %s (%s, %s) at %s\n", source, formatName(res.Format),
 		plural(len(res.Artifacts), "entry", "entries"), res.InspectedAt.UTC().Format(humanTime))
+	if res.Probe != nil {
+		b.WriteString("\n")
+		if !writeProbe(&b, res) {
+			_, err := io.WriteString(w, b.String())
+			return err
+		}
+	}
 
 	trustEvaluated := res.Trust.State == inspectsvc.TrustEvaluated
 	for _, a := range res.Artifacts {
@@ -66,6 +74,8 @@ func formatName(f artifact.Format) string {
 		return "DER"
 	case artifact.FormatEmpty:
 		return "empty"
+	case inspectsvc.FormatTLSPeerCertificates:
+		return "TLS peer certificates"
 	}
 	return "unrecognised format"
 }
@@ -349,7 +359,11 @@ func writePurpose(b *strings.Builder, res inspectsvc.Result) {
 			names[a.Entry] = subjectName(a.Certificate)
 		}
 	}
-	topField(b, "Requested", purposeHuman(e.Requested)+" ("+string(e.Requested)+")")
+	requestedPurpose := purposeHuman(e.Requested) + " (" + string(e.Requested) + ")"
+	if e.Source == inspectsvc.PurposeSourceEndpoint {
+		requestedPurpose += ", implied by the endpoint"
+	}
+	topField(b, "Requested", requestedPurpose)
 	for _, t := range e.Targets {
 		first := t.Entries[0]
 		fmt.Fprintf(b, "  Entry %d (%s)\n", first, names[first])
@@ -401,6 +415,9 @@ func writeHostname(b *strings.Builder, res inspectsvc.Result) {
 	requested := r.Input + " (" + kind
 	if r.Normalized != r.Input {
 		requested += ", compared as " + r.Normalized
+	}
+	if e.Source == inspectsvc.HostnameSourceEndpoint {
+		requested += ", the endpoint host"
 	}
 	topField(b, "Requested", requested+")")
 	topField(b, "Matcher", "Go crypto/x509 VerifyHostname ("+e.EngineVersion+"): subject alternative names only")
@@ -804,4 +821,65 @@ func writeFindings(b *strings.Builder, fs []findings.Finding) {
 			fmt.Fprintf(b, "            Fix: %s\n", a.Text)
 		}
 	}
+}
+
+// writeProbe renders how certificates were acquired from a TLS endpoint. It
+// reports false when no certificate was acquired: nothing else is rendered
+// then, since there is nothing to inspect.
+func writeProbe(b *strings.Builder, res inspectsvc.Result) bool {
+	p := res.Probe
+	b.WriteString("TLS probe\n")
+	topField(b, "Endpoint", res.Source.Locator)
+	topField(b, "Policy", fmt.Sprintf("%s v%d (%s to %s; engine %s)", p.Policy.Name, p.Policy.Version,
+		p.Policy.MinVersionName(), p.Policy.MaxVersionName(), p.EngineVersion))
+	if p.State != probe.StateComplete {
+		topField(b, "Result", "failed: "+probeReasonText(p.Reason))
+		topField(b, "Stage", string(p.Stage))
+		b.WriteString("  No peer certificate was acquired.\n")
+		return false
+	}
+	topField(b, "Result", "handshake completed; peer certificates acquired")
+	topField(b, "Stage", string(p.Stage))
+	sni := p.Target.ServerName
+	if sni == "" {
+		sni = "none sent (IP address)"
+	}
+	topField(b, "Server name", sni)
+	n := p.Negotiated
+	negotiated := n.VersionName() + ", " + n.CipherSuiteName()
+	if g := n.GroupName(); g != "" {
+		negotiated += ", " + g
+	}
+	topField(b, "Negotiated", negotiated)
+	topField(b, "ALPN", "none offered")
+	topField(b, "Certificates", plural(len(p.PeerCertificates), "certificate", "certificates")+" received, in the server's order")
+	if p.ClientCertificateRequested {
+		topField(b, "Client auth", "requested by the server; no certificate was sent")
+	}
+	topField(b, "Elapsed", fmt.Sprintf("%d ms", p.Elapsed.Milliseconds()))
+	b.WriteString("  The handshake was not authenticated: completing it is not trust, host name\n")
+	b.WriteString("  identity or suitability, which are evaluated below. No application data was sent.\n")
+	return true
+}
+
+func probeReasonText(r probe.Reason) string {
+	switch r {
+	case probe.ReasonDNSError:
+		return "the host name could not be resolved (dns_error)"
+	case probe.ReasonConnectRefused:
+		return "the connection was refused (connect_refused)"
+	case probe.ReasonConnectTimeout:
+		return "no connection within the connect timeout (connect_timeout)"
+	case probe.ReasonHandshakeTimeout:
+		return "the TLS handshake did not complete within the handshake timeout (handshake_timeout)"
+	case probe.ReasonTLSNegotiationFailed:
+		return "the server ended the handshake with a TLS alert; it may not support what the policy offers (tls_negotiation_failed)"
+	case probe.ReasonNotTLS:
+		return "the server did not answer with TLS (not_tls)"
+	case probe.ReasonConnectionClosed:
+		return "the server closed the connection during the handshake (connection_closed)"
+	case probe.ReasonCertificateUnparseable:
+		return "the server sent a certificate Go's TLS engine could not parse (certificate_unparseable_by_engine)"
+	}
+	return "an error the probe does not classify (engine_error)"
 }

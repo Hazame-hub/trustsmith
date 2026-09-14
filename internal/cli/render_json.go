@@ -11,6 +11,7 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/findings"
 	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
+	"github.com/Hazame-hub/trustsmith/internal/probe"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
 )
 
@@ -21,9 +22,12 @@ import (
 const inspectSchema = "trustsmith.inspect/v1"
 
 type jsonInspect struct {
-	Schema        string             `json:"schema"`
-	InspectedAt   string             `json:"inspected_at"`
-	Input         jsonInput          `json:"input"`
+	Schema      string    `json:"schema"`
+	InspectedAt string    `json:"inspected_at"`
+	Input       jsonInput `json:"input"`
+	// Probe is how certificates were acquired from a TLS endpoint; null for
+	// files and standard input.
+	Probe         *jsonProbe         `json:"probe"`
 	Overview      jsonOverview       `json:"overview"`
 	Artifacts     []jsonArtifact     `json:"artifacts"`
 	Relationships []jsonRelationship `json:"relationships"`
@@ -42,10 +46,12 @@ type jsonInspect struct {
 
 // jsonPurposeEvaluation is the evaluation for an explicitly requested purpose.
 // requested is the exact --purpose value. state is not_evaluated for "any"
-// (targets is then empty) or evaluated. Host name identity is never part of
-// it; see hostname_evaluation.
+// (targets is then empty) or evaluated. source is default (nothing
+// requested), explicit (--purpose) or endpoint (implied by inspecting a TLS
+// endpoint). Host name identity is never part of it; see hostname_evaluation.
 type jsonPurposeEvaluation struct {
 	Requested string              `json:"requested"`
+	Source    string              `json:"source"`
 	State     string              `json:"state"`
 	Targets   []jsonPurposeTarget `json:"targets"`
 }
@@ -54,9 +60,11 @@ type jsonPurposeEvaluation struct {
 // address requested with --hostname. state is not_evaluated without a request
 // (requested, normalized, kind, matcher and engine_version are then null and
 // targets empty) or evaluated. requested is the input as given; normalized is
-// what was matched; kind is dns or ip.
+// what was matched; kind is dns or ip. source is explicit (--hostname) or
+// endpoint (the host of the inspected TLS endpoint), null when not evaluated.
 type jsonHostnameEvaluation struct {
 	State         string               `json:"state"`
+	Source        *string              `json:"source"`
 	Requested     *string              `json:"requested"`
 	Normalized    *string              `json:"normalized"`
 	Kind          *string              `json:"kind"`
@@ -178,6 +186,7 @@ type jsonArtifact struct {
 	Entry        int               `json:"entry"`
 	Type         string            `json:"type"`
 	PEMLabel     string            `json:"pem_label,omitempty"`
+	Locator      string            `json:"locator,omitempty"`
 	Offset       int               `json:"offset"`
 	Problem      string            `json:"problem,omitempty"`
 	ParseError   string            `json:"parse_error,omitempty"`
@@ -376,6 +385,7 @@ func renderJSON(w io.Writer, res inspectsvc.Result) error {
 			HighestSeverity: string(res.Highest),
 			IncludedPaths:   len(res.Paths), PathLimitReached: res.PathLimitReached,
 		},
+		Probe:         probeJSON(res),
 		Artifacts:     []jsonArtifact{},
 		Relationships: []jsonRelationship{},
 		Paths:         []jsonPath{},
@@ -410,7 +420,7 @@ func renderJSON(w io.Writer, res inspectsvc.Result) error {
 }
 
 func artifactJSON(a inspectsvc.Artifact) jsonArtifact {
-	out := jsonArtifact{Entry: a.Entry, Type: string(a.Type), PEMLabel: a.Label, Offset: a.Offset, Problem: string(a.Problem)}
+	out := jsonArtifact{Entry: a.Entry, Type: string(a.Type), PEMLabel: a.Label, Locator: a.Locator, Offset: a.Offset, Problem: string(a.Problem)}
 	switch {
 	case a.Certificate != nil:
 		c := a.Certificate
@@ -529,8 +539,8 @@ func hostnameJSON(res inspectsvc.Result) jsonHostnameEvaluation {
 	if e.State != inspectsvc.HostnameEvaluated {
 		return out
 	}
-	requested, normalized, kind, matcher, version := e.Request.Input, e.Request.Normalized, string(e.Request.Kind), e.Matcher, e.EngineVersion
-	out.Requested, out.Normalized, out.Kind, out.Matcher, out.EngineVersion = &requested, &normalized, &kind, &matcher, &version
+	requested, normalized, kind, matcher, version, source := e.Request.Input, e.Request.Normalized, string(e.Request.Kind), e.Matcher, e.EngineVersion, string(e.Source)
+	out.Requested, out.Normalized, out.Kind, out.Matcher, out.EngineVersion, out.Source = &requested, &normalized, &kind, &matcher, &version, &source
 	for _, t := range e.Targets {
 		out.Targets = append(out.Targets, jsonHostnameTarget{
 			Certificate:            jsonCertificateRef{Fingerprint: t.Certificate.Hex(), Entries: intsOrEmpty(t.Entries)},
@@ -546,7 +556,7 @@ func hostnameJSON(res inspectsvc.Result) jsonHostnameEvaluation {
 
 func purposeJSON(res inspectsvc.Result) jsonPurposeEvaluation {
 	e := res.Purpose
-	out := jsonPurposeEvaluation{Requested: string(e.Requested), State: string(e.State), Targets: []jsonPurposeTarget{}}
+	out := jsonPurposeEvaluation{Requested: string(e.Requested), Source: string(e.Source), State: string(e.State), Targets: []jsonPurposeTarget{}}
 	for _, t := range e.Targets {
 		u := t.Usage
 		reasons := make([]string, len(u.Reasons))
@@ -676,3 +686,114 @@ func intsOrEmpty(s []int) []int {
 }
 
 func stamp(t time.Time) string { return t.UTC().Format(time.RFC3339) }
+
+// jsonProbe is how certificates were acquired from a TLS endpoint. A complete
+// state means one handshake completed under the policy and the server's
+// certificates were kept; it is not a verdict on trust, host name identity or
+// suitability, which the evaluations report separately.
+//
+// stage is how far the probe got (resolve, connect, handshake or complete).
+// reason is null when complete, otherwise dns_error, connect_refused,
+// connect_timeout, handshake_timeout, tls_negotiation_failed, not_tls,
+// connection_closed, certificate_unparseable_by_engine or engine_error.
+// certificate_acquisition is acquired, not_acquired, or unverifiable when the
+// server sent certificates Go's TLS engine could not parse. sni is the server
+// name sent, null for an IP address. negotiated is null unless complete.
+type jsonProbe struct {
+	Kind                       string          `json:"kind"`
+	Endpoint                   jsonEndpoint    `json:"endpoint"`
+	State                      string          `json:"state"`
+	Stage                      string          `json:"stage"`
+	Reason                     *string         `json:"reason"`
+	CertificateAcquisition     string          `json:"certificate_acquisition"`
+	Policy                     jsonProbePolicy `json:"policy"`
+	Engine                     jsonEngine      `json:"engine"`
+	SNI                        *string         `json:"sni"`
+	Negotiated                 *jsonNegotiated `json:"negotiated"`
+	PeerCertificateCount       int             `json:"peer_certificate_count"`
+	ClientCertificateRequested bool            `json:"client_certificate_requested"`
+	ElapsedMS                  int64           `json:"elapsed_ms"`
+	HandshakeMS                int64           `json:"handshake_ms"`
+}
+
+// jsonEndpoint is the endpoint as parsed: host is the normalised DNS name
+// (A-labels) or canonical IP address; kind is dns or ip.
+type jsonEndpoint struct {
+	Host string `json:"host"`
+	Port int    `json:"port"`
+	Kind string `json:"kind"`
+}
+
+// jsonProbePolicy is the named, versioned client policy and the values it
+// sets. tls13_cipher_suites and signature_schemes are engine_managed: Go's
+// crypto/tls chooses them and a policy cannot. alpn is what is offered.
+type jsonProbePolicy struct {
+	Name              string   `json:"name"`
+	Version           int      `json:"version"`
+	MinVersion        string   `json:"min_version"`
+	MaxVersion        string   `json:"max_version"`
+	TLS12CipherSuites []string `json:"tls12_cipher_suites"`
+	TLS13CipherSuites string   `json:"tls13_cipher_suites"`
+	SignatureSchemes  string   `json:"signature_schemes"`
+	Groups            []string `json:"groups"`
+	ALPN              []string `json:"alpn"`
+}
+
+type jsonEngine struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+// jsonNegotiated are the parameters of the completed handshake, named as Go's
+// crypto/tls names them. key_exchange_group and alpn are null when none.
+type jsonNegotiated struct {
+	Version          string  `json:"version"`
+	CipherSuite      string  `json:"cipher_suite"`
+	KeyExchangeGroup *string `json:"key_exchange_group"`
+	ALPN             *string `json:"alpn"`
+}
+
+const engineManaged = "engine_managed"
+
+func probeJSON(res inspectsvc.Result) *jsonProbe {
+	p, e := res.Probe, res.Endpoint
+	if p == nil || e == nil {
+		return nil
+	}
+	out := &jsonProbe{
+		Kind:                   "tls",
+		Endpoint:               jsonEndpoint{Host: e.Host.Normalized, Port: e.Port, Kind: string(e.Host.Kind)},
+		State:                  string(p.State),
+		Stage:                  string(p.Stage),
+		CertificateAcquisition: string(p.Acquisition),
+		Policy: jsonProbePolicy{
+			Name: p.Policy.Name, Version: p.Policy.Version,
+			MinVersion: p.Policy.MinVersionName(), MaxVersion: p.Policy.MaxVersionName(),
+			TLS12CipherSuites: p.Policy.TLS12CipherSuiteNames(), TLS13CipherSuites: engineManaged,
+			SignatureSchemes: engineManaged, Groups: p.Policy.GroupNames(), ALPN: []string{},
+		},
+		Engine:                     jsonEngine{Name: "go", Version: p.EngineVersion},
+		PeerCertificateCount:       len(p.PeerCertificates),
+		ClientCertificateRequested: p.ClientCertificateRequested,
+		ElapsedMS:                  p.Elapsed.Milliseconds(),
+		HandshakeMS:                p.HandshakeElapsed.Milliseconds(),
+	}
+	if p.Reason != probe.ReasonNone {
+		reason := string(p.Reason)
+		out.Reason = &reason
+	}
+	if sni := p.Target.ServerName; sni != "" {
+		out.SNI = &sni
+	}
+	if n := p.Negotiated; n != nil {
+		out.Negotiated = &jsonNegotiated{Version: n.VersionName(), CipherSuite: n.CipherSuiteName()}
+		if g := n.GroupName(); g != "" {
+			out.Negotiated.KeyExchangeGroup = &g
+		}
+		if n.ALPN != "" {
+			alpn := n.ALPN
+			out.Negotiated.ALPN = &alpn
+		}
+	}
+	return out
+}

@@ -12,8 +12,24 @@ This describes the implementation today, which offers only
 `trustsmith inspect`.
 
 - **Reads only what you ask.** It reads the file named on the command line,
-  or standard input, and the `--roots` files you name. It does not scan directories, open other files, make
-  network connections or send telemetry.
+  or standard input, and the `--roots` files you name. It does not scan
+  directories, open other files or send telemetry. The only network connection
+  it makes is to a TLS endpoint named on the command line.
+- **Probes endpoints without judging them.** Inspecting a TLS endpoint
+  completes an unauthenticated TLS handshake.
+  - Go's verification is skipped (`InsecureSkipVerify`) only to collect the
+    certificates the server presents.
+  - A completed handshake does not mean the certificates are trusted, match the
+    host name, are appropriate for any purpose, or that the server is secure.
+  - Trust, host name identity and purpose are evaluated afterwards, separately,
+    by the same code as for files. No system roots are used, and the handshake
+    never uses `RootCAs` or verification callbacks.
+  - The probe offers only TLS 1.2 (ECDHE with AEAD suites) and TLS 1.3, and
+    never retries with weaker settings. It uses no GODEBUG settings.
+  - It sends no application payload (only the TLS close_notify alert), speaks
+    no HTTP, and bounds the connection and the handshake with timeouts.
+  - Skipping verification and speaking TLS are confined by architecture tests
+    to one package, which depends on no evaluation code.
 - **Handles no private keys.** PEM blocks other than `CERTIFICATE` are reported
   by label and never decoded. The tool stores nothing and writes nothing except
   its output.
@@ -62,6 +78,12 @@ This describes the implementation today, which offers only
     cryptographically.
 
 ## Limitations
+
+- **Endpoint results are one handshake's view.** A probe sees the chain the
+  server sent to this client, with this SNI, under the modern policy, at that
+  moment. A server may present other certificates to other clients. Revocation
+  status, stapled OCSP responses and certificate transparency are not
+  examined, and protocol support beyond what the policy offers is not measured.
 
 - **Trust only from what you supply.** Without `--roots`, inspection does not
   tell you whether to trust a certificate. With it, the result is what Go's

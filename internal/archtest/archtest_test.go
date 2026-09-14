@@ -55,9 +55,18 @@ type pkg struct {
 
 func goList(t *testing.T, args ...string) []pkg {
 	t.Helper()
+	return goListFor(t, "", args...)
+}
+
+// goListFor runs go list for a target operating system ("" means the host).
+func goListFor(t *testing.T, goos string, args ...string) []pkg {
+	t.Helper()
 	cmd := exec.Command("go", append([]string{"list", "-json"}, args...)...)
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(), "GOWORK=off")
+	if goos != "" {
+		cmd.Env = append(cmd.Env, "GOOS="+goos)
+	}
 	out, err := cmd.Output()
 	if err != nil {
 		var exitErr *exec.ExitError
@@ -140,13 +149,21 @@ func TestProductionCodeDoesNotUseTestPKI(t *testing.T) {
 	}
 }
 
+// releasePlatforms are the operating systems Trustsmith is built for. Module
+// usage is collected across all of them: some dependencies are compiled only
+// on one platform (cobra uses mousetrap on Windows only), so checking just the
+// host would wrongly report them as unused elsewhere.
+var releasePlatforms = []string{"linux", "darwin", "windows"}
+
 func TestThirdPartyModulesAreAllowListed(t *testing.T) {
 	seen := map[string]bool{}
-	for _, p := range goList(t, "-deps", "./...") {
-		if p.Standard || p.Module == nil || p.Module.Path == module {
-			continue
+	for _, goos := range releasePlatforms {
+		for _, p := range goListFor(t, goos, "-deps", "./...") {
+			if p.Standard || p.Module == nil || p.Module.Path == module {
+				continue
+			}
+			seen[p.Module.Path] = true
 		}
-		seen[p.Module.Path] = true
 	}
 	for m := range seen {
 		if !slices.Contains(allowedModules, m) {

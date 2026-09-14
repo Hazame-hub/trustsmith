@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -84,16 +85,42 @@ func corpusFiles(t *testing.T) []string {
 func findingKeys(fs []findings.Finding) []string {
 	out := []string{}
 	for _, f := range fs {
-		out = append(out, strings.Join([]string{itoa(f.Entry), string(f.Code), string(f.Severity)}, ":"))
+		out = append(out, strings.Join([]string{strconv.Itoa(f.Entry), string(f.Code), string(f.Severity)}, ":"))
 	}
 	return out
 }
 
-func itoa(i int) string {
-	if i < 0 {
-		return "-" + string(rune('0'-i))
+// TestPEMAndDERShareIdentity proves, end to end, that the same certificate in
+// PEM and DER form yields the same fingerprints and the same interpretation.
+func TestPEMAndDERShareIdentity(t *testing.T) {
+	svc := service()
+	fromPEM, err := svc.InspectFile(filepath.Join(corpus, "leaf.pem"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	return string(rune('0' + i))
+	fromDER, err := svc.InspectFile(filepath.Join(corpus, "leaf.der"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fromPEM.Artifacts) != 1 || len(fromDER.Artifacts) != 1 {
+		t.Fatalf("want one artifact each, got %d and %d", len(fromPEM.Artifacts), len(fromDER.Artifacts))
+	}
+	p, d := fromPEM.Artifacts[0], fromDER.Artifacts[0]
+	if p.Certificate == nil || d.Certificate == nil {
+		t.Fatal("both inputs must parse as certificates")
+	}
+	if p.Certificate.Fingerprint != d.Certificate.Fingerprint {
+		t.Errorf("x509-cert-sha256 differs: %s vs %s", p.Certificate.Fingerprint, d.Certificate.Fingerprint)
+	}
+	if p.Certificate.KeyID != d.Certificate.KeyID || p.Certificate.EncodedSPKI != d.Certificate.EncodedSPKI {
+		t.Error("key fingerprints differ between PEM and DER")
+	}
+	if !reflect.DeepEqual(p.Summary, d.Summary) || !reflect.DeepEqual(fromPEM.Findings, fromDER.Findings) {
+		t.Error("interpretation differs between PEM and DER")
+	}
+	if fromPEM.Format != artifact.FormatPEM || fromDER.Format != artifact.FormatDER {
+		t.Errorf("formats %s / %s", fromPEM.Format, fromDER.Format)
+	}
 }
 
 func TestCorpus(t *testing.T) {

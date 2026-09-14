@@ -65,6 +65,13 @@ type Template struct {
 	// SubjectKeyID overrides the generated Subject Key Identifier, e.g. to
 	// build a certificate whose key identifier matches another one's.
 	SubjectKeyID []byte
+	// BasicConstraintsNotCA encodes BasicConstraints with CA:FALSE (instead of
+	// omitting the extension) when IsCA is false.
+	BasicConstraintsNotCA bool
+	// ExtraExtensions are added verbatim, e.g. an unknown critical extension.
+	ExtraExtensions []pkix.Extension
+	// PermittedDNSDomains adds a name constraints extension.
+	PermittedDNSDomains []string
 }
 
 func ECDSAKey(f Fataler) *ecdsa.PrivateKey {
@@ -119,6 +126,11 @@ func Issue(f Fataler, t Template, key crypto.Signer, parent *Cert) *Cert {
 		BasicConstraintsValid: t.IsCA,
 		IsCA:                  t.IsCA,
 		SubjectKeyId:          t.SubjectKeyID,
+		ExtraExtensions:       t.ExtraExtensions,
+		PermittedDNSDomains:   t.PermittedDNSDomains,
+	}
+	if t.BasicConstraintsNotCA && !t.IsCA {
+		tmpl.BasicConstraintsValid = true
 	}
 	if t.Organization != "" {
 		tmpl.Subject.Organization = []string{t.Organization}

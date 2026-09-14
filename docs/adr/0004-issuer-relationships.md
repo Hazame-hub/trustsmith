@@ -152,7 +152,8 @@ becoming a finding about the input. `internal/archtest` enforces this.
 
 ## Consequences
 
-- Chain building can later start from verified relationships, choosing paths
-  among several verified issuers and adding trust anchors and policy.
+- Certification paths are built from verified relationships (ADR-0005), which
+  keeps every alternative path rather than choosing among several verified
+  issuers. Trust anchors and policy come later.
 - Relationship state is a cryptographic fact that stays independent of the
   policy findings.

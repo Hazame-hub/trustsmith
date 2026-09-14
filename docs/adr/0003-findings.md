@@ -64,6 +64,12 @@ Codes in this revision:
 | `name.cn_only_no_san` | warning | non-CA certificate named only by Common Name |
 | `issuer.candidate_unverifiable` | info | a matching certificate in the input could not check this signature, and none verified (ADR-0004) |
 | `issuer.candidates_not_checked` | info | issuer-candidate limits were reached; issuer information is incomplete (ADR-0004) |
+| `chain.issuer_not_ca` | warning | an issuer on an included path is not a CA certificate (ADR-0005) |
+| `chain.issuer_key_usage` | warning | an issuer's key usage lacks keyCertSign (ADR-0005) |
+| `chain.path_length_exceeded` | warning | a CA's pathLenConstraint is exceeded (ADR-0005) |
+| `chain.structure_not_evaluated` | info | something relevant to a path's structure was not evaluated (ADR-0005) |
+| `chain.cycle` | info | verified issuer relationships form a cycle (ADR-0005) |
+| `chain.path_limit_reached` | info | path construction limits were reached; paths are incomplete (ADR-0005) |
 
 ### Semantics this revision commits to
 
@@ -77,8 +83,12 @@ Codes in this revision:
   (ADR-0004).
   - The summary reports the issuer name as stated in the certificate, plus what
     the input shows about it (`issuer_in_input`).
-  - No trust, CA validity or chain validity is asserted. Chain verification does
-    not exist yet, so the chain is always reported as `not_checked`.
+  - No trust, CA validity or chain validity is asserted. Validation against
+    trust anchors does not exist yet, so the summary's `chain` is always
+    `not_checked`.
+- **Certification paths are structural and inside the input only**
+  (ADR-0005). A path's `trust` is always `not_evaluated`, and path findings
+  never repeat a certificate's own validity findings.
 - **Self-signature is a cryptographic fact.** It is computed with
   `Certificate.CheckSignature` over the certificate's own key:
   - The result is `verified`, `does_not_verify` or `unverifiable`.
@@ -91,9 +101,11 @@ Codes in this revision:
 - **The schema is its own set of types in `internal/cli/render_json.go`.**
   Internal structs are never serialised.
 - **Top-level fields:** `schema`, `inspected_at`, `input`, `overview`,
-  `artifacts`, `relationships`, `findings`. `relationships` and the summary
-  fields `issuer_in_input`, `verified_issuer_entries` and
-  `candidate_issuer_entries` were added compatibly within v1 (ADR-0004).
+  `artifacts`, `relationships`, `paths`, `findings`. `relationships` and the
+  summary fields `issuer_in_input`, `verified_issuer_entries` and
+  `candidate_issuer_entries` were added compatibly within v1 (ADR-0004), as
+  were `paths`, `overview.included_paths` and `overview.path_limit_reached`
+  (ADR-0005).
 - **Fingerprints** are keyed by ADR-0002 scheme name. A missing key identity is
   `null`.
 - **Findings** include the rendered catalog text and codes. Their `entry` is

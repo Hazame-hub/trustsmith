@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/Hazame-hub/trustsmith/internal/artifact"
+	"github.com/Hazame-hub/trustsmith/internal/chainpath"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
+	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
 	"github.com/Hazame-hub/trustsmith/internal/sigcheck"
@@ -68,6 +70,13 @@ type Result struct {
 	// Relationships are the issuer relationships between certificates of this
 	// input: signature checks only, never trust.
 	Relationships []issuerlinks.Relationship
+	// Paths are the certification paths that can be built from the verified
+	// relationships inside this input, with their structural evaluation. A
+	// path complete in the input is not trusted; trust is not evaluated.
+	Paths []chainpath.Path
+	// PathLimitReached: a path-construction limit was reached, so Paths is
+	// incomplete.
+	PathLimitReached bool
 	// RecoveredPanics counts panics contained at the untrusted-input
 	// boundaries: the standard-library X.509 parser and the signature
 	// verification engine. It is always zero unless one of them has a bug;
@@ -80,11 +89,13 @@ type Service struct {
 	now        func() time.Time
 	thresholds interpret.Thresholds
 	limits     issuerlinks.Limits
+	pathLimits chainpath.Limits
 }
 
 // New returns a service that reads the inspection time from now.
 func New(now func() time.Time) *Service {
-	return &Service{now: now, thresholds: interpret.DefaultThresholds(), limits: issuerlinks.DefaultLimits()}
+	return &Service{now: now, thresholds: interpret.DefaultThresholds(),
+		limits: issuerlinks.DefaultLimits(), pathLimits: chainpath.DefaultLimits()}
 }
 
 // InspectFile inspects the file at path.
@@ -159,6 +170,16 @@ func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 	links := issuerlinks.Resolve(inputs, s.limits)
 	res.Relationships = links.Relationships
 	res.RecoveredPanics += links.EnginePanics
+
+	paths := chainpath.Build(inputs, links, now, s.pathLimits)
+	res.Paths, res.PathLimitReached = paths.Paths, paths.LimitReached
+	first := map[fingerprint.Cert]int{}
+	for _, in := range inputs {
+		if _, ok := first[in.Certificate.Fingerprint]; !ok {
+			first[in.Certificate.Fingerprint] = in.Entry
+		}
+	}
+	res.Findings = append(res.Findings, interpret.Paths(paths, first)...)
 
 	for i, b := range decoded.Blocks {
 		a := Artifact{Entry: b.Entry, Label: b.Label, Offset: b.Offset, Problem: b.Problem}

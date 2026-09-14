@@ -29,6 +29,7 @@ type expectation struct {
 	types         []inspectsvc.ArtifactType
 	findings      []string // "entry:code:severity", entry -1 for the whole input
 	relationships []string // "[child entries]->[candidate entries]:state"
+	paths         []string // "0>1>2 completeness:end structure=… validity=…" (first entry of each certificate)
 }
 
 const (
@@ -42,40 +43,83 @@ const (
 // test clock (2026-09-14T12:00:00Z). A fixture added without an expectation
 // fails TestCorpus.
 var corpusExpectations = map[string]expectation{
-	"root-ca.pem":                 {types: []inspectsvc.ArtifactType{cert}},
-	"leaf.pem":                    {types: []inspectsvc.ArtifactType{cert}},
-	"leaf.der":                    {types: []inspectsvc.ArtifactType{cert}},
-	"bundle.pem":                  {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}},
-	"client.pem":                  {types: []inspectsvc.ArtifactType{cert}},
-	"bundle-with-bad-block.pem":   {types: []inspectsvc.ArtifactType{cert, malformed, cert}, findings: []string{"1:input.malformed_pem:critical"}, relationships: []string{"[0]->[2]:verified"}},
-	"bundle-with-private-key.pem": {types: []inspectsvc.ArtifactType{cert, unsupported}, findings: []string{"1:input.unsupported_format:warning"}},
+	"root-ca.pem":                 {types: []inspectsvc.ArtifactType{cert}, paths: []string{selfSignedAlone}},
+	"leaf.pem":                    {types: []inspectsvc.ArtifactType{cert}, paths: []string{partialAlone}},
+	"leaf.der":                    {types: []inspectsvc.ArtifactType{cert}, paths: []string{partialAlone}},
+	"bundle.pem":                  {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}, paths: []string{"0>1>2 " + completeSatisfied}},
+	"client.pem":                  {types: []inspectsvc.ArtifactType{cert}, paths: []string{partialAlone}},
+	"bundle-with-bad-block.pem":   {types: []inspectsvc.ArtifactType{cert, malformed, cert}, findings: []string{"1:input.malformed_pem:critical"}, relationships: []string{"[0]->[2]:verified"}, paths: []string{"0>2 partial:no_issuer_candidate structure=satisfied validity=satisfied"}},
+	"bundle-with-private-key.pem": {types: []inspectsvc.ArtifactType{cert, unsupported}, findings: []string{"1:input.unsupported_format:warning"}, paths: []string{partialAlone}},
 	"private-key-only.pem":        {types: []inspectsvc.ArtifactType{unsupported}, findings: []string{"-1:input.no_certificates:critical", "0:input.unsupported_format:warning"}},
-	"text-around.pem":             {types: []inspectsvc.ArtifactType{cert}, findings: []string{"-1:input.trailing_data:info", "-1:input.trailing_data:info"}},
-	"trailing-data.der":           {types: []inspectsvc.ArtifactType{cert}, findings: []string{"-1:input.trailing_data:warning"}},
+	"text-around.pem":             {types: []inspectsvc.ArtifactType{cert}, findings: []string{"-1:input.trailing_data:info", "-1:input.trailing_data:info"}, paths: []string{partialAlone}},
+	"trailing-data.der":           {types: []inspectsvc.ArtifactType{cert}, findings: []string{"-1:input.trailing_data:warning"}, paths: []string{partialAlone}},
 	"malformed.pem":               {types: []inspectsvc.ArtifactType{malformed}, findings: []string{"-1:input.no_certificates:critical", "0:input.malformed_pem:critical"}},
 	"empty.pem":                   {findings: []string{"-1:input.empty:critical"}},
 	"not-a-certificate.txt":       {findings: []string{"-1:input.unsupported_format:critical"}},
-	"expired.pem":                 {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:cert.expired:critical"}},
-	"not-yet-valid.pem":           {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:cert.not_yet_valid:critical"}},
-	"expiring-warning.pem":        {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:cert.expiring_soon:warning"}},
-	"expiring-critical.pem":       {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:cert.expiring_soon:critical"}},
-	"self-signed-leaf.pem":        {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:cert.self_signed_leaf:warning"}},
-	"cn-only.pem":                 {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:name.cn_only_no_san:warning"}},
-	"rsa-1024.pem":                {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:key.rsa_under_2048:critical"}},
-	"sha1.pem":                    {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:sig.sha1:critical"}},
-	"md5.pem":                     {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:sig.md5:critical"}},
+	"expired.pem":                 {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:cert.expired:critical"}, paths: []string{"0 partial:no_issuer_candidate structure=not_applicable validity=failed"}},
+	"not-yet-valid.pem":           {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:cert.not_yet_valid:critical"}, paths: []string{"0 partial:no_issuer_candidate structure=not_applicable validity=failed"}},
+	"expiring-warning.pem":        {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:cert.expiring_soon:warning"}, paths: []string{partialAlone}},
+	"expiring-critical.pem":       {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:cert.expiring_soon:critical"}, paths: []string{partialAlone}},
+	"self-signed-leaf.pem":        {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:cert.self_signed_leaf:warning"}, paths: []string{selfSignedAlone}},
+	"cn-only.pem":                 {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:name.cn_only_no_san:warning"}, paths: []string{partialAlone}},
+	"rsa-1024.pem":                {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:key.rsa_under_2048:critical"}, paths: []string{partialAlone}},
+	"sha1.pem":                    {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:sig.sha1:critical"}, paths: []string{partialAlone}},
+	"md5.pem":                     {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:sig.md5:critical"}, paths: []string{partialAlone}},
 	"noncanonical-rsa-key.pem":    {types: []inspectsvc.ArtifactType{unparseable}, findings: []string{"0:input.unparseable_certificate:critical", "0:key.noncanonical_spki:warning"}},
-	"x25519-key.pem":              {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:key.unsupported_for_identity:info"}},
+	"x25519-key.pem":              {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:key.unsupported_for_identity:info"}, paths: []string{partialAlone}},
 
 	// Issuer relationships inside one input.
-	"bundle-reversed.pem":               {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[1]->[0]:verified", "[2]->[1]:verified"}},
-	"bundle-duplicate.pem":              {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[0 2]->[1]:verified"}},
-	"issuer-name-match-wrong-key.pem":   {types: []inspectsvc.ArtifactType{cert, cert}, relationships: []string{"[0]->[1]:does_not_verify"}},
-	"issuer-key-id-match-wrong-key.pem": {types: []inspectsvc.ArtifactType{cert, cert}, relationships: []string{"[0]->[1]:does_not_verify"}},
-	"sha1-with-issuer.pem":              {types: []inspectsvc.ArtifactType{cert, cert}, findings: []string{"0:sig.sha1:critical"}, relationships: []string{"[0]->[1]:verified"}},
-	"md5-with-issuer.pem":               {types: []inspectsvc.ArtifactType{cert, cert}, findings: []string{"0:sig.md5:critical", "0:issuer.candidate_unverifiable:info"}, relationships: []string{"[0]->[1]:unverifiable"}},
-	"self-issued-not-self-signed.pem":   {types: []inspectsvc.ArtifactType{cert}},
-	"reissued-intermediates.pem":        {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[0]->[1]:verified", "[0]->[2]:verified"}},
+	"bundle-reversed.pem":               {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[1]->[0]:verified", "[2]->[1]:verified"}, paths: []string{"2>1>0 " + completeSatisfied}},
+	"bundle-duplicate.pem":              {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[0 2]->[1]:verified"}, paths: []string{"0>1 partial:no_issuer_candidate structure=satisfied validity=satisfied"}},
+	"issuer-name-match-wrong-key.pem":   {types: []inspectsvc.ArtifactType{cert, cert}, relationships: []string{"[0]->[1]:does_not_verify"}, paths: []string{candidatesNotVerifiedAlone, "1 complete_in_input:self_signed_terminal structure=not_applicable validity=satisfied"}},
+	"issuer-key-id-match-wrong-key.pem": {types: []inspectsvc.ArtifactType{cert, cert}, relationships: []string{"[0]->[1]:does_not_verify"}, paths: []string{candidatesNotVerifiedAlone, "1 complete_in_input:self_signed_terminal structure=not_applicable validity=satisfied"}},
+	"sha1-with-issuer.pem":              {types: []inspectsvc.ArtifactType{cert, cert}, findings: []string{"0:sig.sha1:critical"}, relationships: []string{"[0]->[1]:verified"}, paths: []string{"0>1 " + completeSatisfied}},
+	"md5-with-issuer.pem":               {types: []inspectsvc.ArtifactType{cert, cert}, findings: []string{"0:sig.md5:critical", "0:issuer.candidate_unverifiable:info"}, relationships: []string{"[0]->[1]:unverifiable"}, paths: []string{candidatesNotVerifiedAlone, "1 complete_in_input:self_signed_terminal structure=not_applicable validity=satisfied"}},
+	"self-issued-not-self-signed.pem":   {types: []inspectsvc.ArtifactType{cert}, paths: []string{partialAlone}},
+	"reissued-intermediates.pem":        {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[0]->[1]:verified", "[0]->[2]:verified"}, paths: []string{"0>1 partial:no_issuer_candidate structure=satisfied validity=satisfied", "0>2 partial:no_issuer_candidate structure=satisfied validity=satisfied"}},
+
+	// Certification paths inside one input. Findings are reported once on the
+	// issuer that carries a problem; validity is never repeated as a path finding.
+	"path-not-ca.pem": {types: []inspectsvc.ArtifactType{cert, cert, cert}, findings: []string{"1:chain.issuer_not_ca:warning", "1:name.cn_only_no_san:warning"},
+		relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}, paths: []string{"0>1>2 complete_in_input:self_signed_terminal structure=failed validity=satisfied"}},
+	"path-no-basic-constraints.pem": {types: []inspectsvc.ArtifactType{cert, cert, cert}, findings: []string{"1:chain.issuer_not_ca:warning", "1:name.cn_only_no_san:warning"},
+		relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}, paths: []string{"0>1>2 complete_in_input:self_signed_terminal structure=failed validity=satisfied"}},
+	"path-key-usage-no-certsign.pem": {types: []inspectsvc.ArtifactType{cert, cert, cert}, findings: []string{"1:chain.issuer_key_usage:warning"},
+		relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}, paths: []string{"0>1>2 complete_in_input:self_signed_terminal structure=failed validity=satisfied"}},
+	"path-length-exceeded.pem": {types: []inspectsvc.ArtifactType{cert, cert, cert}, findings: []string{"2:chain.path_length_exceeded:warning"},
+		relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}, paths: []string{"0>1>2 complete_in_input:self_signed_terminal structure=failed validity=satisfied"}},
+	"path-length-self-issued.pem": {types: []inspectsvc.ArtifactType{cert, cert, cert},
+		relationships: []string{"[0]->[1]:verified", "[0]->[2]:does_not_verify", "[1]->[2]:verified", "[2]->[1]:does_not_verify"}, paths: []string{"0>1>2 " + completeSatisfied}},
+	"path-expired-intermediate.pem": {types: []inspectsvc.ArtifactType{cert, cert, cert}, findings: []string{"1:cert.expired:critical"},
+		relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}, paths: []string{"0>1>2 complete_in_input:self_signed_terminal structure=satisfied validity=failed"}},
+	"path-cross-signed.pem": {types: []inspectsvc.ArtifactType{cert, cert, cert, cert, cert},
+		relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified", "[1]->[3]:verified", "[2]->[3]:verified", "[3]->[4]:verified"},
+		paths:         []string{"0>1>2 " + completeSatisfied, "0>1>3>4 " + completeSatisfied}},
+	"path-cycle.pem": {types: []inspectsvc.ArtifactType{cert, cert}, findings: []string{"0:chain.cycle:info"},
+		relationships: []string{"[0]->[1]:verified", "[1]->[0]:verified"}, paths: []string{"0>1 cycle:cycle structure=satisfied validity=satisfied"}},
+	"path-critical-extension.pem": {types: []inspectsvc.ArtifactType{cert, cert, cert}, findings: []string{"1:chain.structure_not_evaluated:info"},
+		relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}, paths: []string{"0>1>2 complete_in_input:self_signed_terminal structure=structurally_unverifiable validity=satisfied"}},
+}
+
+const (
+	partialAlone               = "0 partial:no_issuer_candidate structure=not_applicable validity=satisfied"
+	selfSignedAlone            = "0 complete_in_input:self_signed_terminal structure=not_applicable validity=satisfied"
+	candidatesNotVerifiedAlone = "0 partial:issuer_candidates_not_verified structure=not_applicable validity=satisfied"
+	completeSatisfied          = "complete_in_input:self_signed_terminal structure=satisfied validity=satisfied"
+)
+
+// pathKeys renders paths as "0>1>2 completeness:end structure=… validity=…".
+func pathKeys(res inspectsvc.Result) []string {
+	out := []string{}
+	for _, p := range res.Paths {
+		steps := make([]string, len(p.Entries))
+		for i, e := range p.Entries {
+			steps[i] = strconv.Itoa(e[0])
+		}
+		out = append(out, strings.Join(steps, ">")+" "+string(p.Completeness)+":"+string(p.End)+
+			" structure="+string(p.Structure)+" validity="+string(p.Validity))
+	}
+	return out
 }
 
 // relationshipKeys renders relationships as "[child entries]->[candidate entries]:state".
@@ -196,6 +240,16 @@ func TestCorpus(t *testing.T) {
 			}
 			if got := relationshipKeys(res); !slices.Equal(got, wantRelationships) {
 				t.Errorf("relationships %v, want %v", got, wantRelationships)
+			}
+			wantPaths := want.paths
+			if wantPaths == nil {
+				wantPaths = []string{}
+			}
+			if got := pathKeys(res); !slices.Equal(got, wantPaths) {
+				t.Errorf("paths %v, want %v", got, wantPaths)
+			}
+			if res.PathLimitReached {
+				t.Error("no committed fixture reaches a path limit")
 			}
 			for _, f := range res.Findings {
 				if _, ok := findings.Describe(f.Code); !ok {

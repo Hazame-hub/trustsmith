@@ -31,17 +31,24 @@ This describes the implementation today, which offers only
     as verified only when the candidate's key cryptographically verifies the
     signature. An algorithm the engine refuses is reported as unverifiable,
     never as a signature mismatch.
-  - A verified signature is not a trust decision: no trust anchors, CA
-    constraints or chain validation are applied, and the chain is reported as
-    "not checked".
+  - A verified signature is not a trust decision.
+  - Certification paths are built only from certificates in the input. A
+    self-signed certificate ends a path but is never used as a trust anchor,
+    and a path's trust is always reported as "not evaluated". The standard
+    verifier (`Certificate.Verify`, `VerifyOptions`, certificate pools) is
+    not used anywhere, and an architecture test enforces this, so no included
+    certificate can become trusted as a side effect.
+  - Structural issuer checks report anything they do not evaluate, such as an
+    unknown critical extension or name constraints. A path structure is
+    therefore never reported as satisfied by omission.
   - A self-signature is reported as verified only when it verifies
     cryptographically.
 
 ## Limitations
 
 - **No trust judgement.** Inspection does not tell you whether to trust a
-  certificate. It has no trust store, revocation checking or chain building
-  yet.
+  certificate. It has no trust store, trust anchors, name or policy constraint
+  processing, or revocation checking yet.
 - **Parser-dependent fields.** Findings based on Go's X.509 parser inherit its
   behaviour. Certificates it rejects are reported as unparseable, with
   fingerprints computed from their bytes where possible.

@@ -131,6 +131,46 @@
       {"code": "reissue_sha256", "text": "If the certificate is still in use, reissue it with a signature algorithm current software accepts."}
     ]
   },
+  "chain.issuer_not_ca": {
+    "title": "Issuer is not a CA certificate",
+    "explanation": "A certificate in this input verifies another certificate's signature, but it is not a CA certificate: its BasicConstraints extension is missing or does not set CA:TRUE. Certification path validation does not accept such a certificate as the issuer of another certificate. The signature itself still verifies.",
+    "remediation": [
+      {"code": "issue_from_ca", "text": "Issue the certificate from a certificate marked as a CA (BasicConstraints CA:TRUE)."}
+    ]
+  },
+  "chain.issuer_key_usage": {
+    "title": "Issuer's key usage does not allow certificate signing",
+    "explanation": "An issuer certificate on a path has a KeyUsage extension without keyCertSign, so certification path validation does not accept it as the issuer of another certificate.",
+    "remediation": [
+      {"code": "reissue_ca", "text": "Reissue the CA certificate with keyCertSign in its KeyUsage extension."}
+    ]
+  },
+  "chain.path_length_exceeded": {
+    "title": "Path length constraint exceeded",
+    "explanation": "A CA certificate's pathLenConstraint allows fewer intermediate CA certificates below it than this path contains. Self-issued intermediate certificates are not counted.",
+    "remediation": [
+      {"code": "restructure_path", "text": "Issue the lower certificates from a CA whose path length constraint allows this depth, or use fewer intermediate CAs."}
+    ]
+  },
+  "chain.structure_not_evaluated": {
+    "title": "Path structure not fully evaluated",
+    "explanation": "A path contains something this version does not evaluate, such as a critical extension it does not process, name or policy constraints on an issuer, or a version 1 issuer. The path's structure is therefore reported as not fully evaluated, never as satisfied.",
+    "remediation": []
+  },
+  "chain.cycle": {
+    "title": "Issuer relationships form a cycle",
+    "explanation": "Following verified issuer relationships in this input leads back to a certificate already on the path, so path construction stopped there.",
+    "remediation": [
+      {"code": "check_cross_signing", "text": "Check how these certificates were issued; a cycle usually means certificates that signed each other are both included."}
+    ]
+  },
+  "chain.path_limit_reached": {
+    "title": "Not all certification paths were built",
+    "explanation": "This input allows more certification paths, or longer ones, than Trustsmith builds for one inspection. The paths shown are incomplete, not a full list.",
+    "remediation": [
+      {"code": "split_input", "text": "Inspect a smaller bundle that contains only the certificates of interest."}
+    ]
+  },
   "issuer.candidates_not_checked": {
     "title": "Some possible issuers were not checked",
     "explanation": "This input contains more possible issuer certificates than Trustsmith checks for one certificate or for one input, so some were not checked. The issuer information shown for this certificate is incomplete, not absent.",

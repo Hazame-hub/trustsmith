@@ -20,8 +20,14 @@ experts, without taking the advanced path away from those who are.
 - **Issuer relationships inside the input:** for a bundle, which certificate's
   key verifies which certificate's signature, and which matching certificates
   could not be confirmed ([ADR-0004](docs/adr/0004-issuer-relationships.md)).
-  This is a signature check only; it does not mean the certificates are
-  trusted or that the chain is valid.
+  This is a signature check only; it is not a trust decision.
+- **Certification paths inside the input:** the paths those verified
+  relationships form, and whether the issuers along them are CA certificates
+  allowed to sign certificates (basic constraints, key usage, path length),
+  plus the validity of every certificate on the path
+  ([ADR-0005](docs/adr/0005-included-certification-paths.md)). A path that
+  reaches a self-signed certificate is "complete in this input", which is not
+  the same as trusted: no certificate is used as a trust anchor.
 - **Fingerprints** follow [ADR-0002](docs/adr/0002-public-key-identity.md):
   `x509-cert-sha256` for the certificate, `x509-spki-sha256` (a canonical,
   cross-file key identity), and `x509-spki-encoded-sha256` (the key as encoded,
@@ -39,9 +45,9 @@ $ trustsmith inspect --output json cert.der
 $ cat bundle.pem | trustsmith inspect -
 ```
 
-Not yet supported: trust anchors and chain validation (the chain is always
-reported as "not checked"), private keys, CSRs, PKCS#12, TLS endpoint probing,
-and public WebPKI policy checks.
+Not yet supported: trust anchors and chain validation (trust is always
+reported as "not evaluated"), name and policy constraints, revocation, private
+keys, CSRs, PKCS#12, TLS endpoint probing, and public WebPKI policy checks.
 
 ### Exit codes
 
@@ -70,6 +76,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0002: certificate and public-key identity](docs/adr/0002-public-key-identity.md)
 - [ADR-0003: findings, inspect output and exit codes](docs/adr/0003-findings.md)
 - [ADR-0004: issuer relationships inside one input](docs/adr/0004-issuer-relationships.md)
+- [ADR-0005: structural certification paths inside one input](docs/adr/0005-included-certification-paths.md)
 
 ## License
 

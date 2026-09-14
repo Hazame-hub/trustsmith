@@ -44,3 +44,13 @@ const (
 	IssuerCandidateUnverifiable Code = "issuer.candidate_unverifiable"
 	IssuerCandidatesNotChecked  Code = "issuer.candidates_not_checked"
 )
+
+// Structural certification paths inside the input (never trust).
+const (
+	ChainIssuerNotCA           Code = "chain.issuer_not_ca"
+	ChainIssuerKeyUsage        Code = "chain.issuer_key_usage"
+	ChainPathLengthExceeded    Code = "chain.path_length_exceeded"
+	ChainStructureNotEvaluated Code = "chain.structure_not_evaluated"
+	ChainCycle                 Code = "chain.cycle"
+	ChainPathLimitReached      Code = "chain.path_limit_reached"
+)

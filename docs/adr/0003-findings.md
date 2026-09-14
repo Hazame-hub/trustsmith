@@ -62,6 +62,8 @@ Codes in this revision:
 | `key.noncanonical_spki` | warning | KeyID exists but the key is encoded non-canonically |
 | `key.unsupported_for_identity` | info | the key has no ADR-0002 identity |
 | `name.cn_only_no_san` | warning | non-CA certificate named only by Common Name |
+| `issuer.candidate_unverifiable` | info | a matching certificate in the input could not check this signature, and none verified (ADR-0004) |
+| `issuer.candidates_not_checked` | info | issuer-candidate limits were reached; issuer information is incomplete (ADR-0004) |
 
 ### Semantics this revision commits to
 
@@ -71,24 +73,27 @@ Codes in this revision:
   limit is applied to any certificate. A later WebPKI policy uses its own
   `webpki.*` codes, driven by effective-date data, and only when requested
   explicitly.
-- **No issuer relationship is asserted.**
-  - The summary reports the issuer name as stated in the certificate, labelled
-    as not verified.
-  - Chain verification does not exist yet, so the chain is always reported as
-    `not_checked`.
+- **Issuer relationships are signature checks inside the input only**
+  (ADR-0004).
+  - The summary reports the issuer name as stated in the certificate, plus what
+    the input shows about it (`issuer_in_input`).
+  - No trust, CA validity or chain validity is asserted. Chain verification does
+    not exist yet, so the chain is always reported as `not_checked`.
 - **Self-signature is a cryptographic fact.** It is computed with
   `Certificate.CheckSignature` over the certificate's own key:
-  - The result is `verified`, `failed` or `unverifiable`.
+  - The result is `verified`, `does_not_verify` or `unverifiable`.
   - Go still accepts SHA-1 signatures in `CheckSignature`, so a SHA-1
     self-signature can be `verified`; `sig.sha1` flags the algorithm.
-  - Go refuses MD5, so an MD5 self-signature is `unverifiable`, never `failed`.
+  - Go refuses MD5, so an MD5 self-signature is `unverifiable`, never `does_not_verify`.
 
 ### JSON output: `trustsmith.inspect/v1`
 
 - **The schema is its own set of types in `internal/cli/render_json.go`.**
   Internal structs are never serialised.
 - **Top-level fields:** `schema`, `inspected_at`, `input`, `overview`,
-  `artifacts`, `findings`.
+  `artifacts`, `relationships`, `findings`. `relationships` and the summary
+  fields `issuer_in_input`, `verified_issuer_entries` and
+  `candidate_issuer_entries` were added compatibly within v1 (ADR-0004).
 - **Fingerprints** are keyed by ADR-0002 scheme name. A missing key identity is
   `null`.
 - **Findings** include the rendered catalog text and codes. Their `entry` is

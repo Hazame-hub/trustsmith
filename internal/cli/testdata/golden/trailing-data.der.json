@@ -46,7 +46,10 @@
         },
         "key": "ECDSA P-256",
         "signature": "ECDSA-SHA256",
-        "chain": "not_checked"
+        "chain": "not_checked",
+        "issuer_in_input": "no_candidate_found",
+        "verified_issuer_entries": [],
+        "candidate_issuer_entries": []
       },
       "technical": {
         "version": 3,
@@ -119,6 +122,7 @@
       }
     }
   ],
+  "relationships": [],
   "findings": [
     {
       "code": "input.trailing_data",

@@ -8,20 +8,24 @@ import (
 
 	"github.com/Hazame-hub/trustsmith/internal/app/inspectsvc"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
+	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
 )
 
 // inspectSchema versions the JSON contract below. The types in this file are
-// that contract; internal Go structures are never serialised directly.
+// that contract; internal Go structures are never serialised directly. Fields
+// may be added within v1; renaming, removing or changing the meaning of one
+// requires v2.
 const inspectSchema = "trustsmith.inspect/v1"
 
 type jsonInspect struct {
-	Schema      string         `json:"schema"`
-	InspectedAt string         `json:"inspected_at"`
-	Input       jsonInput      `json:"input"`
-	Overview    jsonOverview   `json:"overview"`
-	Artifacts   []jsonArtifact `json:"artifacts"`
-	Findings    []jsonFinding  `json:"findings"`
+	Schema        string             `json:"schema"`
+	InspectedAt   string             `json:"inspected_at"`
+	Input         jsonInput          `json:"input"`
+	Overview      jsonOverview       `json:"overview"`
+	Artifacts     []jsonArtifact     `json:"artifacts"`
+	Relationships []jsonRelationship `json:"relationships"`
+	Findings      []jsonFinding      `json:"findings"`
 }
 
 type jsonInput struct {
@@ -72,6 +76,11 @@ type jsonSummary struct {
 	Key            string       `json:"key"`
 	Signature      string       `json:"signature"`
 	Chain          string       `json:"chain"`
+	// IssuerInInput summarises the certificate_issuer relationships of this
+	// certificate: signature checks inside this input, never trust.
+	IssuerInInput          string `json:"issuer_in_input"`
+	VerifiedIssuerEntries  []int  `json:"verified_issuer_entries"`
+	CandidateIssuerEntries []int  `json:"candidate_issuer_entries"`
 }
 
 type jsonValidity struct {
@@ -136,6 +145,26 @@ type jsonExtension struct {
 	Name     string `json:"name,omitempty"`
 }
 
+// jsonRelationship is a certificate_issuer relationship: the candidate has
+// naming or key-identifier evidence of having issued the child, and state is
+// the result of checking the child's signature with the candidate's key
+// (verified, does_not_verify, unverifiable or not_checked). A relationship that
+// does not verify says nothing about the candidate certificate itself, and a
+// verified one never means trusted.
+type jsonRelationship struct {
+	Type      string             `json:"type"`
+	Child     jsonCertificateRef `json:"child"`
+	Candidate jsonCertificateRef `json:"candidate"`
+	Evidence  []string           `json:"evidence"`
+	State     string             `json:"state"`
+	Reason    string             `json:"reason,omitempty"` // stable code; engine messages are never part of the contract
+}
+
+type jsonCertificateRef struct {
+	Fingerprint string `json:"x509-cert-sha256"`
+	Entries     []int  `json:"entries"`
+}
+
 type jsonFinding struct {
 	Code        string         `json:"code"`
 	Severity    string         `json:"severity"`
@@ -168,8 +197,9 @@ func renderJSON(w io.Writer, res inspectsvc.Result) error {
 			Artifacts: len(res.Artifacts), Findings: len(res.Findings),
 			HighestSeverity: string(res.Highest),
 		},
-		Artifacts: []jsonArtifact{},
-		Findings:  []jsonFinding{},
+		Artifacts:     []jsonArtifact{},
+		Relationships: []jsonRelationship{},
+		Findings:      []jsonFinding{},
 	}
 	if doc.Overview.HighestSeverity == "" {
 		doc.Overview.HighestSeverity = "none"
@@ -179,6 +209,9 @@ func renderJSON(w io.Writer, res inspectsvc.Result) error {
 			doc.Overview.Certificates++
 		}
 		doc.Artifacts = append(doc.Artifacts, artifactJSON(a))
+	}
+	for _, r := range res.Relationships {
+		doc.Relationships = append(doc.Relationships, relationshipJSON(r))
 	}
 	for _, f := range res.Findings {
 		doc.Findings = append(doc.Findings, findingJSON(f))
@@ -205,6 +238,9 @@ func artifactJSON(a inspectsvc.Artifact) jsonArtifact {
 				NotAfter: stamp(s.Validity.NotAfter), DaysRemaining: s.Validity.DaysRemaining,
 			},
 			Key: s.Key, Signature: s.Signature, Chain: string(s.Chain),
+			IssuerInInput:          string(s.IssuerInInput),
+			VerifiedIssuerEntries:  intsOrEmpty(s.VerifiedIssuerEntries),
+			CandidateIssuerEntries: intsOrEmpty(s.CandidateEntries),
 		}
 		out.Technical = technicalJSON(c)
 	case a.Unparseable != nil:
@@ -225,6 +261,21 @@ func identityJSON(id x509facts.Identity) (*jsonFingerprints, *jsonKeyIdentity) {
 		fp.KeyID = &keyID
 	}
 	return fp, &jsonKeyIdentity{Status: string(id.KeyIdentity), Detail: id.KeyIdentityDetail}
+}
+
+func relationshipJSON(r issuerlinks.Relationship) jsonRelationship {
+	out := jsonRelationship{
+		Type:      "certificate_issuer",
+		Child:     jsonCertificateRef{Fingerprint: r.Child.Hex(), Entries: intsOrEmpty(r.ChildEntries)},
+		Candidate: jsonCertificateRef{Fingerprint: r.Candidate.Hex(), Entries: intsOrEmpty(r.CandidateEntries)},
+		Evidence:  []string{},
+		State:     string(r.State),
+		Reason:    string(r.Reason),
+	}
+	for _, e := range r.Evidence {
+		out.Evidence = append(out.Evidence, string(e))
+	}
+	return out
 }
 
 func technicalJSON(c *x509facts.Certificate) *jsonTechnical {
@@ -279,6 +330,13 @@ func findingJSON(f findings.Finding) jsonFinding {
 func orEmpty(s []string) []string {
 	if s == nil {
 		return []string{}
+	}
+	return s
+}
+
+func intsOrEmpty(s []int) []int {
+	if s == nil {
+		return []int{}
 	}
 	return s
 }

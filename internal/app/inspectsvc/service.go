@@ -13,8 +13,9 @@ import (
 
 	"github.com/Hazame-hub/trustsmith/internal/artifact"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
-	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
+	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
+	"github.com/Hazame-hub/trustsmith/internal/sigcheck"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
 )
 
@@ -64,21 +65,26 @@ type Result struct {
 	Artifacts   []Artifact
 	Findings    []findings.Finding // whole-input first, then by entry, severity (highest first) and code
 	Highest     findings.Severity  // empty when there are no findings
-	// InternalErrors counts entries whose inspection panicked and was
-	// recovered. It is always zero unless Trustsmith has a bug; tests and
-	// fuzzing assert it.
-	InternalErrors int
+	// Relationships are the issuer relationships between certificates of this
+	// input: signature checks only, never trust.
+	Relationships []issuerlinks.Relationship
+	// RecoveredPanics counts panics contained at the untrusted-input
+	// boundaries: the standard-library X.509 parser and the signature
+	// verification engine. It is always zero unless one of them has a bug;
+	// tests and fuzzing assert it. Panics anywhere else are not recovered.
+	RecoveredPanics int
 }
 
 // Service inspects certificates.
 type Service struct {
 	now        func() time.Time
 	thresholds interpret.Thresholds
+	limits     issuerlinks.Limits
 }
 
 // New returns a service that reads the inspection time from now.
 func New(now func() time.Time) *Service {
-	return &Service{now: now, thresholds: interpret.DefaultThresholds()}
+	return &Service{now: now, thresholds: interpret.DefaultThresholds(), limits: issuerlinks.DefaultLimits()}
 }
 
 // InspectFile inspects the file at path.
@@ -110,7 +116,8 @@ func (s *Service) InspectReader(src Source, r io.Reader) (Result, error) {
 	return s.InspectBytes(src, data)
 }
 
-// InspectBytes inspects data.
+// InspectBytes inspects data: frame the input, parse every certificate,
+// resolve issuer relationships among them, then interpret each entry.
 func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 	decoded, err := artifact.Decode(data)
 	if err != nil {
@@ -126,15 +133,55 @@ func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 		Findings:    []findings.Finding{},
 	}
 
+	parsed := make([]*x509facts.Parsed, len(decoded.Blocks))
+	var inputs []issuerlinks.Input
 	certificates := 0
-	for _, b := range decoded.Blocks {
-		a, entry, recovered := s.inspectBlock(b, now)
-		if recovered {
-			res.InternalErrors++
+	for i, b := range decoded.Blocks {
+		if b.Kind != artifact.KindCertificate {
+			continue
 		}
-		if a.Type == TypeCertificate || a.Type == TypeUnparseableCertificate {
+		p := x509facts.FromDER(b.DER)
+		parsed[i] = &p
+		if p.ParserPanicked {
+			res.RecoveredPanics++
+		}
+		if p.Kind != x509facts.KindCertificateRequest {
 			certificates++
 		}
+		if c := p.Certificate; c != nil {
+			if c.SelfSignatureReason == sigcheck.ReasonEnginePanic {
+				res.RecoveredPanics++
+			}
+			inputs = append(inputs, issuerlinks.Input{Entry: b.Entry, Certificate: c})
+		}
+	}
+
+	links := issuerlinks.Resolve(inputs, s.limits)
+	res.Relationships = links.Relationships
+	res.RecoveredPanics += links.EnginePanics
+
+	for i, b := range decoded.Blocks {
+		a := Artifact{Entry: b.Entry, Label: b.Label, Offset: b.Offset, Problem: b.Problem}
+		var issuers interpret.Issuers
+		switch b.Kind {
+		case artifact.KindMalformed:
+			a.Type = TypeMalformed
+		case artifact.KindUnsupported:
+			a.Type = TypeUnsupported
+		case artifact.KindCertificate:
+			switch p := parsed[i]; p.Kind {
+			case x509facts.KindCertificate:
+				a.Type, a.Certificate = TypeCertificate, p.Certificate
+				fp := p.Certificate.Fingerprint
+				issuers = interpret.Issuers{Relationships: links.For(fp), CandidatesOmitted: links.CandidatesOmitted[fp]}
+			case x509facts.KindUnparseable:
+				a.Type, a.Unparseable = TypeUnparseableCertificate, p.Unparseable
+			case x509facts.KindCertificateRequest:
+				a.Type = TypeCertificateRequest
+			}
+		}
+		entry := interpret.Block(b, parsed[i], issuers, now, s.thresholds)
+		a.Summary = entry.Summary
 		res.Artifacts = append(res.Artifacts, a)
 		res.Findings = append(res.Findings, entry.Findings...)
 	}
@@ -147,54 +194,6 @@ func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 		}
 	}
 	return res, nil
-}
-
-// inspectBlock parses and interprets one block. A panic inside is converted
-// into an unparseable-certificate result instead of crashing the process, and
-// reported through recovered so it can never pass unnoticed.
-func (s *Service) inspectBlock(b artifact.Block, now time.Time) (a Artifact, entry interpret.Entry, recovered bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			const reason = "internal error while inspecting this entry"
-			recovered = true
-			a = Artifact{Entry: b.Entry, Type: TypeUnparseableCertificate, Label: b.Label, Offset: b.Offset,
-				Unparseable: &x509facts.Unparseable{
-					Identity: x509facts.Identity{
-						Fingerprint:       fingerprint.CertFromDER(b.DER),
-						KeyIdentity:       x509facts.KeyIdentityUnavailable,
-						KeyIdentityDetail: reason,
-					},
-					ParseError: reason,
-				}}
-			entry = interpret.Entry{Findings: []findings.Finding{{
-				Code: findings.InputUnparseableCertificate, Severity: findings.SeverityCritical, Entry: b.Entry,
-				Evidence: []findings.Evidence{{Key: "parse_error", Value: reason}},
-			}}}
-		}
-	}()
-
-	a = Artifact{Entry: b.Entry, Label: b.Label, Offset: b.Offset, Problem: b.Problem}
-	var parsed *x509facts.Parsed
-	switch b.Kind {
-	case artifact.KindMalformed:
-		a.Type = TypeMalformed
-	case artifact.KindUnsupported:
-		a.Type = TypeUnsupported
-	case artifact.KindCertificate:
-		p := x509facts.FromDER(b.DER)
-		parsed = &p
-		switch p.Kind {
-		case x509facts.KindCertificate:
-			a.Type, a.Certificate = TypeCertificate, p.Certificate
-		case x509facts.KindUnparseable:
-			a.Type, a.Unparseable = TypeUnparseableCertificate, p.Unparseable
-		case x509facts.KindCertificateRequest:
-			a.Type = TypeCertificateRequest
-		}
-	}
-	entry = interpret.Block(b, parsed, now, s.thresholds)
-	a.Summary = entry.Summary
-	return a, entry, false
 }
 
 func compareFindings(x, y findings.Finding) int {

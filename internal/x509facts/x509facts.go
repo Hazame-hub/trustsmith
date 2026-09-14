@@ -1,5 +1,7 @@
 // Package x509facts describes what a certificate's bytes contain. It never
-// decides whether something is good or bad; that is interpret's job.
+// decides whether something is good or bad; that is interpret's job. It
+// describes one certificate at a time: relationships between certificates
+// belong to issuerlinks.
 //
 // When Go's X.509 parser rejects a certificate, the package still locates the
 // SubjectPublicKeyInfo structurally so both public-key fingerprints can be
@@ -24,6 +26,7 @@ import (
 	cbasn1 "golang.org/x/crypto/cryptobyte/asn1"
 
 	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
+	"github.com/Hazame-hub/trustsmith/internal/sigcheck"
 )
 
 // Kind is what a certificate-framed DER object turned out to be.
@@ -51,10 +54,10 @@ const (
 type SignatureCheck string
 
 const (
-	SignatureNotApplicable SignatureCheck = "not_applicable" // issuer and subject differ
-	SignatureVerified      SignatureCheck = "verified"
-	SignatureFailed        SignatureCheck = "failed"
-	SignatureUnverifiable  SignatureCheck = "unverifiable" // e.g. SHA-1, which Go refuses to verify
+	SignatureNotApplicable SignatureCheck = "not_applicable"  // not self-issued: issuer and subject names differ
+	SignatureVerified      SignatureCheck = "verified"        // self-signed
+	SignatureDoesNotVerify SignatureCheck = "does_not_verify" // self-issued, but its own key does not verify the signature
+	SignatureUnverifiable  SignatureCheck = "unverifiable"    // the engine could not decide (e.g. MD5)
 )
 
 // Identity holds the fingerprints of a certificate-framed object.
@@ -124,11 +127,19 @@ type Certificate struct {
 	IssuingCertificateURLs []string
 	PolicyOIDs             []string
 
-	// SelfIssued: subject and issuer names are byte-identical. Only
-	// SelfSignature says whether the certificate is signed by its own key.
+	// SelfIssued: subject and issuer names are byte-identical. That is a
+	// naming fact only; SelfSignature says whether the certificate is signed
+	// by its own key (self-signed). The check is made for self-issued
+	// certificates, following RFC 5280's definition of self-signed.
 	SelfIssued          bool
 	SelfSignature       SignatureCheck
+	SelfSignatureReason sigcheck.Reason
 	SelfSignatureDetail string
+
+	// Parsed is the standard library's parse of the certificate, kept so
+	// signature relationships can be checked against the exact signed bytes.
+	// It is never serialised.
+	Parsed *x509.Certificate
 }
 
 // Unparseable is what can be said about a certificate Go could not parse.
@@ -143,21 +154,60 @@ type Parsed struct {
 	Kind        Kind
 	Certificate *Certificate
 	Unparseable *Unparseable
+	// ParserPanicked reports that the standard-library parser panicked on
+	// this input and the panic was contained. It is always false unless the
+	// parser has a bug; tests and fuzzing assert it.
+	ParserPanicked bool
 }
+
+// The standard-library parsers are variables only so tests can prove the
+// panic boundary below.
+var (
+	parseCertificate        = x509.ParseCertificate
+	parseCertificateRequest = x509.ParseCertificateRequest
+)
+
+const parserPanicMessage = "the X.509 parser failed unexpectedly on this input"
 
 // FromDER reads a DER object that was framed as a certificate.
 func FromDER(der []byte) Parsed {
-	cert, err := x509.ParseCertificate(der)
+	cert, panicked, err := parse(func() (*x509.Certificate, error) { return parseCertificate(der) })
+	if panicked {
+		return unparseable(der, parserPanicMessage, true)
+	}
 	if err != nil {
-		if _, csrErr := x509.ParseCertificateRequest(der); csrErr == nil {
+		_, csrPanicked, csrErr := parse(func() (*x509.CertificateRequest, error) { return parseCertificateRequest(der) })
+		if csrPanicked {
+			return unparseable(der, parserPanicMessage, true)
+		}
+		if csrErr == nil {
 			return Parsed{Kind: KindCertificateRequest}
 		}
-		return Parsed{Kind: KindUnparseable, Unparseable: &Unparseable{
-			Identity:   identify(der, locateSPKI(der)),
-			ParseError: err.Error(),
-		}}
+		return unparseable(der, err.Error(), false)
 	}
 	return Parsed{Kind: KindCertificate, Certificate: fromCertificate(cert)}
+}
+
+// parse is the recovery boundary around the standard-library parsers, which
+// consume attacker-controlled bytes. Nothing else in this package recovers:
+// a panic in Trustsmith's own code must surface as a bug.
+func parse[T any](call func() (T, error)) (value T, panicked bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			var zero T
+			value, panicked, err = zero, true, nil
+		}
+	}()
+	value, err = call()
+	return value, false, err
+}
+
+func unparseable(der []byte, parseError string, panicked bool) Parsed {
+	return Parsed{
+		Kind:           KindUnparseable,
+		Unparseable:    &Unparseable{Identity: identify(der, locateSPKI(der)), ParseError: parseError},
+		ParserPanicked: panicked,
+	}
 }
 
 func fromCertificate(cert *x509.Certificate) *Certificate {
@@ -180,6 +230,7 @@ func fromCertificate(cert *x509.Certificate) *Certificate {
 		OCSPServers:            cert.OCSPServer,
 		IssuingCertificateURLs: cert.IssuingCertificateURL,
 		SelfIssued:             bytes.Equal(cert.RawSubject, cert.RawIssuer),
+		Parsed:                 cert,
 	}
 
 	for bit := x509.KeyUsageDigitalSignature; bit <= x509.KeyUsageDecipherOnly; bit <<= 1 {
@@ -216,15 +267,15 @@ func fromCertificate(cert *x509.Certificate) *Certificate {
 
 	c.SelfSignature = SignatureNotApplicable
 	if c.SelfIssued {
-		err := cert.CheckSignature(cert.SignatureAlgorithm, cert.RawTBSCertificate, cert.Signature)
-		var insecure x509.InsecureAlgorithmError
-		switch {
-		case err == nil:
+		result := sigcheck.Certificate(cert, cert)
+		c.SelfSignatureReason, c.SelfSignatureDetail = result.Reason, result.Detail
+		switch result.State {
+		case sigcheck.Verified:
 			c.SelfSignature = SignatureVerified
-		case errors.As(err, &insecure), errors.Is(err, x509.ErrUnsupportedAlgorithm):
-			c.SelfSignature, c.SelfSignatureDetail = SignatureUnverifiable, err.Error()
+		case sigcheck.DoesNotVerify:
+			c.SelfSignature = SignatureDoesNotVerify
 		default:
-			c.SelfSignature, c.SelfSignatureDetail = SignatureFailed, err.Error()
+			c.SelfSignature = SignatureUnverifiable
 		}
 	}
 	return c

@@ -41,16 +41,25 @@ const rfc8410TestKey = "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEINTuctv
 
 func main() {
 	out := flag.String("out", filepath.Join("testdata", "certs"), "output directory")
+	force := flag.Bool("force", false, "rewrite existing fixtures (changes their fingerprints and every golden)")
 	flag.Parse()
 	if err := os.MkdirAll(*out, 0o755); err != nil {
 		log.Fatal(err)
 	}
 	files := map[string]string{} // name -> description
+	written := 0
+	// write keeps committed fixtures unless -force: signatures are
+	// randomised, so rewriting one changes its fingerprint and its goldens.
 	write := func(name, description string, data []byte) {
-		if err := os.WriteFile(filepath.Join(*out, name), data, 0o644); err != nil {
+		files[name] = description
+		path := filepath.Join(*out, name)
+		if _, err := os.Stat(path); err == nil && !*force {
+			return
+		}
+		if err := os.WriteFile(path, data, 0o644); err != nil {
 			log.Fatal(err)
 		}
-		files[name] = description
+		written++
 	}
 	pemOf := func(ders ...[]byte) []byte {
 		var b []byte
@@ -153,6 +162,8 @@ func main() {
 	write("x25519-key.pem", "certificate for an X25519 key (no ADR-0002 key identity)",
 		pemOf(testpki.Resign(f, odd.DER, xspki, testpki.ECDSAWithSHA256, inter.Key)))
 
+	relationshipFixtures(*out, write, pemOf)
+
 	names := make([]string, 0, len(files))
 	for n := range files {
 		names = append(names, n)
@@ -164,6 +175,8 @@ func main() {
 	for _, n := range names {
 		fmt.Fprintf(&readme, "| `%s` | %s |\n", n, files[n])
 	}
-	write("README.md", "", []byte(readme.String()))
-	fmt.Printf("wrote %d fixtures to %s\n", len(names)-1, *out)
+	if err := os.WriteFile(filepath.Join(*out, "README.md"), []byte(readme.String()), 0o644); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("corpus has %d fixtures; wrote %d to %s\n", len(names), written, *out)
 }

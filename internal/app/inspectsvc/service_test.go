@@ -26,8 +26,9 @@ func service() *inspectsvc.Service {
 }
 
 type expectation struct {
-	types    []inspectsvc.ArtifactType
-	findings []string // "entry:code:severity", entry -1 for the whole input
+	types         []inspectsvc.ArtifactType
+	findings      []string // "entry:code:severity", entry -1 for the whole input
+	relationships []string // "[child entries]->[candidate entries]:state"
 }
 
 const (
@@ -44,9 +45,9 @@ var corpusExpectations = map[string]expectation{
 	"root-ca.pem":                 {types: []inspectsvc.ArtifactType{cert}},
 	"leaf.pem":                    {types: []inspectsvc.ArtifactType{cert}},
 	"leaf.der":                    {types: []inspectsvc.ArtifactType{cert}},
-	"bundle.pem":                  {types: []inspectsvc.ArtifactType{cert, cert, cert}},
+	"bundle.pem":                  {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[0]->[1]:verified", "[1]->[2]:verified"}},
 	"client.pem":                  {types: []inspectsvc.ArtifactType{cert}},
-	"bundle-with-bad-block.pem":   {types: []inspectsvc.ArtifactType{cert, malformed, cert}, findings: []string{"1:input.malformed_pem:critical"}},
+	"bundle-with-bad-block.pem":   {types: []inspectsvc.ArtifactType{cert, malformed, cert}, findings: []string{"1:input.malformed_pem:critical"}, relationships: []string{"[0]->[2]:verified"}},
 	"bundle-with-private-key.pem": {types: []inspectsvc.ArtifactType{cert, unsupported}, findings: []string{"1:input.unsupported_format:warning"}},
 	"private-key-only.pem":        {types: []inspectsvc.ArtifactType{unsupported}, findings: []string{"-1:input.no_certificates:critical", "0:input.unsupported_format:warning"}},
 	"text-around.pem":             {types: []inspectsvc.ArtifactType{cert}, findings: []string{"-1:input.trailing_data:info", "-1:input.trailing_data:info"}},
@@ -65,6 +66,32 @@ var corpusExpectations = map[string]expectation{
 	"md5.pem":                     {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:sig.md5:critical"}},
 	"noncanonical-rsa-key.pem":    {types: []inspectsvc.ArtifactType{unparseable}, findings: []string{"0:input.unparseable_certificate:critical", "0:key.noncanonical_spki:warning"}},
 	"x25519-key.pem":              {types: []inspectsvc.ArtifactType{cert}, findings: []string{"0:key.unsupported_for_identity:info"}},
+
+	// Issuer relationships inside one input.
+	"bundle-reversed.pem":               {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[1]->[0]:verified", "[2]->[1]:verified"}},
+	"bundle-duplicate.pem":              {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[0 2]->[1]:verified"}},
+	"issuer-name-match-wrong-key.pem":   {types: []inspectsvc.ArtifactType{cert, cert}, relationships: []string{"[0]->[1]:does_not_verify"}},
+	"issuer-key-id-match-wrong-key.pem": {types: []inspectsvc.ArtifactType{cert, cert}, relationships: []string{"[0]->[1]:does_not_verify"}},
+	"sha1-with-issuer.pem":              {types: []inspectsvc.ArtifactType{cert, cert}, findings: []string{"0:sig.sha1:critical"}, relationships: []string{"[0]->[1]:verified"}},
+	"md5-with-issuer.pem":               {types: []inspectsvc.ArtifactType{cert, cert}, findings: []string{"0:sig.md5:critical", "0:issuer.candidate_unverifiable:info"}, relationships: []string{"[0]->[1]:unverifiable"}},
+	"self-issued-not-self-signed.pem":   {types: []inspectsvc.ArtifactType{cert}},
+	"reissued-intermediates.pem":        {types: []inspectsvc.ArtifactType{cert, cert, cert}, relationships: []string{"[0]->[1]:verified", "[0]->[2]:verified"}},
+}
+
+// relationshipKeys renders relationships as "[child entries]->[candidate entries]:state".
+func relationshipKeys(res inspectsvc.Result) []string {
+	join := func(v []int) string {
+		parts := make([]string, len(v))
+		for i, n := range v {
+			parts[i] = strconv.Itoa(n)
+		}
+		return "[" + strings.Join(parts, " ") + "]"
+	}
+	out := []string{}
+	for _, r := range res.Relationships {
+		out = append(out, join(r.ChildEntries)+"->"+join(r.CandidateEntries)+":"+string(r.State))
+	}
+	return out
 }
 
 func corpusFiles(t *testing.T) []string {
@@ -163,13 +190,20 @@ func TestCorpus(t *testing.T) {
 			if got := findingKeys(res.Findings); !slices.Equal(got, wantFindings) {
 				t.Errorf("findings %v, want %v", got, wantFindings)
 			}
+			wantRelationships := want.relationships
+			if wantRelationships == nil {
+				wantRelationships = []string{}
+			}
+			if got := relationshipKeys(res); !slices.Equal(got, wantRelationships) {
+				t.Errorf("relationships %v, want %v", got, wantRelationships)
+			}
 			for _, f := range res.Findings {
 				if _, ok := findings.Describe(f.Code); !ok {
 					t.Errorf("uncatalogued code %s", f.Code)
 				}
 			}
-			if res.InternalErrors != 0 {
-				t.Errorf("recovered %d internal errors", res.InternalErrors)
+			if res.RecoveredPanics != 0 {
+				t.Errorf("recovered %d internal errors", res.RecoveredPanics)
 			}
 
 			again, err := svc.InspectFile(filepath.Join(corpus, name))
@@ -302,8 +336,8 @@ func FuzzInspectBytes(f *testing.F) {
 			}
 			return
 		}
-		if res.InternalErrors != 0 {
-			t.Fatalf("pipeline recovered from %d panics", res.InternalErrors)
+		if res.RecoveredPanics != 0 {
+			t.Fatalf("pipeline recovered from %d panics", res.RecoveredPanics)
 		}
 		for _, f := range res.Findings {
 			if _, ok := findings.Describe(f.Code); !ok {

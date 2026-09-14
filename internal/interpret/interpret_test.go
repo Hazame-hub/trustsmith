@@ -50,7 +50,7 @@ func certBlock(der []byte) artifact.Block {
 // catalogued.
 func inspect(t *testing.T, der []byte, now time.Time) interpret.Entry {
 	t.Helper()
-	e := interpret.Block(certBlock(der), parsed(t, der), now, th)
+	e := interpret.Block(certBlock(der), parsed(t, der), interpret.Issuers{}, now, th)
 	assertCatalogued(t, e.Findings)
 	return e
 }
@@ -168,7 +168,7 @@ func TestSelfSigned(t *testing.T) {
 		root := testpki.Issue(t, caTemplate("Root"), testpki.ECDSAKey(t), nil)
 		e := inspect(t, root.DER, now)
 		assertCodes(t, e.Findings)
-		if e.Summary.Kind != "Root certificate authority" || !slices.Contains(e.Summary.Purposes, "ca") {
+		if e.Summary.Kind != "Self-signed CA certificate" || !slices.Contains(e.Summary.Purposes, "ca") {
 			t.Errorf("kind %q purposes %v", e.Summary.Kind, e.Summary.Purposes)
 		}
 	})
@@ -263,7 +263,7 @@ func TestSummaryKinds(t *testing.T) {
 		kind     string
 		purposes []string
 	}{
-		{inter.DER, "Intermediate certificate authority", []string{"ca"}},
+		{inter.DER, "CA certificate", []string{"ca"}},
 		{withEKU(x509.ExtKeyUsageServerAuth), "TLS server certificate", []string{"tls_server"}},
 		{withEKU(x509.ExtKeyUsageClientAuth), "TLS client certificate", []string{"tls_client"}},
 		{withEKU(x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth), "TLS server and client certificate", []string{"tls_server", "tls_client"}},
@@ -315,13 +315,13 @@ func TestBlockProblems(t *testing.T) {
 		{"unsupported DER", artifact.Block{Kind: artifact.KindUnsupported}, "input.unsupported_format:warning"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			e := interpret.Block(tc.block, nil, now, th)
+			e := interpret.Block(tc.block, nil, interpret.Issuers{}, now, th)
 			assertCatalogued(t, e.Findings)
 			assertCodes(t, e.Findings, tc.want)
 		})
 	}
 
-	e := interpret.Block(artifact.Block{Kind: artifact.KindUnsupported, Label: "PRIVATE KEY"}, nil, now, th)
+	e := interpret.Block(artifact.Block{Kind: artifact.KindUnsupported, Label: "PRIVATE KEY"}, nil, interpret.Issuers{}, now, th)
 	if evidence(e.Findings[0], "pem_label") != "PRIVATE KEY" {
 		t.Errorf("label evidence %+v", e.Findings[0].Evidence)
 	}
@@ -331,7 +331,7 @@ func TestBlockProblems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	csrEntry := interpret.Block(artifact.Block{Kind: artifact.KindCertificate}, parsed(t, csr), now, th)
+	csrEntry := interpret.Block(artifact.Block{Kind: artifact.KindCertificate}, parsed(t, csr), interpret.Issuers{}, now, th)
 	assertCodes(t, csrEntry.Findings, "input.unsupported_format:warning")
 }
 

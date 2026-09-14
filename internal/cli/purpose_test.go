@@ -80,6 +80,8 @@ var purposeGoldens = []struct {
 	{"purpose-client-as-tls-server", []string{"testdata/certs/client.pem", "--purpose", "tls-server"}},
 	{"purpose-code-signing", []string{"testdata/certs/purpose-code-signing.pem", "--purpose", "code-signing"}},
 	{"purpose-email", []string{"testdata/certs/purpose-email.pem", "--purpose", "email"}},
+	{"purpose-any-eku-tls-server", []string{"testdata/certs/purpose-any-eku.pem", "--purpose", "tls-server"}},
+	{"purpose-no-eku-tls-server", []string{"testdata/certs/purpose-no-eku.pem", "--purpose", "tls-server"}},
 	{"purpose-bundle-tls-server-roots", []string{"testdata/certs/bundle.pem", "--purpose", "tls-server", "--roots", "testdata/roots/test-root.pem"}},
 	{"purpose-bundle-tls-client-roots", []string{"testdata/certs/bundle.pem", "--purpose", "tls-client", "--roots", "testdata/roots/test-root.pem"}},
 	{"purpose-intermediate-restriction", []string{"testdata/certs/purpose-server-only-intermediate.pem", "--purpose", "tls-client", "--roots", "testdata/roots/purpose-root.pem"}},

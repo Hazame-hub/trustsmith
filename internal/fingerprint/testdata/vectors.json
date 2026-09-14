@@ -1,0 +1,16 @@
+{
+  "adr": "ADR-0002",
+  "generated_with": "OpenSSL 3.5.7",
+  "positive": [
+    {"name": "rsa-2048", "source": "RFC 9500 testRSA2048", "key_id": "8fb6bad671cfe698393c453357da61b56d757ab8c0f3fb9c87f2849e63131878", "cert_sha256": "7a104ac5281747210019c96e38505d718456092b76194f3a990149936a149719", "pin_sha256": "j7a61nHP5pg5PEUzV9phtW11erjA8/uch/KEnmMTGHg="},
+    {"name": "ecdsa-p256", "source": "RFC 9500 testECCP256", "key_id": "b2b04340cfaee616ec9c2c62d261b208e54bb197498df52e8cadede23ac0ba5e", "cert_sha256": "349ccf1f331c25dd3d4cad1446a7a4701783f0298c21389c21d09df000fb6e3f", "pin_sha256": "srBDQM+u5hbsnCxi0mGyCOVLsZdJjfUujK3t4jrAul4="},
+    {"name": "ed25519", "source": "RFC 8410 section 10.3", "key_id": "a1e9156054e04fac899ae9f275132cdc07a5dbc4ea2c2ad3a1ffc6e0d253681f", "cert_sha256": "a41d36c8025cf5f9a064e22f3ac507505ee041be48cad6a2509a6064948b729b", "pin_sha256": "oekVYFTgT6yJmunydRMs3Ael28TqLCrTof/G4NJTaB8="},
+    {"name": "ml-dsa-44", "source": "seed 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", "key_id": "837832708c5236d951581f1fddf2b79991b3424a0486d16da1ddad0fd69701be", "cert_sha256": "46bc67b3b65a634815460e22d83925473a0283fd703fdf1e77697620e06c21e1", "pin_sha256": "g3gycIxSNtlRWB8f3fK3mZGzQkoEhtFtod2tD9aXAb4="},
+    {"name": "ml-dsa-65", "source": "seed 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", "key_id": "b8b62131bfbe84433efb2273d7f5b87f7a22854a2cfd366fc2aead86d837c52d", "cert_sha256": "b8a935168f15fe584c2b5541e2034c6ecc6ab2d46d99c45fe8233f2271f2ca60", "pin_sha256": "uLYhMb++hEM++yJz1/W4f3oihUos/TZvwq6thtg3xS0="},
+    {"name": "ml-dsa-87", "source": "seed 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", "key_id": "07e57c4f14dbad1267f621ec3777b4e2e6c4fbc4c22fbb87510ff8e0b3c6a642", "cert_sha256": "f7f2a5ddba672e7bf4c2b4c7204e9086e664a8cfda8c1ee53bf2eb56ea3a2390", "pin_sha256": "B+V8TxTbrRJn9iHsN3e04ubE+8TCL7uHUQ/44LPGpkI="}
+  ],
+  "two_scheme": [
+    {"name": "rsa-2048-no-null", "canonical_sibling": "rsa-2048", "encoded_sha256": "675e4501dfdc6442006534585c91eff10fb1da755f8a2dcbe5c434655423ad34"},
+    {"name": "ecdsa-p256-compressed", "canonical_sibling": "ecdsa-p256", "encoded_sha256": "b9fd8f074598636ae25ab3f96311e48bc2c602bd6397aad28c74eb0e7f9bf546"}
+  ]
+}

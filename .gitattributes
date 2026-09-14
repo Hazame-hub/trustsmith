@@ -1,0 +1,4 @@
+* text=auto eol=lf
+*.der binary
+*.p12 binary
+testdata/fuzz/** text eol=lf

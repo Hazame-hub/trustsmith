@@ -11,6 +11,7 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/artifact"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
+	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
 )
 
@@ -28,6 +29,10 @@ func renderText(w io.Writer, res inspectsvc.Result, advanced bool) error {
 	for _, a := range res.Artifacts {
 		b.WriteString("\n")
 		writeArtifact(&b, a, advanced)
+	}
+	if len(res.Relationships) > 0 {
+		b.WriteString("\n")
+		writeRelationships(&b, res.Relationships)
 	}
 	b.WriteString("\n")
 	writeFindings(&b, res.Findings)
@@ -57,6 +62,53 @@ func plural(n int, one, many string) string {
 
 func field(b *strings.Builder, label, value string) {
 	fmt.Fprintf(b, "    %-15s%s\n", label, value)
+}
+
+// entries renders "entry 1" or "entries 1, 3".
+func entries(v []int) string {
+	parts := make([]string, len(v))
+	for i, n := range v {
+		parts[i] = strconv.Itoa(n)
+	}
+	if len(v) == 1 {
+		return "entry " + parts[0]
+	}
+	return "entries " + strings.Join(parts, ", ")
+}
+
+// issuerInInputText explains what the input says about the issuer. It
+// describes signature checks only and never says "trusted".
+func issuerInInputText(s *interpret.Summary) string {
+	switch s.IssuerInInput {
+	case interpret.IssuerVerified:
+		return "signature verified with the key of the certificate in " + entries(s.VerifiedIssuerEntries) + " of this input"
+	case interpret.IssuerSelfSigned:
+		return "this certificate names itself as issuer and its own key verifies its signature"
+	case interpret.IssuerCandidateUnverifiable:
+		return "a matching certificate is in " + entries(s.CandidateEntries) + " of this input, but this engine could not check the signature with it"
+	case interpret.IssuerCandidateNotChecked:
+		return "matching certificates are in this input, but not all of them were checked"
+	case interpret.IssuerCandidateInvalid:
+		return "a certificate in " + entries(s.CandidateEntries) + " matches the issuer, but its key does not verify this signature"
+	}
+	return "issuer certificate not present in this input"
+}
+
+func writeRelationships(b *strings.Builder, rels []issuerlinks.Relationship) {
+	fmt.Fprintf(b, "Issuer relationships (%d)\n", len(rels))
+	b.WriteString("  Signature checks between certificates of this input. A verified signature is not a trust decision.\n")
+	for _, r := range rels {
+		state := string(r.State)
+		if r.Reason != "" {
+			state += " (" + string(r.Reason) + ")"
+		}
+		evidence := make([]string, len(r.Evidence))
+		for i, e := range r.Evidence {
+			evidence[i] = string(e)
+		}
+		fmt.Fprintf(b, "  %s, candidate issuer %s: %s; evidence: %s\n",
+			entries(r.ChildEntries), entries(r.CandidateEntries), state, strings.Join(evidence, ", "))
+	}
 }
 
 func writeArtifact(b *strings.Builder, a inspectsvc.Artifact, advanced bool) {
@@ -109,7 +161,8 @@ func writeCertificate(b *strings.Builder, a inspectsvc.Artifact, advanced bool) 
 		identifies = strings.Join(s.Identifies, ", ")
 	}
 	field(b, "Identifies", identifies)
-	field(b, "Issuer", s.Issuer+" (as stated in the certificate; not verified)")
+	field(b, "Issuer", s.Issuer)
+	field(b, "", issuerInInputText(s))
 	switch s.SelfSigned {
 	case interpret.SelfSignedVerified:
 		field(b, "Self-signed", "yes (signature verified)")

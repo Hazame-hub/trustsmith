@@ -22,12 +22,18 @@ This describes the implementation today, which offers only
   - One malformed block is reported without stopping the others.
   - The decoder, key canonicaliser, certificate reader and whole inspection
     pipeline are fuzz-tested.
-  - A panic while inspecting one entry is contained and reported as an internal
-    error on that entry. Tests fail if this ever happens.
+  - Panics are recovered only at the standard-library X.509 parser and the
+    signature-verification engine, and are counted. Tests and fuzzing fail if
+    any occur. A panic in Trustsmith's own logic is not recovered, so it cannot
+    masquerade as a problem with the input.
 - **Claims only what it checked.**
-  - The issuer is shown as stated in the certificate; no issuer relationship is
-    verified.
-  - Chain verification is not implemented and is reported as "not checked".
+  - An issuer relationship between certificates of the same input is reported
+    as verified only when the candidate's key cryptographically verifies the
+    signature. An algorithm the engine refuses is reported as unverifiable,
+    never as invalid.
+  - A verified signature is not a trust decision: no trust anchors, CA
+    constraints or chain validation are applied, and the chain is reported as
+    "not checked".
   - A self-signature is reported as verified only when it verifies
     cryptographically.
 

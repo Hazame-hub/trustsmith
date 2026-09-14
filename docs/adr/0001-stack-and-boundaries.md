@@ -38,7 +38,9 @@ certificate bundles.
 cmd/trustsmith          composition root; the only place the real clock is read
 internal/cli            argument parsing, text and JSON rendering, exit codes
 internal/app/inspectsvc the inspect application service (one code path for every interface)
-internal/interpret      facts + time → friendly summary and findings (pure)
+internal/interpret      facts + relationships + time → friendly summary and findings (pure)
+internal/issuerlinks    issuer relationships between the certificates of one input (ADR-0004)
+internal/sigcheck       does one certificate's key verify another's signature (no policy)
 internal/findings       stable codes, severities, evidence, catalog
 internal/x509facts      what a certificate contains (no judgement)
 internal/artifact       framing of untrusted input into ordered blocks
@@ -48,11 +50,12 @@ internal/archtest       architecture tests
 testdata/certs          committed inspection corpus
 ```
 
-Dependencies point inward only: `cmd → cli → app → interpret → {x509facts,
-artifact, findings} → fingerprint`. `internal/archtest` enforces:
+Dependencies point inward only: `cmd → cli → app → interpret → issuerlinks →
+{x509facts → sigcheck, artifact, findings} → fingerprint`. `internal/archtest`
+enforces:
 
 - **Domain packages** (`fingerprint`, `artifact`, `x509facts`, `findings`,
-  `interpret`):
+  `interpret`, `sigcheck`, `issuerlinks`):
   - do not import `os`, `os/exec`, `net`, `net/http`, `database/sql`,
     `syscall` or `io/fs` directly;
   - do not depend on cobra, the CLI, application services, `cmd` or `testpki`.
@@ -60,6 +63,9 @@ artifact, findings} → fingerprint`. `internal/archtest` enforces:
 - **No production package** depends on `testpki`.
 - **Nothing under `internal/`** refers to `time.Now`. The time is always an
   input, which is what makes validity boundaries testable exactly.
+- **`recover()`** appears only at the two untrusted-input boundaries: the
+  standard-library X.509 parser in `x509facts` and the signature engine in
+  `sigcheck` (ADR-0004). A panic anywhere else surfaces as a bug.
 
 Application-service packages use a `svc` suffix. This avoids name collisions
 with domain packages that later slices add (for example `inventory` and

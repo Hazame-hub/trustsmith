@@ -17,6 +17,11 @@ experts, without taking the advanced path away from those who are.
 - **What it tells you:** what the certificate is for, what it identifies, who it
   says issued it, whether it is valid now, when it expires, its key and
   signature algorithms, and obvious problems with suggested fixes.
+- **Issuer relationships inside the input:** for a bundle, which certificate's
+  key verifies which certificate's signature, and which matching certificates
+  could not be confirmed ([ADR-0004](docs/adr/0004-issuer-relationships.md)).
+  This is a signature check only; it does not mean the certificates are
+  trusted or that the chain is valid.
 - **Fingerprints** follow [ADR-0002](docs/adr/0002-public-key-identity.md):
   `x509-cert-sha256` for the certificate, `x509-spki-sha256` (a canonical,
   cross-file key identity), and `x509-spki-encoded-sha256` (the key as encoded,
@@ -34,9 +39,9 @@ $ trustsmith inspect --output json cert.der
 $ cat bundle.pem | trustsmith inspect -
 ```
 
-Not yet supported: chain verification (always reported as "not checked"),
-private keys, CSRs, PKCS#12, TLS endpoint probing, and public WebPKI policy
-checks.
+Not yet supported: trust anchors and chain validation (the chain is always
+reported as "not checked"), private keys, CSRs, PKCS#12, TLS endpoint probing,
+and public WebPKI policy checks.
 
 ### Exit codes
 
@@ -64,6 +69,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0001: stack, layout and boundaries](docs/adr/0001-stack-and-boundaries.md)
 - [ADR-0002: certificate and public-key identity](docs/adr/0002-public-key-identity.md)
 - [ADR-0003: findings, inspect output and exit codes](docs/adr/0003-findings.md)
+- [ADR-0004: issuer relationships inside one input](docs/adr/0004-issuer-relationships.md)
 
 ## License
 

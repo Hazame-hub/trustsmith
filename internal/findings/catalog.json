@@ -123,5 +123,19 @@
     "remediation": [
       {"code": "add_san", "text": "Reissue the certificate with its names in the Subject Alternative Name extension."}
     ]
+  },
+  "issuer.candidate_unverifiable": {
+    "title": "Issuer certificate found, but its signature could not be checked",
+    "explanation": "A certificate in this input matches this certificate's issuer, but the signature could not be checked with its key, for example because the signature algorithm is one the verification engine refuses. This is not evidence that the signature is invalid, and none of the input's certificates was confirmed as the issuer.",
+    "remediation": [
+      {"code": "reissue_sha256", "text": "If the certificate is still in use, reissue it with a signature algorithm current software accepts."}
+    ]
+  },
+  "issuer.candidates_not_checked": {
+    "title": "Some possible issuers were not checked",
+    "explanation": "This input contains more possible issuer certificates than Trustsmith checks for one certificate or for one input, so some were not checked. The issuer information shown for this certificate is incomplete, not absent.",
+    "remediation": [
+      {"code": "split_input", "text": "Inspect a smaller bundle that contains only the certificates of interest."}
+    ]
   }
 }

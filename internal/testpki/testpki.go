@@ -10,8 +10,10 @@ package testpki
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/md5" //nolint:gosec // test fixtures deliberately use weak algorithms
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1" //nolint:gosec // test fixtures deliberately use weak algorithms
@@ -60,6 +62,9 @@ type Template struct {
 	KeyUsage       x509.KeyUsage
 	ExtKeyUsage    []x509.ExtKeyUsage
 	Serial         int64
+	// SubjectKeyID overrides the generated Subject Key Identifier, e.g. to
+	// build a certificate whose key identifier matches another one's.
+	SubjectKeyID []byte
 }
 
 func ECDSAKey(f Fataler) *ecdsa.PrivateKey {
@@ -80,6 +85,24 @@ func RSAKey(f Fataler, bits int) *rsa.PrivateKey {
 	return k
 }
 
+func Ed25519Key(f Fataler) ed25519.PrivateKey {
+	f.Helper()
+	_, k, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		f.Fatalf("ed25519 key: %v", err)
+	}
+	return k
+}
+
+func MLDSAKey(f Fataler, params mldsa.Parameters) *mldsa.PrivateKey {
+	f.Helper()
+	k, err := mldsa.GenerateKey(params)
+	if err != nil {
+		f.Fatalf("ml-dsa key: %v", err)
+	}
+	return k
+}
+
 // Issue creates a certificate for key, signed by parent (or self-signed when
 // parent is nil).
 func Issue(f Fataler, t Template, key crypto.Signer, parent *Cert) *Cert {
@@ -95,6 +118,7 @@ func Issue(f Fataler, t Template, key crypto.Signer, parent *Cert) *Cert {
 		ExtKeyUsage:           t.ExtKeyUsage,
 		BasicConstraintsValid: t.IsCA,
 		IsCA:                  t.IsCA,
+		SubjectKeyId:          t.SubjectKeyID,
 	}
 	if t.Organization != "" {
 		tmpl.Subject.Organization = []string{t.Organization}
@@ -143,6 +167,7 @@ type SigAlg int
 
 const (
 	ECDSAWithSHA256 SigAlg = iota
+	ECDSAWithSHA1
 	RSAWithSHA256
 	RSAWithSHA1
 	RSAWithMD5
@@ -150,6 +175,7 @@ const (
 
 var (
 	oidECDSAWithSHA256 = asn1.ObjectIdentifier{1, 2, 840, 10045, 4, 3, 2}
+	oidECDSAWithSHA1   = asn1.ObjectIdentifier{1, 2, 840, 10045, 4, 1}
 	oidRSAWithSHA256   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 11}
 	oidRSAWithSHA1     = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 5}
 	oidRSAWithMD5      = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 4}
@@ -213,6 +239,8 @@ func algorithmIdentifier(f Fataler, alg SigAlg) []byte {
 		switch alg {
 		case ECDSAWithSHA256:
 			b.AddASN1ObjectIdentifier(oidECDSAWithSHA256)
+		case ECDSAWithSHA1:
+			b.AddASN1ObjectIdentifier(oidECDSAWithSHA1)
 		case RSAWithSHA256:
 			b.AddASN1ObjectIdentifier(oidRSAWithSHA256)
 			b.AddASN1NULL()
@@ -234,13 +262,20 @@ func sign(f Fataler, alg SigAlg, signer crypto.Signer, tbs []byte) []byte {
 		err error
 	)
 	switch alg {
-	case ECDSAWithSHA256:
+	case ECDSAWithSHA256, ECDSAWithSHA1:
 		k, ok := signer.(*ecdsa.PrivateKey)
 		if !ok {
 			f.Fatalf("resign: ECDSA signature needs an ECDSA key")
 		}
-		h := sha256.Sum256(tbs)
-		sig, err = ecdsa.SignASN1(rand.Reader, k, h[:])
+		var digest []byte
+		if alg == ECDSAWithSHA1 {
+			h := sha1.Sum(tbs) //nolint:gosec // deliberate weak fixture
+			digest = h[:]
+		} else {
+			h := sha256.Sum256(tbs)
+			digest = h[:]
+		}
+		sig, err = ecdsa.SignASN1(rand.Reader, k, digest)
 	case RSAWithSHA256, RSAWithSHA1, RSAWithMD5:
 		k, ok := signer.(*rsa.PrivateKey)
 		if !ok {
@@ -317,4 +352,19 @@ func CompressedP256SPKI(f Fataler, pub *ecdsa.PublicKey) []byte {
 	var params cryptobyte.Builder
 	params.AddASN1ObjectIdentifier(oidP256)
 	return SPKI(f, oidECPublicKey, mustBytes(f, &params), compressed)
+}
+
+// X25519SPKI returns the SPKI of a fresh X25519 key: a key type that can be
+// certified but cannot verify certificate signatures.
+func X25519SPKI(f Fataler) []byte {
+	f.Helper()
+	k, err := ecdhX25519()
+	if err != nil {
+		f.Fatalf("x25519 key: %v", err)
+	}
+	spki, err := x509.MarshalPKIXPublicKey(k)
+	if err != nil {
+		f.Fatalf("x25519 SPKI: %v", err)
+	}
+	return spki
 }

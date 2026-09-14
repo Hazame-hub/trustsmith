@@ -2,7 +2,8 @@ Inspected testdata/certs/trailing-data.der (DER, 1 entry) at 2026-09-14 12:00:00
 
 [0] TLS server certificate
     Identifies     api.example.test, www.example.test, 192.0.2.10
-    Issuer         CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests (as stated in the certificate; not verified)
+    Issuer         CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests
+                   issuer certificate not present in this input
     Valid          yes, until 2026-12-01 00:00:00 UTC (77 days left)
     Key            ECDSA P-256
     Signature      ECDSA-SHA256

@@ -5,6 +5,8 @@ Validity periods are relative to the test clock 2026-09-14T12:00:00Z.
 
 | File | Contents |
 |---|---|
+| `bundle-duplicate.pem` | leaf, intermediate and the same leaf again |
+| `bundle-reversed.pem` | bundle.pem in reverse order: root, intermediate, leaf |
 | `bundle-with-bad-block.pem` | leaf, a corrupt block, then the intermediate |
 | `bundle-with-private-key.pem` | leaf followed by a private key block (reported, never decoded) |
 | `bundle.pem` | leaf, intermediate and root, in that order |
@@ -14,17 +16,23 @@ Validity periods are relative to the test clock 2026-09-14T12:00:00Z.
 | `expired.pem` | expired on 2026-06-01 |
 | `expiring-critical.pem` | expires 2026-09-17 (2 days after the test clock) |
 | `expiring-warning.pem` | expires 2026-10-01 (16 days after the test clock) |
+| `issuer-key-id-match-wrong-key.pem` | leaf and a CA with the intermediate's name and key identifier but a different key |
+| `issuer-name-match-wrong-key.pem` | leaf and a CA with the intermediate's name but a different key |
 | `leaf.der` | leaf.pem as DER |
 | `leaf.pem` | TLS server certificate issued by the intermediate, valid |
 | `malformed.pem` | a single corrupt certificate block |
+| `md5-with-issuer.pem` | MD5-signed leaf followed by its RSA issuer: the engine refuses to check MD5 |
 | `md5.pem` | leaf re-signed with md5WithRSAEncryption |
 | `noncanonical-rsa-key.pem` | RSA key encoded without NULL parameters (Go rejects the certificate) |
 | `not-a-certificate.txt` | plain text |
 | `not-yet-valid.pem` | valid from 2026-10-01 |
 | `private-key-only.pem` | only a private key block: no certificates |
+| `reissued-intermediates.pem` | leaf and two certificates for the same intermediate key: both verify the leaf |
 | `root-ca.pem` | self-signed root CA |
 | `rsa-1024.pem` | TLS server certificate with an RSA-1024 key |
+| `self-issued-not-self-signed.pem` | names itself as issuer but is signed by a different key |
 | `self-signed-leaf.pem` | self-signed TLS server certificate |
+| `sha1-with-issuer.pem` | SHA-1-signed leaf followed by its RSA issuer: the signature verifies |
 | `sha1.pem` | leaf re-signed with sha1WithRSAEncryption |
 | `text-around.pem` | openssl-style text before and after the leaf |
 | `trailing-data.der` | leaf.der followed by two stray bytes |

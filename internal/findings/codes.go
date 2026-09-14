@@ -38,3 +38,9 @@ const (
 const (
 	NameCNOnlyNoSAN Code = "name.cn_only_no_san"
 )
+
+// Issuer relationships inside the input (signature checks only, never trust).
+const (
+	IssuerCandidateUnverifiable Code = "issuer.candidate_unverifiable"
+	IssuerCandidatesNotChecked  Code = "issuer.candidates_not_checked"
+)

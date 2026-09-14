@@ -2,6 +2,7 @@ package inspectsvc_test
 
 import (
 	"bytes"
+	"encoding/pem"
 	"errors"
 	"io/fs"
 	"os"
@@ -291,6 +292,54 @@ func TestResultMetadata(t *testing.T) {
 	}
 	if clean.Highest != "" || len(clean.Findings) != 0 {
 		t.Errorf("clean certificate: highest %q findings %v", clean.Highest, clean.Findings)
+	}
+}
+
+// TestUnrelatedBlocksDoNotChangePaths: a malformed block and a private-key
+// block placed between the certificates of a bundle change entry numbers only,
+// never the paths or their evaluation.
+func TestUnrelatedBlocksDoNotChangePaths(t *testing.T) {
+	svc := service()
+	clean, err := svc.InspectFile(filepath.Join(corpus, "bundle.pem"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var certs [][]byte
+	rest := mustRead(t, "bundle.pem")
+	for {
+		var b *pem.Block
+		if b, rest = pem.Decode(rest); b == nil {
+			break
+		}
+		certs = append(certs, pem.EncodeToMemory(b))
+	}
+	if len(certs) != 3 {
+		t.Fatalf("bundle.pem has %d blocks", len(certs))
+	}
+	bad := []byte("-----BEGIN CERTIFICATE-----\nthis block is !!! not base64\n-----END CERTIFICATE-----\n")
+	noisy := slices.Concat(certs[0], bad, certs[1], mustRead(t, "private-key-only.pem"), certs[2])
+
+	res, err := svc.InspectBytes(inspectsvc.Source{Kind: inspectsvc.SourceStdin, Locator: "-"}, noisy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := pathKeys(res); !slices.Equal(got, []string{"0>2>4 " + completeSatisfied}) {
+		t.Fatalf("paths %v", got)
+	}
+	if len(res.Paths) != len(clean.Paths) {
+		t.Fatalf("%d paths, clean bundle has %d", len(res.Paths), len(clean.Paths))
+	}
+	for i, p := range res.Paths {
+		c := clean.Paths[i]
+		if !slices.Equal(p.Certificates, c.Certificates) || p.Completeness != c.Completeness || p.End != c.End ||
+			p.Structure != c.Structure || p.Validity != c.Validity || !reflect.DeepEqual(p.Issues, c.Issues) {
+			t.Errorf("path %d differs from the clean bundle:\n%+v\n%+v", i, p, c)
+		}
+	}
+	for _, f := range res.Findings {
+		if strings.HasPrefix(string(f.Code), "chain.") {
+			t.Errorf("unrelated blocks produced a path finding: %+v", f)
+		}
 	}
 }
 

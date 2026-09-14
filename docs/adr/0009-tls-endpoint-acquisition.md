@@ -28,6 +28,12 @@ Without a port, 443 is used.
 - **Existing files win.** An existing file with the same name is always
   inspected as a file, and a Windows drive path is always a file (the
   existing target resolver).
+- **Endpoint-shaped arguments are endpoints.** Once an argument is shaped
+  like an endpoint (a dotted DNS name, localhost or IPv4 address before a
+  single colon; a bracketed form containing a colon; an unbracketed IPv6
+  address), endpoint parsing decides it. A malformed port or address is then
+  a usage error (exit 2), never a missing file and never a connection
+  attempt. This routes arguments only; accepted endpoint syntax is unchanged.
 - **Refused, never stripped:**
   - any scheme other than `tls://`, including `https://`, since Trustsmith
     speaks no application protocol;

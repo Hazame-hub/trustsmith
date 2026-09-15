@@ -74,6 +74,10 @@ jobs:
         run: go test -race -count=1 ./...
       - name: CLI smoke test
         # Git for Windows bash, explicitly: plain "bash" on this host resolves
-        # to WSL, which would run the script on Linux instead of Windows.
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -eo pipefail {0}'
-        run: ./.github/workflows/smoke.sh
+        # to WSL, which would run the script on Linux instead of Windows. The
+        # runner cannot take a custom shell path containing spaces, so pwsh
+        # calls it and fails the step on a non-zero exit.
+        shell: pwsh
+        run: |
+          & 'C:\Program Files\Git\bin\bash.exe' --noprofile --norc -eo pipefail ./.github/workflows/smoke.sh
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

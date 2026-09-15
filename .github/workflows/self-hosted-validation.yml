@@ -1,0 +1,79 @@
+# Manual platform validation on self-hosted runners.
+#
+# GitHub-hosted macOS and Windows runners are unavailable to this account, so
+# platform validation runs on machines we control. Those runners execute
+# workflow code, so this workflow:
+#   - runs only when dispatched by hand (workflow_dispatch), never on pull
+#     requests, so no untrusted or fork code reaches the runners;
+#   - validates a ref of this repository only (default: main);
+#   - uses repository-scoped runners with dedicated labels, and no secrets
+#     beyond GitHub's own runner credentials.
+#
+# It runs the same commands as the test job of ci.yml, plus gofmt and the race
+# detector, which this Windows host supports (64-bit MinGW gcc). Lint,
+# govulncheck and fuzzing stay in ci.yml on Linux.
+#
+# macOS: not tested; no macOS host is available, so there is no macOS job.
+# Add one routed to [self-hosted, macOS, <arch>, trustsmith-macos] only once
+# such a runner exists.
+#
+# Actions are pinned to commit SHAs; the tag is in the trailing comment.
+name: self-hosted validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit SHA, branch or tag of this repository to validate
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: self-hosted-validation-${{ inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: validate (windows, self-hosted)
+    runs-on: [self-hosted, Windows, X64, trustsmith-windows]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Tested commit
+        run: git rev-parse HEAD
+      - name: Toolchain
+        run: go version
+      - name: gofmt
+        shell: pwsh
+        run: |
+          $unformatted = gofmt -l .
+          if ($unformatted) {
+            Write-Output "::error::files need gofmt: $unformatted"
+            exit 1
+          }
+      - name: Verify modules
+        run: go mod verify
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test -count=1 ./...
+      - name: Test with the race detector
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race -count=1 ./...
+      - name: CLI smoke test
+        # Git for Windows bash, explicitly: plain "bash" on this host resolves
+        # to WSL, which would run the script on Linux instead of Windows.
+        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -eo pipefail {0}'
+        run: ./.github/workflows/smoke.sh

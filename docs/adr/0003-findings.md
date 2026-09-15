@@ -107,7 +107,7 @@ Codes in this revision:
 
 - **The schema is its own set of types in `internal/cli/render_json.go`.**
   Internal structs are never serialised.
-- **Top-level fields:** `schema`, `inspected_at`, `input`, `overview`,
+- **Top-level fields:** `schema`, `inspected_at`, `input`, `probe`, `overview`,
   `artifacts`, `relationships`, `paths`, `trust_evaluation`,
   `purpose_evaluation`, `hostname_evaluation`, `findings`. `relationships` and the
   summary fields `issuer_in_input`, `verified_issuer_entries` and
@@ -116,7 +116,9 @@ Codes in this revision:
   (ADR-0005). `trust_evaluation` and the qualified summary `chain` values
   were added within v1 (ADR-0006), as were `purpose_evaluation` and
   `trust_evaluation.requested_purpose` (ADR-0007), and `hostname_evaluation`
-  (ADR-0008).
+  (ADR-0008). `probe` (null for files), `input.kind` `endpoint` with format
+  `tls_peer_certificates`, `artifacts[].locator`, `purpose_evaluation.source`
+  and `hostname_evaluation.source` were added within v1 (ADR-0009).
 - **Fingerprints** are keyed by ADR-0002 scheme name. A missing key identity is
   `null`.
 - **Findings** include the rendered catalog text and codes. Their `entry` is
@@ -134,8 +136,8 @@ Codes in this revision:
 | Code | Meaning |
 |---|---|
 | 0 | success; no finding at or above `--fail-on` (default `critical`) |
-| 1 | operational error (unreadable, missing or oversized input, directory given, unusable `--roots` file) |
-| 2 | usage error (flags, arguments, unknown command, unknown `--purpose`, invalid `--hostname`, endpoint argument while probing is unimplemented) |
+| 1 | operational error (unreadable, missing or oversized input, directory given, unusable `--roots` file, TLS endpoint from which no certificate was acquired) |
+| 2 | usage error (flags, arguments, unknown command, unknown `--purpose`, invalid `--hostname`, invalid endpoint, unknown `--probe-policy` or `--probe-policy` for a file) |
 | 3 | inspection completed and the highest finding reached `--fail-on` |
 
 `--fail-on never` disables 3. The output format does not affect the exit code.

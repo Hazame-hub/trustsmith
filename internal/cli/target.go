@@ -2,8 +2,8 @@ package cli
 
 import (
 	"net"
+	"net/netip"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -21,8 +21,16 @@ var certificateFileExtensions = map[string]bool{
 }
 
 // resolveTarget decides whether an inspect argument names standard input, a
-// file or a network endpoint. An existing path always wins; a Windows drive
-// path is always a file.
+// file or a network endpoint. In order:
+//  1. "-" is standard input;
+//  2. an existing path is a file;
+//  3. Windows drive paths and anything containing a path separator are files;
+//  4. a scheme ("://") makes an endpoint;
+//  5. a name with a certificate file extension is a file;
+//  6. an argument shaped like an endpoint is an endpoint, even when its port
+//     or address is malformed, so that endpoint parsing reports a usage error
+//     instead of the argument becoming a missing file;
+//  7. a bare dotted DNS name is an endpoint; anything else is a file.
 func resolveTarget(arg string, exists func(string) bool) targetKind {
 	switch {
 	case arg == "-":
@@ -37,7 +45,7 @@ func resolveTarget(arg string, exists func(string) bool) targetKind {
 		return targetFile
 	case certificateFileExtensions[strings.ToLower(filepath.Ext(arg))]:
 		return targetFile
-	case isHostPort(arg), isHostname(arg):
+	case isEndpointShaped(arg), isHostname(arg):
 		return targetEndpoint
 	}
 	return targetFile
@@ -49,16 +57,32 @@ func isWindowsDrivePath(s string) bool {
 	return len(s) >= 2 && s[1] == ':' && (s[0] >= 'a' && s[0] <= 'z' || s[0] >= 'A' && s[0] <= 'Z')
 }
 
-func isHostPort(s string) bool {
-	host, port, err := net.SplitHostPort(s)
-	if err != nil || host == "" {
-		return false
+// isEndpointShaped matches arguments written as an endpoint, whether or not
+// they are valid ones. It decides only where an argument goes; endpoint.Parse
+// decides whether it is acceptable. It matches:
+//   - host:port, where host is a dotted DNS name, localhost or an IPv4
+//     address and port is anything (including empty, "0", "-1" or "abc");
+//   - a bracketed IPv6 form, "[" followed by text containing a colon, closed
+//     or not;
+//   - an unbracketed IPv6 address, optionally followed by :port, which
+//     endpoint.Parse refuses explicitly.
+func isEndpointShaped(s string) bool {
+	if rest, ok := strings.CutPrefix(s, "["); ok {
+		inside, _, _ := strings.Cut(rest, "]")
+		return strings.Contains(inside, ":")
 	}
-	n, err := strconv.Atoi(port)
-	if err != nil || n < 1 || n > 65535 {
-		return false
+	switch colons := strings.Count(s, ":"); {
+	case colons == 1:
+		host := s[:strings.Index(s, ":")]
+		return host == "localhost" || isHostname(host) || net.ParseIP(host) != nil
+	case colons > 1:
+		if _, err := netip.ParseAddr(s); err == nil {
+			return true
+		}
+		_, err := netip.ParseAddr(s[:strings.LastIndex(s, ":")])
+		return err == nil
 	}
-	return net.ParseIP(host) != nil || host == "localhost" || isHostname(host)
+	return false
 }
 
 // isHostname matches dotted DNS names whose last label is alphabetic, such as

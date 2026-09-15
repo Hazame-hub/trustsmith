@@ -35,6 +35,7 @@ var domain = []string{
 	module + "/internal/trustverify",
 	module + "/internal/purpose",
 	module + "/internal/hostname",
+	module + "/internal/endpoint",
 }
 
 // forbiddenDirectImports are standard-library packages domain code must not

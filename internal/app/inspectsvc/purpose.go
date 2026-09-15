@@ -29,6 +29,7 @@ const (
 // Host names are never evaluated.
 type PurposeEvaluation struct {
 	Requested purpose.Purpose
+	Source    PurposeSource
 	State     PurposeEvaluationState
 	Targets   []PurposeTarget
 }
@@ -44,13 +45,27 @@ type PurposeTarget struct {
 	AnchoredPathReason trustverify.Reason
 }
 
-// WithPurpose sets the purpose to evaluate. The default is purpose.Any.
+// PurposeSource says where the requested purpose came from.
+type PurposeSource string
+
+const (
+	// PurposeSourceDefault: nothing was requested; purpose.Any applies.
+	PurposeSourceDefault PurposeSource = "default"
+	// PurposeSourceExplicit: requested with WithPurpose (--purpose).
+	PurposeSourceExplicit PurposeSource = "explicit"
+	// PurposeSourceEndpoint: derived from inspecting a TLS endpoint, which
+	// implies tls-server unless a purpose was requested explicitly.
+	PurposeSourceEndpoint PurposeSource = "endpoint"
+)
+
+// WithPurpose sets the purpose to evaluate explicitly. The default is
+// purpose.Any; an explicit purpose also overrides the one an endpoint implies.
 func WithPurpose(p purpose.Purpose) Option {
-	return func(s *Service) { s.purpose = p }
+	return func(s *Service) { s.purpose, s.purposeSource = p, PurposeSourceExplicit }
 }
 
 func (s *Service) evaluatePurpose(targets []*target, trust Trust) PurposeEvaluation {
-	e := PurposeEvaluation{Requested: s.purpose, State: PurposeNotEvaluated, Targets: []PurposeTarget{}}
+	e := PurposeEvaluation{Requested: s.purpose, Source: s.purposeSource, State: PurposeNotEvaluated, Targets: []PurposeTarget{}}
 	if s.purpose == purpose.Any {
 		return e
 	}

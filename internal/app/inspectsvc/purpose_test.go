@@ -41,11 +41,17 @@ func TestDefaultPurposeIsAny(t *testing.T) {
 	if plain.Purpose.Requested != purpose.Any || plain.Purpose.State != inspectsvc.PurposeNotEvaluated || len(plain.Purpose.Targets) != 0 {
 		t.Errorf("default purpose %+v", plain.Purpose)
 	}
-	if explicit := inspectPurpose(t, "bundle.pem", purpose.Any); !reflect.DeepEqual(plain, explicit) {
+	// An explicit "any" differs from the default only in recording its source.
+	explicit := inspectPurpose(t, "bundle.pem", purpose.Any)
+	if plain.Purpose.Source != inspectsvc.PurposeSourceDefault || explicit.Purpose.Source != inspectsvc.PurposeSourceExplicit {
+		t.Errorf("sources %q, %q", plain.Purpose.Source, explicit.Purpose.Source)
+	}
+	if explicit.Purpose.Source = plain.Purpose.Source; !reflect.DeepEqual(plain, explicit) {
 		t.Error("--purpose any must equal the default")
 	}
 	withRoots := inspectWithRoots(t, "bundle.pem", loadRoots(t, "test-root.pem"), testNow())
-	if explicit := inspectPurpose(t, "bundle.pem", purpose.Any, "test-root.pem"); !reflect.DeepEqual(withRoots, explicit) {
+	explicit = inspectPurpose(t, "bundle.pem", purpose.Any, "test-root.pem")
+	if explicit.Purpose.Source = withRoots.Purpose.Source; !reflect.DeepEqual(withRoots, explicit) {
 		t.Error("--purpose any with roots must equal the default with roots")
 	}
 	if withRoots.Trust.Purpose != purpose.Any {

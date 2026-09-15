@@ -54,6 +54,7 @@ func rootsFixtures(corpus, out string, force bool, pemOf func(ders ...[]byte) []
 	cross := certsOf("path-cross-signed.pem", 5)
 	write("path-cross-roots.pem", "root A and root B of path-cross-signed.pem", pemOf(cross[2], cross[4]))
 	write("path-expired-root.pem", "the root CA of path-expired-intermediate.pem", pemOf(certsOf("path-expired-intermediate.pem", 3)[2]))
+	write("tls-endpoint-root.pem", "the root CA of tls-endpoint.pem, the in-process TLS endpoint's chain", pemOf(certsOf("tls-endpoint.pem", 3)[2]))
 	write("purpose-root.pem", "the root CA of the purpose fixtures (purpose-root-ca.pem)", pemOf(certsOf("purpose-root-ca.pem", 1)[0]))
 	write("with-private-key.pem", "the root of bundle.pem followed by a private key block (refused, never decoded)",
 		append(pemOf(bundle[2]), rfc8410TestKey...))

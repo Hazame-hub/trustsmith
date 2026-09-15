@@ -7,6 +7,7 @@
     "format": "pem",
     "size_bytes": 684
   },
+  "probe": null,
   "overview": {
     "artifacts": 1,
     "certificates": 1,
@@ -165,11 +166,13 @@
   },
   "purpose_evaluation": {
     "requested": "any",
+    "source": "default",
     "state": "not_evaluated",
     "targets": []
   },
   "hostname_evaluation": {
     "state": "evaluated",
+    "source": "explicit",
     "requested": "192.0.2.10",
     "normalized": "192.0.2.10",
     "kind": "ip",

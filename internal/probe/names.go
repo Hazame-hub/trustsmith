@@ -1,0 +1,45 @@
+package probe
+
+import "crypto/tls"
+
+// Names for protocol values, as crypto/tls spells them, so that callers
+// render probe results without depending on crypto/tls themselves.
+
+// VersionName is the protocol version, e.g. "TLS 1.3".
+func (n Negotiated) VersionName() string { return tls.VersionName(n.Version) }
+
+// CipherSuiteName is the cipher suite, e.g. "TLS_AES_128_GCM_SHA256".
+func (n Negotiated) CipherSuiteName() string { return tls.CipherSuiteName(n.CipherSuite) }
+
+// GroupName is the key exchange group, e.g. "X25519MLKEM768", or "" when
+// crypto/tls does not report one.
+func (n Negotiated) GroupName() string {
+	if n.Group == 0 {
+		return ""
+	}
+	return n.Group.String()
+}
+
+// MinVersionName is the lowest protocol version the policy offers.
+func (p Policy) MinVersionName() string { return tls.VersionName(p.MinVersion) }
+
+// MaxVersionName is the highest protocol version the policy offers.
+func (p Policy) MaxVersionName() string { return tls.VersionName(p.MaxVersion) }
+
+// TLS12CipherSuiteNames are the TLS 1.2 suites the policy offers, in order.
+func (p Policy) TLS12CipherSuiteNames() []string {
+	out := make([]string, len(p.TLS12CipherSuites))
+	for i, id := range p.TLS12CipherSuites {
+		out[i] = tls.CipherSuiteName(id)
+	}
+	return out
+}
+
+// GroupNames are the key exchange groups the policy offers, in order.
+func (p Policy) GroupNames() []string {
+	out := make([]string, len(p.CurvePreferences))
+	for i, g := range p.CurvePreferences {
+		out[i] = g.String()
+	}
+	return out
+}

@@ -13,11 +13,13 @@ import (
 
 	"github.com/Hazame-hub/trustsmith/internal/artifact"
 	"github.com/Hazame-hub/trustsmith/internal/chainpath"
+	"github.com/Hazame-hub/trustsmith/internal/endpoint"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
 	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
 	"github.com/Hazame-hub/trustsmith/internal/hostname"
 	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
+	"github.com/Hazame-hub/trustsmith/internal/probe"
 	"github.com/Hazame-hub/trustsmith/internal/purpose"
 	"github.com/Hazame-hub/trustsmith/internal/sigcheck"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
@@ -29,12 +31,14 @@ type SourceKind string
 const (
 	SourceFile  SourceKind = "file"
 	SourceStdin SourceKind = "stdin"
+	// SourceEndpoint: certificates acquired from a TLS endpoint.
+	SourceEndpoint SourceKind = "endpoint"
 )
 
 // Source identifies the inspected input.
 type Source struct {
 	Kind    SourceKind
-	Locator string // the path as given, or "-" for stdin
+	Locator string // the path as given, "-" for stdin, or tls://host:port for an endpoint
 }
 
 // ArtifactType classifies one entry of the input.
@@ -50,10 +54,13 @@ const (
 
 // Artifact is one inspected entry, in input order.
 type Artifact struct {
-	Entry       int
-	Type        ArtifactType
-	Label       string           // PEM label, empty for DER
-	Offset      int              // byte offset in the input
+	Entry  int
+	Type   ArtifactType
+	Label  string // PEM label, empty for DER
+	Offset int    // byte offset in the input
+	// Locator names an acquired peer certificate (tls://host:port#peer-N);
+	// empty for file and stdin inspection.
+	Locator     string
 	Problem     artifact.Problem // set for malformed entries
 	Certificate *x509facts.Certificate
 	Unparseable *x509facts.Unparseable
@@ -88,6 +95,12 @@ type Result struct {
 	// Hostname is whether the certificates identify the explicitly requested
 	// host name or IP address. Its State is not_evaluated without a request.
 	Hostname HostnameEvaluation
+	// Probe is the TLS endpoint acquisition; nil unless an endpoint was
+	// inspected. It records how certificates were obtained, never whether
+	// they are trustworthy.
+	Probe *probe.Result
+	// Endpoint is the inspected TLS endpoint; nil for files and stdin.
+	Endpoint *endpoint.Endpoint
 	// RecoveredPanics counts panics contained at the untrusted-input
 	// boundaries: the standard-library X.509 parser and the signature
 	// verification engine. It is always zero unless one of them has a bug;
@@ -104,6 +117,10 @@ type Service struct {
 	roots      *Roots // nil: trust is not evaluated
 	purpose    purpose.Purpose
 	hostname   *hostname.Request // nil: host name identity is not evaluated
+
+	purposeSource  PurposeSource
+	hostnameSource HostnameSource
+	probe          ProbeSettings
 }
 
 // Option configures a Service.
@@ -112,7 +129,8 @@ type Option func(*Service)
 // New returns a service that reads the inspection time from now.
 func New(now func() time.Time, opts ...Option) *Service {
 	s := &Service{now: now, thresholds: interpret.DefaultThresholds(),
-		limits: issuerlinks.DefaultLimits(), pathLimits: chainpath.DefaultLimits(), purpose: purpose.Any}
+		limits: issuerlinks.DefaultLimits(), pathLimits: chainpath.DefaultLimits(), purpose: purpose.Any,
+		purposeSource: PurposeSourceDefault, probe: DefaultProbeSettings()}
 	for _, o := range opts {
 		o(s)
 	}
@@ -155,15 +173,16 @@ func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("%s: %w", src.Locator, err)
 	}
-	now := s.now().UTC()
-	res := Result{
-		Source:      src,
-		Size:        len(data),
-		Format:      decoded.Format,
-		InspectedAt: now,
-		Artifacts:   []Artifact{},
-		Findings:    []findings.Finding{},
-	}
+	res := Result{Source: src, Size: len(data), Format: decoded.Format, InspectedAt: s.now().UTC()}
+	return s.inspectDecoded(res, decoded), nil
+}
+
+// inspectDecoded runs the pipeline over framed input: parse every
+// certificate, resolve issuer relationships and paths, evaluate trust,
+// purpose and host name identity, then interpret each entry.
+func (s *Service) inspectDecoded(res Result, decoded artifact.Decoded) Result {
+	now := res.InspectedAt
+	res.Artifacts, res.Findings = []Artifact{}, []findings.Finding{}
 
 	parsed := make([]*x509facts.Parsed, len(decoded.Blocks))
 	var inputs []issuerlinks.Input
@@ -256,7 +275,7 @@ func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 			res.Highest = f.Severity
 		}
 	}
-	return res, nil
+	return res
 }
 
 func compareFindings(x, y findings.Finding) int {

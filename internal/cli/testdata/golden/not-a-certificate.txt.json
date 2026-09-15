@@ -7,6 +7,7 @@
     "format": "unknown",
     "size_bytes": 27
   },
+  "probe": null,
   "overview": {
     "artifacts": 0,
     "certificates": 0,
@@ -31,11 +32,13 @@
   },
   "purpose_evaluation": {
     "requested": "any",
+    "source": "default",
     "state": "not_evaluated",
     "targets": []
   },
   "hostname_evaluation": {
     "state": "not_evaluated",
+    "source": null,
     "requested": null,
     "normalized": null,
     "kind": null,

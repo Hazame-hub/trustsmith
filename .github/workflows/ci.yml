@@ -1,9 +1,17 @@
 # Continuous integration for Trustsmith.
 #
-# The test matrix is the proof that the inspect slice works on Linux, macOS
-# and Windows: build, vet, and every test — unit, golden, fuzz seed corpora and
-# architecture tests — plus a smoke run of the real binary. Race, lint,
-# vulnerability and short fuzzing jobs run once, on Linux.
+# The test jobs are the proof that the inspect slice works: build, vet, and
+# every test — unit, golden, fuzz seed corpora and architecture tests — plus a
+# smoke run of the real binary. Race, lint, vulnerability and short fuzzing
+# jobs run once, on Linux.
+#
+# Runners. Linux jobs run on the self-hosted runner container for this
+# repository (sybil-dev deploy/ci/runner-up.sh Hazame-hub/trustsmith; no
+# Docker socket). There is no self-hosted runner for macOS or Windows, and
+# GitHub-hosted jobs cannot start while the account's Actions billing is
+# blocked, so the macOS and Windows tests run only when the repository variable
+# HOSTED_RUNNERS is "true". They are kept, not removed: set the variable to
+# bring them back.
 #
 # Actions are pinned to commit SHAs; the tag is in the trailing comment.
 name: ci
@@ -17,11 +25,32 @@ permissions:
 
 jobs:
   test:
+    name: test (linux-self-hosted)
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Verify modules
+        run: go mod verify
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test -count=1 ./...
+      - name: CLI smoke test
+        shell: bash
+        run: ./.github/workflows/smoke.sh
+
+  test-hosted:
     name: test (${{ matrix.os }})
+    if: ${{ vars.HOSTED_RUNNERS == 'true' }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,32 +67,31 @@ jobs:
         run: go test -count=1 ./...
       - name: CLI smoke test
         shell: bash
-        run: |
-          ext=""
-          if [ "$RUNNER_OS" = "Windows" ]; then ext=".exe"; fi
-          go build -o "bin/trustsmith$ext" ./cmd/trustsmith
-          "bin/trustsmith$ext" inspect testdata/certs/leaf.pem
-          set +e
-          "bin/trustsmith$ext" inspect testdata/certs/expired.pem > /dev/null
-          code=$?
-          set -e
-          if [ "$code" -ne 3 ]; then
-            echo "::error::inspecting an expired certificate must exit 3, got $code"
-            exit 1
-          fi
+        run: ./.github/workflows/smoke.sh
 
   race:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+      - name: Ensure a C toolchain
+        # The race detector needs cgo. The runner user cannot sudo, so the
+        # self-hosted runner container must carry gcc itself; GitHub-hosted
+        # Ubuntu does.
+        run: |
+          if ! command -v gcc >/dev/null; then
+            echo "::error::the race detector needs a C compiler; install gcc and libc6-dev in the runner image"
+            exit 1
+          fi
       - name: Test with the race detector
+        env:
+          CGO_ENABLED: "1"
         run: go test -race -count=1 ./...
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -80,7 +108,7 @@ jobs:
           version: v2.13.2
 
   vulncheck:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -91,7 +119,7 @@ jobs:
 
   fuzz:
     name: fuzz (short)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -103,3 +131,4 @@ jobs:
           go test -run '^$' -fuzz '^FuzzDecode$' -fuzztime 20s ./internal/artifact
           go test -run '^$' -fuzz '^FuzzFromDER$' -fuzztime 20s ./internal/x509facts
           go test -run '^$' -fuzz '^FuzzInspectBytes$' -fuzztime 20s ./internal/app/inspectsvc
+          go test -run '^$' -fuzz '^FuzzParse$' -fuzztime 20s ./internal/endpoint

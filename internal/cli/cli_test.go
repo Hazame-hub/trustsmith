@@ -2,7 +2,10 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,6 +32,11 @@ func run(t *testing.T, stdin []byte, args ...string) (int, string, string) {
 	code := cli.Run(args, bytes.NewReader(stdin), &out, &errOut, cli.Env{
 		Now:     func() time.Time { return testpki.Now },
 		Version: "v0.0.0-test",
+		// Tests never use the network: endpoint tests pass their own dialer.
+		Dial: func(_ context.Context, _, address string) (net.Conn, error) {
+			t.Errorf("unexpected network dial to %s", address)
+			return nil, errors.New("tests do not use the network")
+		},
 	})
 	return code, out.String(), errOut.String()
 }
@@ -185,8 +193,12 @@ func TestExitCodes(t *testing.T) {
 		{"bad fail-on", []string{"inspect", "--fail-on", "error", "testdata/certs/leaf.pem"}, 2, "--fail-on"},
 		{"unknown flag", []string{"inspect", "--nope", "testdata/certs/leaf.pem"}, 2, "nope"},
 		{"unknown command", []string{"frobnicate"}, 2, "frobnicate"},
-		{"endpoint host:port", []string{"inspect", "api.example.com:443"}, 2, "not supported"},
-		{"endpoint URL", []string{"inspect", "https://api.example.com"}, 2, "not supported"},
+		{"https is not an endpoint scheme", []string{"inspect", "https://api.example.com"}, 2, "unsupported scheme"},
+		{"endpoint with a path", []string{"inspect", "tls://api.example.com/index.html"}, 2, "path"},
+		{"endpoint with user information", []string{"inspect", "tls://user@api.example.com:443"}, 2, "user information"},
+		{"endpoint port out of range", []string{"inspect", "tls://api.example.com:65536"}, 2, "port"},
+		{"unknown probe policy", []string{"inspect", "--probe-policy", "legacy", "api.example.com:443"}, 2, "--probe-policy"},
+		{"probe policy for a file", []string{"inspect", "--probe-policy", "modern", "testdata/certs/leaf.pem"}, 2, "--probe-policy"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			code, _, stderr := run(t, nil, tc.args...)

@@ -7,6 +7,7 @@
     "format": "pem",
     "size_bytes": 684
   },
+  "probe": null,
   "overview": {
     "artifacts": 1,
     "certificates": 1,
@@ -165,11 +166,13 @@
   },
   "purpose_evaluation": {
     "requested": "any",
+    "source": "default",
     "state": "not_evaluated",
     "targets": []
   },
   "hostname_evaluation": {
     "state": "evaluated",
+    "source": "explicit",
     "requested": "other.example.test",
     "normalized": "other.example.test",
     "kind": "dns",

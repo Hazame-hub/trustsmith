@@ -7,6 +7,7 @@
     "format": "pem",
     "size_bytes": 1401
   },
+  "probe": null,
   "overview": {
     "artifacts": 2,
     "certificates": 2,
@@ -290,6 +291,7 @@
   },
   "purpose_evaluation": {
     "requested": "tls-server",
+    "source": "explicit",
     "state": "evaluated",
     "targets": [
       {
@@ -327,6 +329,7 @@
   },
   "hostname_evaluation": {
     "state": "not_evaluated",
+    "source": null,
     "requested": null,
     "normalized": null,
     "kind": null,

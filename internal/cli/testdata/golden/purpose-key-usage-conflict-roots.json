@@ -7,6 +7,7 @@
     "format": "pem",
     "size_bytes": 1442
   },
+  "probe": null,
   "overview": {
     "artifacts": 2,
     "certificates": 2,
@@ -343,6 +344,7 @@
   },
   "purpose_evaluation": {
     "requested": "code-signing",
+    "source": "explicit",
     "state": "evaluated",
     "targets": [
       {
@@ -380,6 +382,7 @@
   },
   "hostname_evaluation": {
     "state": "not_evaluated",
+    "source": null,
     "requested": null,
     "normalized": null,
     "kind": null,

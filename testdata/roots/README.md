@@ -13,5 +13,6 @@ Files supplied with `trustsmith inspect --roots` in the trust evaluation tests.
 | `path-expired-root.pem` | the root CA of path-expired-intermediate.pem |
 | `purpose-root.pem` | the root CA of the purpose fixtures (purpose-root-ca.pem) |
 | `test-root.pem` | the root CA of bundle.pem |
+| `tls-endpoint-root.pem` | the root CA of tls-endpoint.pem, the in-process TLS endpoint's chain |
 | `unrelated-root.pem` | a self-signed root CA that issued nothing in the corpus |
 | `with-private-key.pem` | the root of bundle.pem followed by a private key block (refused, never decoded) |

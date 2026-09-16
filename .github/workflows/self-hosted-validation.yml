@@ -48,6 +48,10 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          # No module cache upload: this runner keeps its own module cache
+          # between runs, and saving one stalled the job past its timeout on
+          # this host's connection (run 35036509979).
+          cache: false
       - name: Tested commit
         run: git rev-parse HEAD
       - name: Toolchain

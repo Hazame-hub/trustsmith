@@ -849,8 +849,13 @@ func writeProbe(b *strings.Builder, res inspectsvc.Result) bool {
 	negotiated := n.VersionName() + ", " + n.CipherSuiteName()
 	if g := n.GroupName(); g != "" {
 		negotiated += ", " + g
+	} else {
+		negotiated += ", key exchange group not reported by the engine"
 	}
 	topField(b, "Negotiated", negotiated)
+	if p.Policy.ID() != probe.ModernV1().ID() {
+		topField(b, "Compatibility", compatibilityText(n.CompatibilityFeatures()))
+	}
 	topField(b, "ALPN", "none offered")
 	topField(b, "Certificates", plural(len(p.PeerCertificates), "certificate", "certificates")+" received, in the server's order")
 	if p.ClientCertificateRequested {
@@ -882,4 +887,24 @@ func probeReasonText(r probe.Reason) string {
 		return "the server sent a certificate Go's TLS engine could not parse (certificate_unparseable_by_engine)"
 	}
 	return "an error the probe does not classify (engine_error)"
+}
+
+// compatibilityText says which negotiated parameters the modern policy does
+// not offer. It describes this handshake only.
+func compatibilityText(features []probe.Feature) string {
+	if len(features) == 0 {
+		return "none used: every negotiated parameter is also offered by the modern policy"
+	}
+	names := make([]string, len(features))
+	for i, f := range features {
+		switch f {
+		case probe.FeatureTLS12AESCBCSHA1:
+			names[i] = "TLS 1.2 AES-CBC with HMAC-SHA1"
+		case probe.FeatureECDHEP521:
+			names[i] = "P-521 key exchange"
+		default:
+			names[i] = string(f)
+		}
+	}
+	return "used " + strings.Join(names, " and ") + " (not offered by the modern policy)"
 }

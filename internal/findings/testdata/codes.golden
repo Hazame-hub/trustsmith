@@ -28,5 +28,6 @@ purpose.eku_disallows_usage
 purpose.key_usage_disallows_usage
 sig.md5
 sig.sha1
+tls.cbc_cipher_negotiated
 trust.failed
 trust.unverifiable

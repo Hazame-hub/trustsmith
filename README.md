@@ -62,6 +62,10 @@ server presents:
     pass either explicitly.
   - No application data is sent and no HTTP is spoken. There is no fallback to
     weaker protocol versions or cipher suites.
+  - `--probe-policy compatible` additionally offers the TLS 1.2 ECDHE AES-CBC-SHA
+    suites and the P-521 group ([ADR-0010](docs/adr/0010-compatible-probe-policy.md)).
+    It is chosen explicitly, never used as a fallback, and reports which of
+    those parameters, if any, were actually negotiated.
 - **Output:** friendly text by default, `--advanced` for technical details, or
   `--output json` for the versioned `trustsmith.inspect/v1` schema.
 
@@ -79,6 +83,7 @@ $ trustsmith inspect server.pem --purpose tls-server --roots company-roots.pem
 $ trustsmith inspect server.pem --hostname api.example.com
 $ trustsmith inspect api.example.com:443 --roots company-roots.pem
 $ trustsmith inspect tls://[2001:db8::1]:8443 --output json
+$ trustsmith inspect legacy.example.com:443 --probe-policy compatible
 ```
 
 Not yet supported: system or platform trust stores, revocation, private keys, CSRs, PKCS#12, STARTTLS and legacy TLS
@@ -116,6 +121,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0007: explicit certificate-purpose validation](docs/adr/0007-explicit-certificate-purpose.md)
 - [ADR-0008: explicit host name identity](docs/adr/0008-hostname-identity.md)
 - [ADR-0009: minimal TLS endpoint acquisition](docs/adr/0009-tls-endpoint-acquisition.md)
+- [ADR-0010: explicit compatible TLS probe policy](docs/adr/0010-compatible-probe-policy.md)
 
 ## License
 

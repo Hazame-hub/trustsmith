@@ -699,6 +699,10 @@ func stamp(t time.Time) string { return t.UTC().Format(time.RFC3339) }
 // certificate_acquisition is acquired, not_acquired, or unverifiable when the
 // server sent certificates Go's TLS engine could not parse. sni is the server
 // name sent, null for an IP address. negotiated is null unless complete.
+// compatibility_features_used lists the negotiated parameters the modern
+// policy does not offer (tls12_aes_cbc_sha1, ecdhe_p521); it is empty when
+// every negotiated parameter is also offered by modern, whatever the policy,
+// and says nothing about whether a modern handshake would have succeeded.
 type jsonProbe struct {
 	Kind                       string          `json:"kind"`
 	Endpoint                   jsonEndpoint    `json:"endpoint"`
@@ -710,6 +714,7 @@ type jsonProbe struct {
 	Engine                     jsonEngine      `json:"engine"`
 	SNI                        *string         `json:"sni"`
 	Negotiated                 *jsonNegotiated `json:"negotiated"`
+	CompatibilityFeaturesUsed  []string        `json:"compatibility_features_used"`
 	PeerCertificateCount       int             `json:"peer_certificate_count"`
 	ClientCertificateRequested bool            `json:"client_certificate_requested"`
 	ElapsedMS                  int64           `json:"elapsed_ms"`
@@ -725,9 +730,13 @@ type jsonEndpoint struct {
 }
 
 // jsonProbePolicy is the named, versioned client policy and the values it
-// sets. tls13_cipher_suites and signature_schemes are engine_managed: Go's
-// crypto/tls chooses them and a policy cannot. alpn is what is offered.
+// sets. id is the stable identifier (modern-v1, compatible-v1).
+// tls12_cipher_suites and groups are sets, listed by name: Go applies its own
+// preference order, so the list order means nothing. tls13_cipher_suites and
+// signature_schemes are engine_managed: Go's crypto/tls chooses them and a
+// policy cannot. alpn is what is offered.
 type jsonProbePolicy struct {
+	ID                string   `json:"id"`
 	Name              string   `json:"name"`
 	Version           int      `json:"version"`
 	MinVersion        string   `json:"min_version"`
@@ -745,7 +754,10 @@ type jsonEngine struct {
 }
 
 // jsonNegotiated are the parameters of the completed handshake, named as Go's
-// crypto/tls names them. key_exchange_group and alpn are null when none.
+// crypto/tls names them. key_exchange_group is ConnectionState.CurveID; it is
+// null when Go reports 0, meaning no ECDHE or hybrid key exchange, which no
+// current policy offers, so a null here with an ECDHE suite is unexpected
+// engine behaviour. alpn is null when none.
 type jsonNegotiated struct {
 	Version          string  `json:"version"`
 	CipherSuite      string  `json:"cipher_suite"`
@@ -767,12 +779,13 @@ func probeJSON(res inspectsvc.Result) *jsonProbe {
 		Stage:                  string(p.Stage),
 		CertificateAcquisition: string(p.Acquisition),
 		Policy: jsonProbePolicy{
-			Name: p.Policy.Name, Version: p.Policy.Version,
+			ID: p.Policy.ID(), Name: p.Policy.Name, Version: p.Policy.Version,
 			MinVersion: p.Policy.MinVersionName(), MaxVersion: p.Policy.MaxVersionName(),
 			TLS12CipherSuites: p.Policy.TLS12CipherSuiteNames(), TLS13CipherSuites: engineManaged,
 			SignatureSchemes: engineManaged, Groups: p.Policy.GroupNames(), ALPN: []string{},
 		},
 		Engine:                     jsonEngine{Name: "go", Version: p.EngineVersion},
+		CompatibilityFeaturesUsed:  []string{},
 		PeerCertificateCount:       len(p.PeerCertificates),
 		ClientCertificateRequested: p.ClientCertificateRequested,
 		ElapsedMS:                  p.Elapsed.Milliseconds(),
@@ -787,6 +800,9 @@ func probeJSON(res inspectsvc.Result) *jsonProbe {
 	}
 	if n := p.Negotiated; n != nil {
 		out.Negotiated = &jsonNegotiated{Version: n.VersionName(), CipherSuite: n.CipherSuiteName()}
+		for _, f := range n.CompatibilityFeatures() {
+			out.CompatibilityFeaturesUsed = append(out.CompatibilityFeaturesUsed, string(f))
+		}
 		if g := n.GroupName(); g != "" {
 			out.Negotiated.KeyExchangeGroup = &g
 		}

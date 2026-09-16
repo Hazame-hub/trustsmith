@@ -475,7 +475,7 @@ func TestPolicyByName(t *testing.T) {
 	if p, err := probe.PolicyByName("modern"); err != nil || p.Name != "modern" || p.Version != 1 {
 		t.Fatalf("modern: %+v %v", p, err)
 	}
-	for _, name := range []string{"", "Modern", "compatible", "legacy", "legacy-diagnostic", "modern-v1"} {
+	for _, name := range []string{"", "Modern", "legacy", "legacy-diagnostic", "modern-v1"} {
 		if _, err := probe.PolicyByName(name); !errors.Is(err, probe.ErrUnknownPolicy) {
 			t.Errorf("PolicyByName(%q) = %v", name, err)
 		}

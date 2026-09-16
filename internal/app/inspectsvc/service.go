@@ -269,13 +269,19 @@ func (s *Service) inspectDecoded(res Result, decoded artifact.Decoded) Result {
 	}
 	res.Findings = append(res.Findings, interpret.Input(decoded, certificates)...)
 
+	finishFindings(&res)
+	return res
+}
+
+// finishFindings orders the findings and records the highest severity.
+func finishFindings(res *Result) {
 	slices.SortStableFunc(res.Findings, compareFindings)
+	res.Highest = ""
 	for _, f := range res.Findings {
 		if res.Highest == "" || !res.Highest.AtLeast(f.Severity) {
 			res.Highest = f.Severity
 		}
 	}
-	return res
 }
 
 func compareFindings(x, y findings.Finding) int {

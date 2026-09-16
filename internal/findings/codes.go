@@ -69,3 +69,11 @@ const (
 	PurposeEKUDisallowsUsage      Code = "purpose.eku_disallows_usage"
 	PurposeKeyUsageDisallowsUsage Code = "purpose.key_usage_disallows_usage"
 )
+
+// Transport parameters negotiated with a TLS endpoint (what one handshake
+// used, never a grade of the endpoint).
+const (
+	// TLSCBCCipherNegotiated: a TLS 1.2 AES-CBC suite with HMAC-SHA1 was
+	// negotiated, which only the explicitly selected compatible policy offers.
+	TLSCBCCipherNegotiated Code = "tls.cbc_cipher_negotiated"
+)

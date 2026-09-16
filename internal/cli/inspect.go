@@ -47,6 +47,13 @@ Those are evaluated separately, exactly as for a file: an endpoint implies
 --purpose tls-server and --hostname set to the endpoint's host, unless either
 is given explicitly.
 
+--probe-policy chooses what that one handshake offers: modern (the default:
+TLS 1.2 with ECDHE and AEAD suites, and TLS 1.3) or compatible (modern plus the
+TLS 1.2 ECDHE AES-CBC-SHA suites and the P-521 group). The policy is chosen
+before connecting, and a failed handshake is never retried with another
+policy. A policy describes what Trustsmith offers, not whether the server is
+secure.
+
 Trust is evaluated only against trust anchors you supply with --roots: a
 certificate file or bundle, repeatable. Certificates in the inspected input,
 self-signed or not, are never trust anchors, and no system trust store is
@@ -169,7 +176,7 @@ reached --fail-on.`,
 	cmd.Flags().StringArrayVar(&roots, "roots", nil, "validate against the trust anchors in this certificate file (repeatable); without it, trust is not evaluated")
 	cmd.Flags().StringVar(&host, "hostname", "", "check whether the certificate identifies this host name or IP address (no scheme, path or port); an endpoint implies its host")
 	cmd.Flags().StringVar(&purposes, "purpose", string(purpose.Any), "evaluate suitability for a purpose: any, tls-server, tls-client, code-signing or email; an endpoint implies tls-server")
-	cmd.Flags().StringVar(&probePolicy, "probe-policy", "modern", "TLS client policy for endpoint inspection: modern (TLS 1.2 with ECDHE and AEAD suites, and TLS 1.3)")
+	cmd.Flags().StringVar(&probePolicy, "probe-policy", "modern", "TLS client policy for endpoint inspection: modern (default) or compatible; one handshake, never a fallback")
 	return cmd
 }
 

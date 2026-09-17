@@ -8,6 +8,7 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/artifact"
 	"github.com/Hazame-hub/trustsmith/internal/endpoint"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
+	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/probe"
 	"github.com/Hazame-hub/trustsmith/internal/purpose"
 )
@@ -50,7 +51,11 @@ func WithProbeSettings(p ProbeSettings) Option {
 // evaluated afterwards, by the same layers as for files.
 //
 // When no certificate was acquired, nothing is inspected and no certificate
-// finding is made: Result.Probe says why.
+// finding is made: Result.Probe says why. Otherwise the negotiated transport
+// parameters are interpreted too (interpret.Transport).
+//
+// The probe makes exactly one handshake, under the configured policy. A
+// failure is reported as it is and never retried with another policy.
 func (s *Service) InspectEndpoint(ctx context.Context, e endpoint.Endpoint) Result {
 	derived := *s
 	if derived.purposeSource != PurposeSourceExplicit {
@@ -95,5 +100,20 @@ func (s *Service) InspectEndpoint(ctx context.Context, e endpoint.Endpoint) Resu
 	for i := range res.Artifacts {
 		res.Artifacts[i].Locator = fmt.Sprintf("%s#peer-%d", locator, res.Artifacts[i].Entry)
 	}
+	res.Findings = append(res.Findings, interpret.Transport(transportFacts(acquired))...)
+	finishFindings(&res)
 	return res
+}
+
+// transportFacts hands interpretation the negotiated parameters as plain
+// values.
+func transportFacts(r probe.Result) interpret.TransportFacts {
+	t := interpret.TransportFacts{Policy: r.Policy.ID(), Features: []string{}}
+	if n := r.Negotiated; n != nil {
+		t.Negotiated, t.Version, t.CipherSuite = true, n.VersionName(), n.CipherSuiteName()
+		for _, f := range n.CompatibilityFeatures() {
+			t.Features = append(t.Features, string(f))
+		}
+	}
+	return t
 }

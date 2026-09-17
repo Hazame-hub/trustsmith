@@ -54,6 +54,13 @@ type tlsEndpoint struct {
 
 func serveEndpoint(t *testing.T, chain [][]byte) (*tlsEndpoint, probe.DialFunc) {
 	t.Helper()
+	return serveEndpointWith(t, chain, nil)
+}
+
+// serveEndpointWith is serveEndpoint with the server configuration adjusted by
+// configure, e.g. to accept only some cipher suites.
+func serveEndpointWith(t *testing.T, chain [][]byte, configure func(*tls.Config)) (*tlsEndpoint, probe.DialFunc) {
+	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -68,6 +75,9 @@ func serveEndpoint(t *testing.T, chain [][]byte) (*tlsEndpoint, probe.DialFunc) 
 			e.mu.Unlock()
 			return nil, nil
 		},
+	}
+	if configure != nil {
+		configure(cfg)
 	}
 	go func() {
 		for {

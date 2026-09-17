@@ -210,5 +210,12 @@
     "remediation": [
       {"code": "split_input", "text": "Inspect a smaller bundle that contains only the certificates of interest."}
     ]
+  },
+  "tls.cbc_cipher_negotiated": {
+    "title": "TLS 1.2 AES-CBC cipher suite negotiated",
+    "explanation": "The handshake negotiated a TLS 1.2 cipher suite that uses AES in CBC mode with HMAC-SHA1. Trustsmith's modern probe policy does not offer these suites; this one was available only because the compatible policy was selected explicitly. This describes the parameters of this one handshake, not the endpoint as a whole or other clients' connections.",
+    "remediation": [
+      {"code": "prefer_aead_suites", "text": "If the server should serve modern clients, enable TLS 1.3, or TLS 1.2 ECDHE suites with AES-GCM or ChaCha20-Poly1305."}
+    ]
   }
 }

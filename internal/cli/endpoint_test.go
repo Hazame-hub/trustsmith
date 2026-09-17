@@ -70,6 +70,13 @@ func endpointChainDER(t *testing.T) [][]byte {
 // serveTLSEndpoint serves the leaf and intermediate of tls-endpoint.pem.
 func serveTLSEndpoint(t *testing.T) (*endpointServer, probe.DialFunc) {
 	t.Helper()
+	return serveTLSEndpointWith(t, nil)
+}
+
+// serveTLSEndpointWith is serveTLSEndpoint with the server configuration
+// adjusted by configure, e.g. to accept only some cipher suites.
+func serveTLSEndpointWith(t *testing.T, configure func(*tls.Config)) (*endpointServer, probe.DialFunc) {
+	t.Helper()
 	s := &endpointServer{}
 	ln := listen(t)
 	cfg := &tls.Config{
@@ -78,6 +85,9 @@ func serveTLSEndpoint(t *testing.T) (*endpointServer, probe.DialFunc) {
 			s.record(&s.sni, h.ServerName)
 			return nil, nil
 		},
+	}
+	if configure != nil {
+		configure(cfg)
 	}
 	go func() {
 		for {
@@ -279,7 +289,7 @@ func TestEndpointJSONContract(t *testing.T) {
 	pol := p.Policy
 	if pol.Name != "modern" || pol.Version != 1 || pol.MinVersion != "TLS 1.2" || pol.MaxVersion != "TLS 1.3" ||
 		pol.TLS13CipherSuites != "engine_managed" || pol.SignatureSchemes != "engine_managed" || len(pol.ALPN) != 0 ||
-		!slices.Equal(pol.Groups, []string{"X25519MLKEM768", "X25519", "CurveP256", "CurveP384"}) || len(pol.TLS12CipherSuites) != 6 {
+		!slices.Equal(pol.Groups, []string{"CurveP256", "CurveP384", "X25519", "X25519MLKEM768"}) || len(pol.TLS12CipherSuites) != 6 {
 		t.Errorf("policy %+v", pol)
 	}
 	for _, s := range pol.TLS12CipherSuites {

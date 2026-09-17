@@ -24,8 +24,15 @@ This describes the implementation today, which offers only
   - Trust, host name identity and purpose are evaluated afterwards, separately,
     by the same code as for files. No system roots are used, and the handshake
     never uses `RootCAs` or verification callbacks.
-  - The probe offers only TLS 1.2 (ECDHE with AEAD suites) and TLS 1.3, and
-    never retries with weaker settings. It uses no GODEBUG settings.
+  - By default the probe offers only TLS 1.2 (ECDHE with AEAD suites) and
+    TLS 1.3. `--probe-policy compatible` also offers the TLS 1.2 ECDHE
+    AES-CBC-SHA suites and the P-521 group; it never offers TLS 1.0/1.1, RSA
+    key exchange, 3DES, RC4 or CBC-SHA256. A policy is chosen before
+    connecting and a failed handshake is never retried with another policy.
+    It uses no GODEBUG settings.
+  - A policy describes what Trustsmith offers, not whether a server is secure.
+    A negotiated CBC suite is reported as a warning about that handshake, not
+    as a grade of the endpoint.
   - It sends no application payload (only the TLS close_notify alert), speaks
     no HTTP, and bounds the connection and the handshake with timeouts.
   - Skipping verification and speaking TLS are confined by architecture tests

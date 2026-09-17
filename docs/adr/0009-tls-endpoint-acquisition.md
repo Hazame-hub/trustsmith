@@ -75,7 +75,8 @@ literal. An architecture test pins the required and forbidden fields.
 There is no CBC, no RSA key exchange, no 3DES and no TLS 1.0/1.1. There is no
 GODEBUG setting (an architecture test forbids `godebug` in go.mod,
 `//go:debug` and GODEBUG literals), and no retry with a weaker policy. Changing
-any value makes a new policy version.
+any value makes a new policy version. `compatible-v1`, an explicitly selected
+second policy, is specified in ADR-0010.
 
 **Engine-managed.** Go's public API does not let a client choose:
 - the TLS 1.3 cipher suites;

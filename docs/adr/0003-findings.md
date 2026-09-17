@@ -118,7 +118,9 @@ Codes in this revision:
   `trust_evaluation.requested_purpose` (ADR-0007), and `hostname_evaluation`
   (ADR-0008). `probe` (null for files), `input.kind` `endpoint` with format
   `tls_peer_certificates`, `artifacts[].locator`, `purpose_evaluation.source`
-  and `hostname_evaluation.source` were added within v1 (ADR-0009).
+  and `hostname_evaluation.source` were added within v1 (ADR-0009), as were
+  `probe.policy.id` and `probe.compatibility_features_used` (ADR-0010).
+  `probe.policy` suite and group lists are sets, listed by name.
 - **Fingerprints** are keyed by ADR-0002 scheme name. A missing key identity is
   `null`.
 - **Findings** include the rendered catalog text and codes. Their `entry` is

@@ -4,9 +4,10 @@ Trustsmith is a local-first certificate and private-PKI workbench. It aims to
 make everyday certificate work understandable to people who are not PKI
 experts, without taking the advanced path away from those who are.
 
-> **Status: early development.** The only command implemented so far is
-> `trustsmith inspect`, for certificate files and TLS endpoints. Everything else in the roadmap
-> (private CA, inventory, renewal, discovery, a local UI) is not built yet.
+> **Status: early development.** Implemented so far: `trustsmith inspect`, for
+> certificate files and TLS endpoints, and `trustsmith match`, for keys and
+> certificates. Everything else in the roadmap (private CA, inventory,
+> renewal, discovery, a local UI) is not built yet.
 
 ## What works today
 
@@ -69,6 +70,20 @@ server presents:
 - **Output:** friendly text by default, `--advanced` for technical details, or
   `--output json` for the versioned `trustsmith.inspect/v1` schema.
 
+### Does this key belong to this certificate?
+
+`trustsmith match cert.pem key.pem` answers the question behind "key values
+mismatch" for every algorithm at once, by comparing ADR-0002 key identities
+([ADR-0013](docs/adr/0013-key-certificate-match.md)). In a bundle it names
+the entry that matches. Exit code 0 means it matches, 3 that it matches
+nothing. Only unencrypted keys are read, and nothing about the private key
+except its public identity is ever printed.
+
+```console
+$ trustsmith match fullchain.pem privkey.pem
+$ trustsmith match server.pem server.key --output json
+```
+
 File inspection works offline. The only network connection Trustsmith ever
 makes is to an endpoint you name. Other PEM blocks in a file, including private
 keys, are reported by their label and never decoded.
@@ -122,6 +137,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0008: explicit host name identity](docs/adr/0008-hostname-identity.md)
 - [ADR-0009: minimal TLS endpoint acquisition](docs/adr/0009-tls-endpoint-acquisition.md)
 - [ADR-0010: explicit compatible TLS probe policy](docs/adr/0010-compatible-probe-policy.md)
+- [ADR-0013: does this key belong to this certificate?](docs/adr/0013-key-certificate-match.md)
 
 ## License
 

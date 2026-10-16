@@ -8,8 +8,8 @@ public issue.
 
 ## What the current version does
 
-This describes the implementation today, which offers only
-`trustsmith inspect`.
+This describes the implementation today: `trustsmith inspect` and
+`trustsmith match`.
 
 - **Reads only what you ask.** It reads the file named on the command line,
   or standard input, and the `--roots` files you name. It does not scan
@@ -37,8 +37,9 @@ This describes the implementation today, which offers only
     no HTTP, and bounds the connection and the handshake with timeouts.
   - Skipping verification and speaking TLS are confined by architecture tests
     to one package, which depends on no evaluation code.
-- **Handles no private keys.** PEM blocks other than `CERTIFICATE` are reported
-  by label and never decoded. The tool stores nothing and writes nothing except
+- **Handles no private keys when inspecting.** PEM blocks other than
+  `CERTIFICATE` are reported by label and never decoded; only `trustsmith
+  match` reads a key (below). The tool stores nothing and writes nothing except
   its output.
 - **Treats input as hostile.**
   - Input is limited to 8 MiB and 10,000 PEM blocks.
@@ -83,6 +84,21 @@ This describes the implementation today, which offers only
     is converted: IP addresses and certificate names never are.
   - A self-signature is reported as verified only when it verifies
     cryptographically.
+
+## Matching keys to certificates
+
+`trustsmith match` ([ADR-0013](docs/adr/0013-key-certificate-match.md)) reads
+a private key file, which `inspect` never does.
+
+- It reads exactly one **unencrypted** key and refuses encrypted ones; it
+  never asks for a passphrase.
+- The private value is used only to derive the public key. Only the public key
+  identity (`x509-spki-sha256`) is printed; a test checks that no part of the
+  key appears in the output.
+- Go cannot reliably zero key material, so the private value stays in process
+  memory until it is garbage-collected. The process exits right after.
+- Private key decoding is confined by an architecture test to this package
+  (and, for its own key, the local CA).
 
 ## Limitations
 

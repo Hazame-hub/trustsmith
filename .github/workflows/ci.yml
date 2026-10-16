@@ -132,3 +132,4 @@ jobs:
           go test -run '^$' -fuzz '^FuzzFromDER$' -fuzztime 20s ./internal/x509facts
           go test -run '^$' -fuzz '^FuzzInspectBytes$' -fuzztime 20s ./internal/app/inspectsvc
           go test -run '^$' -fuzz '^FuzzParse$' -fuzztime 20s ./internal/endpoint
+          go test -run '^$' -fuzz '^FuzzParse$' -fuzztime 20s ./internal/keyfacts

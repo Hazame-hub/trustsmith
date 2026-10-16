@@ -12,9 +12,10 @@ Trustsmith is open source (Apache-2.0) and stands on its own. It is also the
 certificate half of [Sybil](#part-of-the-sybil-family): Sybil knows your
 infrastructure, Trustsmith knows its certificates.
 
-> **Status: early development.** The only command implemented so far is
-> `trustsmith inspect`, for certificate files and TLS endpoints. Everything else in the roadmap
-> (private CA, inventory, renewal, discovery, a local UI) is not built yet.
+> **Status: early development.** Two commands exist: `trustsmith inspect`, for
+> certificate files and TLS endpoints, and `trustsmith ca`, a local private CA.
+> Everything else in the roadmap (inventory, renewal, discovery, a local UI) is
+> not built yet.
 
 ## Quick start
 
@@ -117,6 +118,34 @@ server presents:
 - **Output:** friendly text by default, `--advanced` for technical details, or
   `--output json` for the versioned `trustsmith.inspect/v1` schema.
 
+### A local private CA
+
+`trustsmith ca` issues TLS certificates for internal services
+([ADR-0012](docs/adr/0012-local-private-ca.md)):
+
+```console
+$ trustsmith ca init --permit-dns example.internal --permit-ip 10.0.0.0/8
+$ trustsmith ca issue --dns app.example.internal --ip 10.1.2.3
+```
+
+- **Constrained by default when you ask.** `--permit-dns` and `--permit-ip`
+  put critical name constraints in the root, so even a stolen CA key cannot
+  produce a certificate that validates for `bank.example.com`. Naming only DNS
+  domains also closes IP addresses, and the reverse.
+- **Proven before written.** `ca issue` inspects the new certificate against
+  the CA, for its purpose and every requested name, with the same code as
+  `trustsmith inspect`. Nothing is written unless all of it passes.
+- **Refuses rather than adjusts.** A certificate that would outlive its CA,
+  last more than 397 days or name something outside the constraints is refused
+  with the reason.
+- **Never overwrites** a key or certificate, and never touches a trust store:
+  it tells you which file to trust.
+- Root: ECDSA P-256 by default (`--key-type ecdsa-p384` or `rsa-3072`),
+  5 years, signs end-entity certificates only. Leaves: 90 days by default,
+  `--use server|client|both`, wildcards as the left-most label. Keys are
+  unencrypted PKCS #8 files with owner-only permissions; protect the CA
+  directory accordingly.
+
 File inspection works offline. The only network connection Trustsmith ever
 makes is to an endpoint you name. Other PEM blocks in a file, including private
 keys, are reported by their label and never decoded.
@@ -171,6 +200,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0008: explicit host name identity](docs/adr/0008-hostname-identity.md)
 - [ADR-0009: minimal TLS endpoint acquisition](docs/adr/0009-tls-endpoint-acquisition.md)
 - [ADR-0010: explicit compatible TLS probe policy](docs/adr/0010-compatible-probe-policy.md)
+- [ADR-0012: a local private CA](docs/adr/0012-local-private-ca.md)
 
 ## JSON output
 

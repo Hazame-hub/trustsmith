@@ -19,5 +19,8 @@ section; the release workflow publishes that section as the release notes.
   policy (ADR-0009) and the explicit `compatible` policy (ADR-0010).
 - `--output json` with the versioned `trustsmith.inspect/v1` contract and its
   generated JSON Schema in `docs/schema/`.
+- `trustsmith ca init` and `ca issue`: a local private CA with name
+  constraints; every issued certificate is checked before it is written
+  (ADR-0012).
 - Release archives for Linux, macOS and Windows on amd64 and arm64, with
   SHA-256 checksums.

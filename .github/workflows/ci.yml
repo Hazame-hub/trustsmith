@@ -16,8 +16,11 @@
 # Actions are pinned to commit SHAs; the tag is in the trailing comment.
 name: ci
 
+# Pushes to main, and pull requests. A branch with an open pull request is
+# tested once per push, not twice: there is one self-hosted runner.
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:

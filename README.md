@@ -12,10 +12,11 @@ Trustsmith is open source (Apache-2.0) and stands on its own. It is also the
 certificate half of [Sybil](#part-of-the-sybil-family): Sybil knows your
 infrastructure, Trustsmith knows its certificates.
 
-> **Status: early development.** Three commands exist: `trustsmith inspect`,
+> **Status: early development.** Four commands exist: `trustsmith inspect`,
 > for certificate files and TLS endpoints, `trustsmith ca`, a local private CA,
-> and `trustsmith match`, for keys and certificates. Everything else in the
-> roadmap (inventory, renewal, discovery, a local UI) is not built yet.
+> `trustsmith match`, for keys and certificates, and `trustsmith scan`, for
+> directories. Everything else in the roadmap (renewal, network discovery, a
+> local UI) is not built yet.
 
 ## Quick start
 
@@ -158,6 +159,25 @@ except its public identity is ever printed.
 $ trustsmith match fullchain.pem privkey.pem
 $ trustsmith match server.pem server.key --output json
 ```
+### Which certificates are on this machine?
+
+`trustsmith scan /etc/ssl` finds every certificate file under a directory,
+inspects each one exactly as `inspect` would, and lists the certificates
+soonest-expiring first with their worst finding
+([ADR-0014](docs/adr/0014-directory-scan.md)):
+
+```console
+$ trustsmith scan /etc/nginx --expiring-within 30
+Certificates expired or expiring within 30 days (2 of 14)
+  EXPIRES     DAYS  WORST     FINDING             NAMES                 FILE
+  2026-06-01  -106  critical  cert.expired        old.example.com       /etc/nginx/ssl/old.pem#0
+  2026-10-01  16    warning   cert.expiring_soon  api.example.com       /etc/nginx/ssl/api.pem#0
+```
+
+Files are chosen by content (PEM certificate armour) or, for DER, by
+extension; symbolic links are never followed and private keys are never
+decoded. `--output json` (`trustsmith.scan/v1`) and the exit code make it a
+cron or CI check.
 
 File inspection works offline. The only network connection Trustsmith ever
 makes is to an endpoint you name. Other PEM blocks in a file, including private
@@ -215,6 +235,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0010: explicit compatible TLS probe policy](docs/adr/0010-compatible-probe-policy.md)
 - [ADR-0012: a local private CA](docs/adr/0012-local-private-ca.md)
 - [ADR-0013: does this key belong to this certificate?](docs/adr/0013-key-certificate-match.md)
+- [ADR-0014: scanning a directory for certificates](docs/adr/0014-directory-scan.md)
 
 ## JSON output
 

@@ -9,12 +9,15 @@ public issue.
 ## What the current version does
 
 This describes the implementation today: `trustsmith inspect`, the local CA
-(`trustsmith ca`) and `trustsmith match`.
+(`trustsmith ca`), `trustsmith match` and `trustsmith scan`.
 
 - **Reads only what you ask.** It reads the file named on the command line,
-  or standard input, and the `--roots` files you name. It does not scan
-  directories, open other files or send telemetry. The only network connection
-  it makes is to a TLS endpoint named on the command line.
+  or standard input, and the `--roots` files you name. Only `trustsmith scan`
+  reads a directory, the one you name: it never follows a symbolic link out of
+  it, never decodes a private key, and skips files over 8 MiB
+  ([ADR-0014](docs/adr/0014-directory-scan.md)). It opens no other files and
+  sends no telemetry. The only network connection it makes is to a TLS
+  endpoint named on the command line.
 - **Probes endpoints without judging them.** Inspecting a TLS endpoint
   completes an unauthenticated TLS handshake.
   - Go's verification is skipped (`InsecureSkipVerify`) only to collect the

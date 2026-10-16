@@ -24,5 +24,7 @@ section; the release workflow publishes that section as the release notes.
   (ADR-0012).
 - `trustsmith match cert key`: does this unencrypted private key belong to
   this certificate, or to which entry of a bundle (ADR-0013).
+- `trustsmith scan <dir>`: every certificate under a directory, soonest
+  expiring first, as text or `trustsmith.scan/v1` JSON (ADR-0014).
 - Release archives for Linux, macOS and Windows on amd64 and arm64, with
   SHA-256 checksums.

@@ -3,6 +3,7 @@ package cli_test
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"net"
@@ -32,6 +33,7 @@ func run(t *testing.T, stdin []byte, args ...string) (int, string, string) {
 	code := cli.Run(args, bytes.NewReader(stdin), &out, &errOut, cli.Env{
 		Now:     func() time.Time { return testpki.Now },
 		Version: "v0.0.0-test",
+		Rand:    rand.Reader,
 		// Tests never use the network: endpoint tests pass their own dialer.
 		Dial: func(_ context.Context, _, address string) (net.Conn, error) {
 			t.Errorf("unexpected network dial to %s", address)

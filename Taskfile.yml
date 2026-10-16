@@ -6,6 +6,13 @@ tasks:
     cmds:
       - go build -o bin/trustsmith{{exeExt}} ./cmd/trustsmith
 
+  dist:
+    desc: Cross-compile every release target into dist/ (VERSION, default dev)
+    vars:
+      VERSION: '{{.VERSION | default "dev"}}'
+    cmds:
+      - ./.github/workflows/build-dist.sh {{.VERSION}}
+
   test:
     desc: Run all tests, including fuzz seed corpora
     cmds:

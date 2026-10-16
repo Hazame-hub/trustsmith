@@ -8,13 +8,16 @@ public issue.
 
 ## What the current version does
 
-This describes the implementation today, which offers only
-`trustsmith inspect`.
+This describes the implementation today: `trustsmith inspect`, the local CA
+(`trustsmith ca`), `trustsmith match` and `trustsmith scan`.
 
 - **Reads only what you ask.** It reads the file named on the command line,
-  or standard input, and the `--roots` files you name. It does not scan
-  directories, open other files or send telemetry. The only network connection
-  it makes is to a TLS endpoint named on the command line.
+  or standard input, and the `--roots` files you name. Only `trustsmith scan`
+  reads a directory, the one you name: it never follows a symbolic link out of
+  it, never decodes a private key, and skips files over 8 MiB
+  ([ADR-0014](docs/adr/0014-directory-scan.md)). It opens no other files and
+  sends no telemetry. The only network connection it makes is to a TLS
+  endpoint named on the command line.
 - **Probes endpoints without judging them.** Inspecting a TLS endpoint
   completes an unauthenticated TLS handshake.
   - Go's verification is skipped (`InsecureSkipVerify`) only to collect the
@@ -37,12 +40,14 @@ This describes the implementation today, which offers only
     no HTTP, and bounds the connection and the handshake with timeouts.
   - Skipping verification and speaking TLS are confined by architecture tests
     to one package, which depends on no evaluation code.
-- **Handles no private keys.** PEM blocks other than `CERTIFICATE` and
-  certificate signing requests (`CERTIFICATE REQUEST`, `NEW CERTIFICATE
-  REQUEST`) are reported by label and never decoded. A certificate signing
-  request carries a public key, never a private one. Its attribute values,
-  such as a challenge password, are never decoded or shown. The tool stores
-  nothing and writes nothing except its output.
+- **Handles no private keys when inspecting.** PEM blocks other than
+  `CERTIFICATE` and certificate signing requests (`CERTIFICATE REQUEST`,
+  `NEW CERTIFICATE REQUEST`) are reported by label and never decoded; only
+  `trustsmith match` reads a key (below). A certificate signing request
+  carries a public key, never a private one, and its attribute values, such
+  as a challenge password, are never decoded or shown. `inspect` stores
+  nothing and writes nothing except its output; only `trustsmith ca` writes
+  files (below).
 - **Treats input as hostile.**
   - Input is limited to 8 MiB and 10,000 PEM blocks.
   - One malformed block is reported without stopping the others.
@@ -89,6 +94,43 @@ This describes the implementation today, which offers only
     signature with its own key, which proves only that the requester held the
     private key; a request is never used as a certificate, issuer or trust
     anchor.
+
+## The local CA
+
+`trustsmith ca` ([ADR-0012](docs/adr/0012-local-private-ca.md)) is the only
+part of Trustsmith that creates or stores secret material.
+
+- **What it writes.** `ca init` writes `ca.pem` and `ca.key` into a directory
+  it creates with mode 0700; `ca issue` writes `<out>.pem` and `<out>.key`.
+  Keys are unencrypted PKCS #8 PEM with mode 0600. On Windows the mode bits
+  only toggle read-only and the key inherits the directory's ACL, so put the
+  CA directory somewhere only you can read.
+- **What it never does.** It never overwrites a file, never installs the root
+  into a system or browser trust store, and never sends anything anywhere.
+- **Name constraints.** With `--permit-dns`/`--permit-ip` the root carries
+  critical name constraints, and naming one type closes the other, so a stolen
+  CA key cannot produce a certificate that validates for another name wherever
+  constraints are enforced. Without them, the root can certify any name: the
+  CLI says so when it creates one.
+- **Proof before writing.** Every issued certificate is validated against its
+  CA, for its purpose and every requested name, by the same code as
+  `trustsmith inspect`, before its key is written.
+- Key creation and file writing are each confined to one package by
+  architecture tests.
+## Matching keys to certificates
+
+`trustsmith match` ([ADR-0013](docs/adr/0013-key-certificate-match.md)) reads
+a private key file, which `inspect` never does.
+
+- It reads exactly one **unencrypted** key and refuses encrypted ones; it
+  never asks for a passphrase.
+- The private value is used only to derive the public key. Only the public key
+  identity (`x509-spki-sha256`) is printed; a test checks that no part of the
+  key appears in the output.
+- Go cannot reliably zero key material, so the private value stays in process
+  memory until it is garbage-collected. The process exits right after.
+- Private key decoding is confined by an architecture test to this package
+  (and, for its own key, the local CA).
 
 ## Limitations
 

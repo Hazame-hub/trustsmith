@@ -1,0 +1,105 @@
+Scanned testdata/certs at 2026-09-14 12:00:00 UTC
+  60 files examined, 47 with certificates, 85 certificates (63 distinct)
+  skipped: 0 symbolic links (never followed), 0 files over 8 MiB; 0 unreadable
+  trust is not evaluated: certificates are listed by what they contain, not by who trusts them
+
+Certificates, soonest expiry first (85)
+  EXPIRES     DAYS  WORST     FINDING                       NAMES                                             FILE
+  2026-06-01  -106  critical  cert.expired                  expired.example.test                              testdata/certs/expired.pem#0
+  2026-06-01  -106  critical  cert.expired                  CN=Trustsmith Path Expired Intermediate           testdata/certs/path-expired-intermediate.pem#1
+  2026-09-17  2     critical  cert.expiring_soon            very-soon.example.test                            testdata/certs/expiring-critical.pem#0
+  2026-10-01  16    warning   cert.expiring_soon            soon.example.test                                 testdata/certs/expiring-warning.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/bundle-duplicate.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/bundle-duplicate.pem#2
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/bundle-reversed.pem#2
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/bundle-with-bad-block.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/bundle-with-private-key.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/bundle.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/csr-with-leaf.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/issuer-key-id-match-wrong-key.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/issuer-name-match-wrong-key.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/leaf.der#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/leaf.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/text-around.pem#0
+  2026-12-01  77    ok                                      api.example.test, xn--bcher-kva.example, 192....  testdata/certs/tls-endpoint.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/trailing-data.der#0
+  2027-09-01  351   ok                                      spiffe://example.test/client-1                    testdata/certs/client.pem#0
+  2027-09-01  351   warning   name.cn_only_no_san           CN=cn-only.example.test                           testdata/certs/cn-only.pem#0
+  2027-09-01  351   critical  sig.md5                       legacy-signed.example.test                        testdata/certs/md5-with-issuer.pem#0
+  2027-09-01  351   critical  sig.md5                       legacy.example.test                               testdata/certs/md5.pem#0
+  2027-09-01  351   ok                                      critical.path.example.test                        testdata/certs/path-critical-extension.pem#0
+  2027-09-01  351   ok                                      cross.path.example.test                           testdata/certs/path-cross-signed.pem#0
+  2027-09-01  351   ok                                      expired-issuer.path.example.test                  testdata/certs/path-expired-intermediate.pem#0
+  2027-09-01  351   ok                                      key-usage.path.example.test                       testdata/certs/path-key-usage-no-certsign.pem#0
+  2027-09-01  351   ok                                      length.path.example.test                          testdata/certs/path-length-exceeded.pem#0
+  2027-09-01  351   ok                                      self-issued.path.example.test                     testdata/certs/path-length-self-issued.pem#0
+  2027-09-01  351   ok                                      no-bc.path.example.test                           testdata/certs/path-no-basic-constraints.pem#0
+  2027-09-01  351   ok                                      not-ca.path.example.test                          testdata/certs/path-not-ca.pem#0
+  2027-09-01  351   ok                                      any-eku.example.test                              testdata/certs/purpose-any-eku.pem#0
+  2027-09-01  351   ok                                      https://publisher.example.test/                   testdata/certs/purpose-code-signing.pem#0
+  2027-09-01  351   ok                                      signer@example.test                               testdata/certs/purpose-email.pem#0
+  2027-09-01  351   ok                                      https://mismatched.example.test/                  testdata/certs/purpose-key-usage-conflict.pem#0
+  2027-09-01  351   ok                                      no-eku.example.test                               testdata/certs/purpose-no-eku.pem#0
+  2027-09-01  351   ok                                      spiffe://example.test/purpose-client              testdata/certs/purpose-server-only-intermediate.pem#0
+  2027-09-01  351   ok                                      reissued.example.test                             testdata/certs/reissued-intermediates.pem#0
+  2027-09-01  351   critical  key.rsa_under_2048            rsa1024.example.test                              testdata/certs/rsa-1024.pem#0
+  2027-09-01  351   ok                                      self-issued.example.test                          testdata/certs/self-issued-not-self-signed.pem#0
+  2027-09-01  351   warning   cert.self_signed_leaf         self.example.test                                 testdata/certs/self-signed-leaf.pem#0
+  2027-09-01  351   critical  sig.sha1                      legacy-signed.example.test                        testdata/certs/sha1-with-issuer.pem#0
+  2027-09-01  351   critical  sig.sha1                      legacy.example.test                               testdata/certs/sha1.pem#0
+  2027-09-01  351   info      key.unsupported_for_identity  noncanonical.example.test                         testdata/certs/x25519-key.pem#0
+  2027-10-01  381   critical  cert.not_yet_valid            future.example.test                               testdata/certs/not-yet-valid.pem#0
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Intermediate CA                testdata/certs/bundle-duplicate.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Intermediate CA                testdata/certs/bundle-reversed.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Intermediate CA                testdata/certs/bundle-with-bad-block.pem#2
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Intermediate CA                testdata/certs/bundle.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Intermediate CA                testdata/certs/issuer-key-id-match-wrong-key.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Intermediate CA                testdata/certs/issuer-name-match-wrong-key.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Legacy Signing CA              testdata/certs/md5-with-issuer.pem#1
+  2031-01-01  1569  info      chain.structure_unverifiable  CN=Trustsmith Path Critical-Extension Interme...  testdata/certs/path-critical-extension.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Critical-Extension Root        testdata/certs/path-critical-extension.pem#2
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Cross Intermediate             testdata/certs/path-cross-signed.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Root A                         testdata/certs/path-cross-signed.pem#2
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Root A                         testdata/certs/path-cross-signed.pem#3
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Root B                         testdata/certs/path-cross-signed.pem#4
+  2031-01-01  1569  info      chain.cycle                   CN=Trustsmith Path Cycle X                        testdata/certs/path-cycle.pem#0
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Cycle Y                        testdata/certs/path-cycle.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Expired Root                   testdata/certs/path-expired-intermediate.pem#2
+  2031-01-01  1569  warning   chain.issuer_key_usage        CN=Trustsmith Path Key-Usage Issuer               testdata/certs/path-key-usage-no-certsign.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Key-Usage Root                 testdata/certs/path-key-usage-no-certsign.pem#2
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Length Intermediate            testdata/certs/path-length-exceeded.pem#1
+  2031-01-01  1569  warning   chain.path_length_exceeded    CN=Trustsmith Path Length Root                    testdata/certs/path-length-exceeded.pem#2
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Self-Issued CA                 testdata/certs/path-length-self-issued.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Self-Issued CA                 testdata/certs/path-length-self-issued.pem#2
+  2031-01-01  1569  warning   chain.issuer_not_ca           CN=Trustsmith Path No-BC Issuer                   testdata/certs/path-no-basic-constraints.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Path No-BC Root                     testdata/certs/path-no-basic-constraints.pem#2
+  2031-01-01  1569  warning   chain.issuer_not_ca           CN=Trustsmith Path Not-CA Issuer                  testdata/certs/path-not-ca.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Path Not-CA Root                    testdata/certs/path-not-ca.pem#2
+  2031-01-01  1569  ok                                      CN=Trustsmith Purpose Intermediate CA             testdata/certs/purpose-any-eku.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Purpose Intermediate CA             testdata/certs/purpose-code-signing.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Purpose Intermediate CA             testdata/certs/purpose-email.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Purpose Intermediate CA             testdata/certs/purpose-key-usage-conflict.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Purpose Intermediate CA             testdata/certs/purpose-no-eku.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Purpose Server-Only Intermediat...  testdata/certs/purpose-server-only-intermediate.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Reissued Intermediate CA       testdata/certs/reissued-intermediates.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Reissued Intermediate CA       testdata/certs/reissued-intermediates.pem#2
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Legacy Signing CA              testdata/certs/sha1-with-issuer.pem#1
+  2031-01-01  1569  ok                                      CN=Trustsmith Test Endpoint Intermediate CA       testdata/certs/tls-endpoint.pem#1
+  2036-01-01  3395  ok                                      CN=Trustsmith Test Root CA                        testdata/certs/bundle-reversed.pem#0
+  2036-01-01  3395  ok                                      CN=Trustsmith Test Root CA                        testdata/certs/bundle.pem#2
+  2036-01-01  3395  ok                                      CN=Trustsmith Purpose Root CA                     testdata/certs/purpose-root-ca.pem#0
+  2036-01-01  3395  ok                                      CN=Trustsmith Test Root CA                        testdata/certs/root-ca.pem#0
+  2036-01-01  3395  ok                                      CN=Trustsmith Test Endpoint Root CA               testdata/certs/tls-endpoint.pem#2
+
+Other findings (9)
+  CRITICAL  input.malformed_pem             testdata/certs/bundle-with-bad-block.pem#1
+  WARNING   input.unsupported_format        testdata/certs/bundle-with-private-key.pem#1
+  CRITICAL  input.no_certificates           testdata/certs/malformed.pem
+  CRITICAL  input.malformed_pem             testdata/certs/malformed.pem#0
+  CRITICAL  input.unparseable_certificate   testdata/certs/noncanonical-rsa-key.pem#0
+  WARNING   key.noncanonical_spki           testdata/certs/noncanonical-rsa-key.pem#0
+  INFO      input.trailing_data             testdata/certs/text-around.pem
+  INFO      input.trailing_data             testdata/certs/text-around.pem
+  WARNING   input.trailing_data             testdata/certs/trailing-data.der
+
+Findings: 13 critical, 12 warning, 6 info. Explain one: trustsmith inspect <file>

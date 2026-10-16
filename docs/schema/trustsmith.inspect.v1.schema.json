@@ -1,0 +1,1534 @@
+{
+  "$defs": {
+    "action": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "text"
+      ],
+      "type": "object"
+    },
+    "algorithm": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "oid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "anchor": {
+      "properties": {
+        "input_entries": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "self_signature": {
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/anchor_source"
+          },
+          "type": "array"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "x509-cert-sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "input_entries",
+        "self_signature",
+        "sources",
+        "subject",
+        "x509-cert-sha256"
+      ],
+      "type": "object"
+    },
+    "anchor_source": {
+      "properties": {
+        "entry": {
+          "type": "integer"
+        },
+        "roots_file": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "entry",
+        "roots_file"
+      ],
+      "type": "object"
+    },
+    "anchored_path": {
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "type": "object"
+    },
+    "artifact": {
+      "properties": {
+        "entry": {
+          "type": "integer"
+        },
+        "fingerprints": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/fingerprints"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key_identity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/key_identity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "locator": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "parse_error": {
+          "type": "string"
+        },
+        "pem_label": {
+          "type": "string"
+        },
+        "problem": {
+          "type": "string"
+        },
+        "request": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/request"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/summary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "technical": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/technical"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "entry",
+        "offset",
+        "type"
+      ],
+      "type": "object"
+    },
+    "attribute": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "oid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "oid"
+      ],
+      "type": "object"
+    },
+    "basic_constraints": {
+      "properties": {
+        "is_ca": {
+          "type": "boolean"
+        },
+        "max_path_len": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "present": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "is_ca",
+        "max_path_len",
+        "present"
+      ],
+      "type": "object"
+    },
+    "certificate_ref": {
+      "properties": {
+        "entries": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "x509-cert-sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "entries",
+        "x509-cert-sha256"
+      ],
+      "type": "object"
+    },
+    "certificate_usage": {
+      "properties": {
+        "ca_certificate": {
+          "type": "boolean"
+        },
+        "consistent_key_usage": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ext_key_usage": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ext_key_usage_basis": {
+          "type": "string"
+        },
+        "ext_key_usage_present": {
+          "type": "boolean"
+        },
+        "key_usage": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "key_usage_present": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "required_ext_key_usage": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ca_certificate",
+        "consistent_key_usage",
+        "ext_key_usage",
+        "ext_key_usage_present",
+        "key_usage",
+        "key_usage_present",
+        "reasons",
+        "required_ext_key_usage",
+        "state"
+      ],
+      "type": "object"
+    },
+    "endpoint": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "host",
+        "kind",
+        "port"
+      ],
+      "type": "object"
+    },
+    "engine": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "evidence": {
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "value"
+      ],
+      "type": "object"
+    },
+    "extension": {
+      "properties": {
+        "critical": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "oid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "critical",
+        "oid"
+      ],
+      "type": "object"
+    },
+    "finding": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "entry": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "type": "array"
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "remediation": {
+          "items": {
+            "$ref": "#/$defs/action"
+          },
+          "type": "array"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "entry",
+        "evidence",
+        "explanation",
+        "remediation",
+        "severity",
+        "title"
+      ],
+      "type": "object"
+    },
+    "fingerprints": {
+      "properties": {
+        "x509-cert-sha256": {
+          "type": "string"
+        },
+        "x509-spki-encoded-sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "x509-spki-sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "x509-spki-encoded-sha256",
+        "x509-spki-sha256"
+      ],
+      "type": "object"
+    },
+    "hostname_evaluation": {
+      "properties": {
+        "engine_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "matcher": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "normalized": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requested": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/hostname_target"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "engine_version",
+        "kind",
+        "matcher",
+        "normalized",
+        "requested",
+        "source",
+        "state",
+        "targets"
+      ],
+      "type": "object"
+    },
+    "hostname_target": {
+      "properties": {
+        "certificate": {
+          "$ref": "#/$defs/certificate_ref"
+        },
+        "certificate_dns_names": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "certificate_ip_addresses": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "common_name_ignored": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "certificate",
+        "certificate_dns_names",
+        "certificate_ip_addresses",
+        "common_name_ignored",
+        "state"
+      ],
+      "type": "object"
+    },
+    "input": {
+      "properties": {
+        "format": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "locator": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "format",
+        "kind",
+        "locator",
+        "size_bytes"
+      ],
+      "type": "object"
+    },
+    "key_identity": {
+      "properties": {
+        "detail": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "negotiated": {
+      "properties": {
+        "alpn": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cipher_suite": {
+          "type": "string"
+        },
+        "key_exchange_group": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alpn",
+        "cipher_suite",
+        "key_exchange_group",
+        "version"
+      ],
+      "type": "object"
+    },
+    "outside_validity": {
+      "properties": {
+        "position": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "x509-cert-sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "position",
+        "state",
+        "x509-cert-sha256"
+      ],
+      "type": "object"
+    },
+    "overview": {
+      "properties": {
+        "artifacts": {
+          "type": "integer"
+        },
+        "certificate_requests": {
+          "type": "integer"
+        },
+        "certificates": {
+          "type": "integer"
+        },
+        "findings": {
+          "type": "integer"
+        },
+        "highest_severity": {
+          "type": "string"
+        },
+        "included_paths": {
+          "type": "integer"
+        },
+        "path_limit_reached": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "artifacts",
+        "certificate_requests",
+        "certificates",
+        "findings",
+        "highest_severity",
+        "included_paths",
+        "path_limit_reached"
+      ],
+      "type": "object"
+    },
+    "path": {
+      "properties": {
+        "certificates": {
+          "items": {
+            "$ref": "#/$defs/certificate_ref"
+          },
+          "type": "array"
+        },
+        "completeness": {
+          "type": "string"
+        },
+        "cycle_to_position": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "end": {
+          "type": "string"
+        },
+        "signatures": {
+          "type": "string"
+        },
+        "structure": {
+          "$ref": "#/$defs/path_structure"
+        },
+        "trust": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "validity": {
+          "$ref": "#/$defs/path_validity"
+        }
+      },
+      "required": [
+        "certificates",
+        "completeness",
+        "cycle_to_position",
+        "end",
+        "signatures",
+        "structure",
+        "trust",
+        "type",
+        "validity"
+      ],
+      "type": "object"
+    },
+    "path_issue": {
+      "properties": {
+        "basic_constraints_present": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "extension_oid": {
+          "type": "string"
+        },
+        "following_intermediates": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "path_len_constraint": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "position": {
+          "type": "integer"
+        },
+        "x509-cert-sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "outcome",
+        "position",
+        "x509-cert-sha256"
+      ],
+      "type": "object"
+    },
+    "path_structure": {
+      "properties": {
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/path_issue"
+          },
+          "type": "array"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "issues",
+        "state"
+      ],
+      "type": "object"
+    },
+    "path_validity": {
+      "properties": {
+        "outside_validity_period": {
+          "items": {
+            "$ref": "#/$defs/outside_validity"
+          },
+          "type": "array"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "outside_validity_period",
+        "state"
+      ],
+      "type": "object"
+    },
+    "probe": {
+      "properties": {
+        "certificate_acquisition": {
+          "type": "string"
+        },
+        "client_certificate_requested": {
+          "type": "boolean"
+        },
+        "compatibility_features_used": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "elapsed_ms": {
+          "type": "integer"
+        },
+        "endpoint": {
+          "$ref": "#/$defs/endpoint"
+        },
+        "engine": {
+          "$ref": "#/$defs/engine"
+        },
+        "handshake_ms": {
+          "type": "integer"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "negotiated": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/negotiated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "peer_certificate_count": {
+          "type": "integer"
+        },
+        "policy": {
+          "$ref": "#/$defs/probe_policy"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sni": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stage": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "certificate_acquisition",
+        "client_certificate_requested",
+        "compatibility_features_used",
+        "elapsed_ms",
+        "endpoint",
+        "engine",
+        "handshake_ms",
+        "kind",
+        "negotiated",
+        "peer_certificate_count",
+        "policy",
+        "reason",
+        "sni",
+        "stage",
+        "state"
+      ],
+      "type": "object"
+    },
+    "probe_policy": {
+      "properties": {
+        "alpn": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "groups": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "max_version": {
+          "type": "string"
+        },
+        "min_version": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "signature_schemes": {
+          "type": "string"
+        },
+        "tls12_cipher_suites": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tls13_cipher_suites": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "alpn",
+        "groups",
+        "id",
+        "max_version",
+        "min_version",
+        "name",
+        "signature_schemes",
+        "tls12_cipher_suites",
+        "tls13_cipher_suites",
+        "version"
+      ],
+      "type": "object"
+    },
+    "public_key": {
+      "properties": {
+        "algorithm": {
+          "type": "string"
+        },
+        "bits": {
+          "type": "integer"
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm"
+      ],
+      "type": "object"
+    },
+    "purpose_evaluation": {
+      "properties": {
+        "requested": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/purpose_target"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "requested",
+        "source",
+        "state",
+        "targets"
+      ],
+      "type": "object"
+    },
+    "purpose_target": {
+      "properties": {
+        "anchored_path": {
+          "$ref": "#/$defs/anchored_path"
+        },
+        "certificate": {
+          "$ref": "#/$defs/certificate_ref"
+        },
+        "certificate_usage": {
+          "$ref": "#/$defs/certificate_usage"
+        }
+      },
+      "required": [
+        "anchored_path",
+        "certificate",
+        "certificate_usage"
+      ],
+      "type": "object"
+    },
+    "relationship": {
+      "properties": {
+        "candidate": {
+          "$ref": "#/$defs/certificate_ref"
+        },
+        "child": {
+          "$ref": "#/$defs/certificate_ref"
+        },
+        "evidence": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate",
+        "child",
+        "evidence",
+        "state",
+        "type"
+      ],
+      "type": "object"
+    },
+    "request": {
+      "properties": {
+        "attributes": {
+          "items": {
+            "$ref": "#/$defs/attribute"
+          },
+          "type": "array"
+        },
+        "basic_constraints": {
+          "$ref": "#/$defs/basic_constraints"
+        },
+        "extended_key_usage": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "extensions": {
+          "items": {
+            "$ref": "#/$defs/extension"
+          },
+          "type": "array"
+        },
+        "key": {
+          "type": "string"
+        },
+        "key_usage": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "pin_sha256": {
+          "type": "string"
+        },
+        "public_key": {
+          "$ref": "#/$defs/public_key"
+        },
+        "requests": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "signature_algorithm": {
+          "$ref": "#/$defs/algorithm"
+        },
+        "signature_check": {
+          "type": "string"
+        },
+        "signature_check_reason": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "subject_alt_names": {
+          "$ref": "#/$defs/sans"
+        },
+        "undecoded_extensions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "attributes",
+        "basic_constraints",
+        "extended_key_usage",
+        "extensions",
+        "key",
+        "key_usage",
+        "kind",
+        "pin_sha256",
+        "public_key",
+        "requests",
+        "signature",
+        "signature_algorithm",
+        "signature_check",
+        "subject",
+        "subject_alt_names",
+        "undecoded_extensions"
+      ],
+      "type": "object"
+    },
+    "roots_file": {
+      "properties": {
+        "certificates": {
+          "type": "integer"
+        },
+        "locator": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "certificates",
+        "locator"
+      ],
+      "type": "object"
+    },
+    "sans": {
+      "properties": {
+        "dns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "email": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ip": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "uri": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "dns",
+        "email",
+        "ip",
+        "uri"
+      ],
+      "type": "object"
+    },
+    "summary": {
+      "properties": {
+        "candidate_issuer_entries": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "chain": {
+          "type": "string"
+        },
+        "identifies": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "issuer_as_stated": {
+          "type": "string"
+        },
+        "issuer_in_input": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "purposes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "self_signed": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "validity": {
+          "$ref": "#/$defs/validity"
+        },
+        "verified_issuer_entries": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "candidate_issuer_entries",
+        "chain",
+        "identifies",
+        "issuer_as_stated",
+        "issuer_in_input",
+        "key",
+        "kind",
+        "purposes",
+        "self_signed",
+        "signature",
+        "validity",
+        "verified_issuer_entries"
+      ],
+      "type": "object"
+    },
+    "technical": {
+      "properties": {
+        "authority_key_id": {
+          "type": "string"
+        },
+        "basic_constraints": {
+          "$ref": "#/$defs/basic_constraints"
+        },
+        "crl_distribution_points": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "extended_key_usage": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "extensions": {
+          "items": {
+            "$ref": "#/$defs/extension"
+          },
+          "type": "array"
+        },
+        "issuer": {
+          "type": "string"
+        },
+        "issuing_certificate_urls": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "key_usage": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "not_after": {
+          "type": "string"
+        },
+        "not_before": {
+          "type": "string"
+        },
+        "ocsp_servers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "pin_sha256": {
+          "type": "string"
+        },
+        "policy_oids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "public_key": {
+          "$ref": "#/$defs/public_key"
+        },
+        "self_issued": {
+          "type": "boolean"
+        },
+        "self_signature": {
+          "type": "string"
+        },
+        "serial": {
+          "type": "string"
+        },
+        "signature_algorithm": {
+          "$ref": "#/$defs/algorithm"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "subject_alt_names": {
+          "$ref": "#/$defs/sans"
+        },
+        "subject_key_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "basic_constraints",
+        "crl_distribution_points",
+        "extended_key_usage",
+        "extensions",
+        "issuer",
+        "issuing_certificate_urls",
+        "key_usage",
+        "not_after",
+        "not_before",
+        "ocsp_servers",
+        "pin_sha256",
+        "policy_oids",
+        "public_key",
+        "self_issued",
+        "self_signature",
+        "serial",
+        "signature_algorithm",
+        "subject",
+        "subject_alt_names",
+        "version"
+      ],
+      "type": "object"
+    },
+    "trust_chain": {
+      "properties": {
+        "anchor": {
+          "type": "string"
+        },
+        "certificates": {
+          "items": {
+            "$ref": "#/$defs/certificate_ref"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "anchor",
+        "certificates"
+      ],
+      "type": "object"
+    },
+    "trust_evaluation": {
+      "properties": {
+        "anchors": {
+          "items": {
+            "$ref": "#/$defs/anchor"
+          },
+          "type": "array"
+        },
+        "engine": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "engine_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requested_extended_key_usages": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "requested_purpose": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "roots_files": {
+          "items": {
+            "$ref": "#/$defs/roots_file"
+          },
+          "type": "array"
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/trust_target"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "anchors",
+        "engine",
+        "engine_version",
+        "requested_extended_key_usages",
+        "requested_purpose",
+        "roots_files",
+        "source",
+        "state",
+        "targets"
+      ],
+      "type": "object"
+    },
+    "trust_target": {
+      "properties": {
+        "certificate": {
+          "$ref": "#/$defs/certificate_ref"
+        },
+        "chains": {
+          "items": {
+            "$ref": "#/$defs/trust_chain"
+          },
+          "type": "array"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "certificate",
+        "chains",
+        "state"
+      ],
+      "type": "object"
+    },
+    "validity": {
+      "properties": {
+        "days_remaining": {
+          "type": "integer"
+        },
+        "not_after": {
+          "type": "string"
+        },
+        "not_before": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "days_remaining",
+        "not_after",
+        "not_before",
+        "state"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/Hazame-hub/trustsmith/blob/main/docs/schema/trustsmith.inspect.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Output of `trustsmith inspect --output json`. Generated from internal/cli/render_json.go; do not edit by hand. Fields may be added within v1, so consumers must ignore properties they do not know; renaming, removing or changing the meaning of one requires v2.",
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/artifact"
+      },
+      "type": "array"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/finding"
+      },
+      "type": "array"
+    },
+    "hostname_evaluation": {
+      "$ref": "#/$defs/hostname_evaluation"
+    },
+    "input": {
+      "$ref": "#/$defs/input"
+    },
+    "inspected_at": {
+      "type": "string"
+    },
+    "overview": {
+      "$ref": "#/$defs/overview"
+    },
+    "paths": {
+      "items": {
+        "$ref": "#/$defs/path"
+      },
+      "type": "array"
+    },
+    "probe": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/probe"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "purpose_evaluation": {
+      "$ref": "#/$defs/purpose_evaluation"
+    },
+    "relationships": {
+      "items": {
+        "$ref": "#/$defs/relationship"
+      },
+      "type": "array"
+    },
+    "schema": {
+      "const": "trustsmith.inspect/v1"
+    },
+    "trust_evaluation": {
+      "$ref": "#/$defs/trust_evaluation"
+    }
+  },
+  "required": [
+    "artifacts",
+    "findings",
+    "hostname_evaluation",
+    "input",
+    "inspected_at",
+    "overview",
+    "paths",
+    "probe",
+    "purpose_evaluation",
+    "relationships",
+    "schema",
+    "trust_evaluation"
+  ],
+  "title": "trustsmith.inspect/v1",
+  "type": "object"
+}

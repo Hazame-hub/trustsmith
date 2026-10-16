@@ -1,0 +1,9 @@
+Private key   internal/fingerprint/testdata/vectors/ecdsa-p256/pkcs8.pem (ECDSA P-256, PKCS #8, unencrypted)
+Key identity  sha256:b2b04340cfaee616ec9c2c62d261b208e54bb197498df52e8cadede23ac0ba5e (x509-spki-sha256)
+
+[0] CN=trustsmith ADR-0002 vector rsa-2048
+    does not match (certifies sha256:8fb6bad671cfe698393c453357da61b56d757ab8c0f3fb9c87f2849e63131878)
+
+Result: the key belongs to no certificate in internal/fingerprint/testdata/vectors/rsa-2048/cert.pem.
+Fix: find the key that was generated with this certificate's request, or issue a new
+certificate for this key. Never deploy a certificate with a key it does not certify.

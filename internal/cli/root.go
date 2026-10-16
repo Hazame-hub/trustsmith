@@ -30,6 +30,9 @@ type Env struct {
 	// Dial replaces the TCP dialer of endpoint inspection; nil dials the
 	// endpoint. Tests use it to reach in-process servers only.
 	Dial probe.DialFunc
+	// Rand is the randomness source for keys and serial numbers
+	// (crypto/rand.Reader in cmd/trustsmith).
+	Rand io.Reader
 }
 
 // operationalError marks failures that are not the user's invocation.
@@ -88,6 +91,9 @@ func newRoot(stdin io.Reader, stdout io.Writer, env Env) *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return usageError{err} })
 
 	root.AddCommand(newInspectCommand(stdin, stdout, env))
+	root.AddCommand(newCACommand(stdout, env))
+	root.AddCommand(newMatchCommand(stdout))
+	root.AddCommand(newScanCommand(stdout, env))
 	root.AddCommand(&cobra.Command{
 		Use:   "version",
 		Short: "Print the Trustsmith version",

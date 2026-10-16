@@ -1,0 +1,7 @@
+Private key   internal/fingerprint/testdata/vectors/ecdsa-p256/key.pem (ECDSA P-256, SEC 1, unencrypted)
+Key identity  sha256:b2b04340cfaee616ec9c2c62d261b208e54bb197498df52e8cadede23ac0ba5e (x509-spki-sha256)
+
+[0] CN=trustsmith ADR-0002 vector ecdsa-p256
+    matches this key
+
+Result: the key belongs to entry 0 of internal/fingerprint/testdata/vectors/ecdsa-p256/cert.pem.

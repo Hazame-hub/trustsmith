@@ -1,0 +1,21 @@
+{
+  "schema": "trustsmith.match/v1",
+  "certificate_file": "internal/fingerprint/testdata/vectors/rsa-2048/cert.pem",
+  "key": {
+    "file": "internal/fingerprint/testdata/vectors/rsa-2048/pkcs8.pem",
+    "format": "pkcs8",
+    "algorithm": "RSA",
+    "bits": 2048,
+    "x509-spki-sha256": "8fb6bad671cfe698393c453357da61b56d757ab8c0f3fb9c87f2849e63131878"
+  },
+  "certificates": [
+    {
+      "entry": 0,
+      "x509-cert-sha256": "7a104ac5281747210019c96e38505d718456092b76194f3a990149936a149719",
+      "subject": "CN=trustsmith ADR-0002 vector rsa-2048",
+      "x509-spki-sha256": "8fb6bad671cfe698393c453357da61b56d757ab8c0f3fb9c87f2849e63131878",
+      "state": "matches"
+    }
+  ],
+  "matched": 0
+}

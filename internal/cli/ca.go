@@ -246,15 +246,3 @@ func useText(use string) string {
 	}
 	return "TLS server"
 }
-
-// printer writes lines and keeps the first error.
-type printer struct {
-	w   io.Writer
-	err error
-}
-
-func (p *printer) linef(format string, args ...any) {
-	if p.err == nil {
-		_, p.err = fmt.Fprintf(p.w, format+"\n", args...)
-	}
-}

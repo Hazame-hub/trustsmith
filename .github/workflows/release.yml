@@ -1,0 +1,55 @@
+# Release Trustsmith binaries.
+#
+# Runs only when a v* tag is pushed, so nothing is published without a person
+# deciding to tag. It runs the full test suite first, then cross-compiles every
+# target with build-dist.sh (the same script the CI dist job runs on every
+# push) and attaches the archives and SHA256SUMS to a draft GitHub release.
+# The release stays a draft until someone publishes it by hand.
+#
+# Runner: the self-hosted Linux runner (GitHub-hosted runners are unavailable
+# while Actions billing is blocked). CGO is off, so one Linux host builds the
+# macOS and Windows binaries too.
+#
+# Actions are pinned to commit SHAs; the tag is in the trailing comment.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Test
+        run: go test -count=1 ./...
+      - name: Build release archives
+        shell: bash
+        run: ./.github/workflows/build-dist.sh "$GITHUB_REF_NAME"
+      - name: Create a draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! command -v gh >/dev/null; then
+            echo "::error::the GitHub CLI (gh) is not installed on this runner; install it in the runner image"
+            exit 1
+          fi
+          # The notes are this version's CHANGELOG section ("## vX.Y.Z ...").
+          awk -v tag="$GITHUB_REF_NAME" '
+            $1 == "##" { if (found) exit; found = ($2 == tag) }
+            found
+          ' CHANGELOG.md > dist/NOTES.md
+          if [ ! -s dist/NOTES.md ]; then
+            echo "::error::CHANGELOG.md has no '## $GITHUB_REF_NAME' section"
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.zip dist/SHA256SUMS \
+            --draft --verify-tag --title "Trustsmith $GITHUB_REF_NAME" --notes-file dist/NOTES.md

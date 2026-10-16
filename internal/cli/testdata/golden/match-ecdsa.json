@@ -1,0 +1,22 @@
+{
+  "schema": "trustsmith.match/v1",
+  "certificate_file": "internal/fingerprint/testdata/vectors/ecdsa-p256/cert.pem",
+  "key": {
+    "file": "internal/fingerprint/testdata/vectors/ecdsa-p256/key.pem",
+    "format": "sec1",
+    "algorithm": "ECDSA",
+    "detail": "P-256",
+    "bits": 256,
+    "x509-spki-sha256": "b2b04340cfaee616ec9c2c62d261b208e54bb197498df52e8cadede23ac0ba5e"
+  },
+  "certificates": [
+    {
+      "entry": 0,
+      "x509-cert-sha256": "349ccf1f331c25dd3d4cad1446a7a4701783f0298c21389c21d09df000fb6e3f",
+      "subject": "CN=trustsmith ADR-0002 vector ecdsa-p256",
+      "x509-spki-sha256": "b2b04340cfaee616ec9c2c62d261b208e54bb197498df52e8cadede23ac0ba5e",
+      "state": "matches"
+    }
+  ],
+  "matched": 0
+}

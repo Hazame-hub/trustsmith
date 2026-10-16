@@ -1,0 +1,7 @@
+Private key   internal/fingerprint/testdata/vectors/rsa-2048/pkcs8.pem (RSA 2048, PKCS #8, unencrypted)
+Key identity  sha256:8fb6bad671cfe698393c453357da61b56d757ab8c0f3fb9c87f2849e63131878 (x509-spki-sha256)
+
+[0] CN=trustsmith ADR-0002 vector rsa-2048
+    matches this key
+
+Result: the key belongs to entry 0 of internal/fingerprint/testdata/vectors/rsa-2048/cert.pem.

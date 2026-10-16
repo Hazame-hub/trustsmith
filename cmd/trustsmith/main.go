@@ -2,6 +2,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"os"
 	"time"
 
@@ -14,5 +15,5 @@ var version = "dev"
 func main() {
 	// The real clock is wired here and nowhere else; everything below takes
 	// the inspection time as an input.
-	os.Exit(cli.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, cli.Env{Now: time.Now, Version: version}))
+	os.Exit(cli.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, cli.Env{Now: time.Now, Version: version, Rand: rand.Reader}))
 }

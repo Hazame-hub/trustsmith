@@ -131,6 +131,16 @@
         "problem": {
           "type": "string"
         },
+        "request": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/request"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "summary": {
           "anyOf": [
             {
@@ -159,6 +169,20 @@
         "entry",
         "offset",
         "type"
+      ],
+      "type": "object"
+    },
+    "attribute": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "oid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "oid"
       ],
       "type": "object"
     },
@@ -390,7 +414,6 @@
         }
       },
       "required": [
-        "x509-cert-sha256",
         "x509-spki-encoded-sha256",
         "x509-spki-sha256"
       ],
@@ -582,6 +605,9 @@
         "artifacts": {
           "type": "integer"
         },
+        "certificate_requests": {
+          "type": "integer"
+        },
         "certificates": {
           "type": "integer"
         },
@@ -600,6 +626,7 @@
       },
       "required": [
         "artifacts",
+        "certificate_requests",
         "certificates",
         "findings",
         "highest_severity",
@@ -968,6 +995,98 @@
         "evidence",
         "state",
         "type"
+      ],
+      "type": "object"
+    },
+    "request": {
+      "properties": {
+        "attributes": {
+          "items": {
+            "$ref": "#/$defs/attribute"
+          },
+          "type": "array"
+        },
+        "basic_constraints": {
+          "$ref": "#/$defs/basic_constraints"
+        },
+        "extended_key_usage": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "extensions": {
+          "items": {
+            "$ref": "#/$defs/extension"
+          },
+          "type": "array"
+        },
+        "key": {
+          "type": "string"
+        },
+        "key_usage": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "pin_sha256": {
+          "type": "string"
+        },
+        "public_key": {
+          "$ref": "#/$defs/public_key"
+        },
+        "requests": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "signature_algorithm": {
+          "$ref": "#/$defs/algorithm"
+        },
+        "signature_check": {
+          "type": "string"
+        },
+        "signature_check_reason": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "subject_alt_names": {
+          "$ref": "#/$defs/sans"
+        },
+        "undecoded_extensions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "attributes",
+        "basic_constraints",
+        "extended_key_usage",
+        "extensions",
+        "key",
+        "key_usage",
+        "kind",
+        "pin_sha256",
+        "public_key",
+        "requests",
+        "signature",
+        "signature_algorithm",
+        "signature_check",
+        "subject",
+        "subject_alt_names",
+        "undecoded_extensions"
       ],
       "type": "object"
     },

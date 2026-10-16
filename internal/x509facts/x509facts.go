@@ -1,11 +1,13 @@
 // Package x509facts describes what a certificate's bytes contain. It never
 // decides whether something is good or bad; that is interpret's job. It
 // describes one certificate at a time: relationships between certificates
-// belong to issuerlinks.
+// belong to issuerlinks. It also describes certificate signing requests
+// (request.go, ADR-0011), which are never certificates.
 //
-// When Go's X.509 parser rejects a certificate, the package still locates the
-// SubjectPublicKeyInfo structurally so both public-key fingerprints can be
-// reported, and records the parse error rather than guessing other fields.
+// When Go's X.509 parser rejects a certificate or request, the package still
+// locates the SubjectPublicKeyInfo structurally so the public-key
+// fingerprints can be reported, and records the parse error rather than
+// guessing other fields.
 package x509facts
 
 import (
@@ -16,6 +18,7 @@ import (
 	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/hex"
 	"errors"
@@ -29,13 +32,16 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/sigcheck"
 )
 
-// Kind is what a certificate-framed DER object turned out to be.
+// Kind is what a certificate- or request-framed DER object turned out to be.
 type Kind string
 
 const (
 	KindCertificate        Kind = "certificate"
 	KindUnparseable        Kind = "unparseable_certificate"
 	KindCertificateRequest Kind = "certificate_request"
+	// KindUnparseableRequest: framed as a certificate signing request (by its
+	// PEM label), but Go's parser rejected it.
+	KindUnparseableRequest Kind = "unparseable_certificate_request"
 )
 
 // KeyIdentity is the status of the x509-spki-sha256 identity.
@@ -50,7 +56,8 @@ const (
 )
 
 // SignatureCheck is the result of verifying a self-issued certificate's
-// signature with its own public key.
+// signature, or a certificate signing request's signature, with its own
+// public key.
 type SignatureCheck string
 
 const (
@@ -62,7 +69,14 @@ const (
 
 // Identity holds the fingerprints of a certificate-framed object.
 type Identity struct {
-	Fingerprint       fingerprint.Cert
+	Fingerprint fingerprint.Cert
+	SPKIIdentity
+}
+
+// SPKIIdentity holds the ADR-0002 public-key fingerprints of whatever carries
+// a SubjectPublicKeyInfo: a certificate or a certificate signing request.
+// x509-spki-sha256 is what joins a request to the certificate issued for it.
+type SPKIIdentity struct {
 	EncodedSPKI       fingerprint.EncodedSPKI // zero when KeyIdentity is unavailable
 	KeyID             fingerprint.KeyID       // zero unless canonical or noncanonical
 	KeyIdentity       KeyIdentity
@@ -148,12 +162,14 @@ type Unparseable struct {
 	ParseError string
 }
 
-// Parsed is the result of FromDER; exactly the field matching Kind is set
-// (neither is set for a certificate request).
+// Parsed is the result of FromDER or FromRequestDER; exactly the field
+// matching Kind is set.
 type Parsed struct {
-	Kind        Kind
-	Certificate *Certificate
-	Unparseable *Unparseable
+	Kind               Kind
+	Certificate        *Certificate
+	Unparseable        *Unparseable
+	Request            *CertificateRequest
+	UnparseableRequest *UnparseableRequest
 	// ParserPanicked reports that the standard-library parser panicked on
 	// this input and the panic was contained. It is always false unless the
 	// parser has a bug; tests and fuzzing assert it.
@@ -169,19 +185,22 @@ var (
 
 const parserPanicMessage = "the X.509 parser failed unexpectedly on this input"
 
-// FromDER reads a DER object that was framed as a certificate.
+// FromDER reads a DER object that was framed as a certificate: a PEM
+// CERTIFICATE block, or DER shaped like a certificate. A certificate signing
+// request has the same outer shape, so one that Go parses as a request is
+// described as a request.
 func FromDER(der []byte) Parsed {
 	cert, panicked, err := parse(func() (*x509.Certificate, error) { return parseCertificate(der) })
 	if panicked {
 		return unparseable(der, parserPanicMessage, true)
 	}
 	if err != nil {
-		_, csrPanicked, csrErr := parse(func() (*x509.CertificateRequest, error) { return parseCertificateRequest(der) })
+		csr, csrPanicked, csrErr := parse(func() (*x509.CertificateRequest, error) { return parseCertificateRequest(der) })
 		if csrPanicked {
 			return unparseable(der, parserPanicMessage, true)
 		}
 		if csrErr == nil {
-			return Parsed{Kind: KindCertificateRequest}
+			return Parsed{Kind: KindCertificateRequest, Request: fromRequest(csr)}
 		}
 		return unparseable(der, err.Error(), false)
 	}
@@ -205,21 +224,21 @@ func parse[T any](call func() (T, error)) (value T, panicked bool, err error) {
 func unparseable(der []byte, parseError string, panicked bool) Parsed {
 	return Parsed{
 		Kind:           KindUnparseable,
-		Unparseable:    &Unparseable{Identity: identify(der, locateSPKI(der)), ParseError: parseError},
+		Unparseable:    &Unparseable{Identity: Identity{Fingerprint: fingerprint.CertFromDER(der), SPKIIdentity: identify(locateSPKI(der))}, ParseError: parseError},
 		ParserPanicked: panicked,
 	}
 }
 
 func fromCertificate(cert *x509.Certificate) *Certificate {
 	c := &Certificate{
-		Identity:               identify(cert.Raw, cert.RawSubjectPublicKeyInfo),
+		Identity:               Identity{Fingerprint: fingerprint.CertFromDER(cert.Raw), SPKIIdentity: identify(cert.RawSubjectPublicKeyInfo)},
 		Version:                cert.Version,
 		SerialHex:              serialHex(cert),
 		Subject:                Name{DN: cert.Subject.String(), CommonName: cert.Subject.CommonName},
 		Issuer:                 Name{DN: cert.Issuer.String(), CommonName: cert.Issuer.CommonName},
 		NotBefore:              cert.NotBefore.UTC(),
 		NotAfter:               cert.NotAfter.UTC(),
-		PublicKey:              publicKey(cert),
+		PublicKey:              publicKey(cert.PublicKey, cert.PublicKeyAlgorithm),
 		SignatureAlgorithm:     cert.SignatureAlgorithm,
 		SignatureAlgorithmOID:  algorithmOID(cert.RawSignatureAlgorithm),
 		SubjectKeyID:           cert.SubjectKeyId,
@@ -257,10 +276,7 @@ func fromCertificate(cert *x509.Certificate) *Certificate {
 	for _, u := range cert.URIs {
 		c.URIs = append(c.URIs, u.String())
 	}
-	for _, e := range cert.Extensions {
-		oid := e.Id.String()
-		c.Extensions = append(c.Extensions, Extension{OID: oid, Critical: e.Critical, Name: extensionNames[oid]})
-	}
+	c.Extensions = extensions(cert.Extensions)
 	for _, p := range cert.Policies {
 		c.PolicyOIDs = append(c.PolicyOIDs, p.String())
 	}
@@ -281,10 +297,10 @@ func fromCertificate(cert *x509.Certificate) *Certificate {
 	return c
 }
 
-// identify computes the fingerprints of a certificate and of its SPKI (nil
-// when none could be located).
-func identify(der, spki []byte) Identity {
-	id := Identity{Fingerprint: fingerprint.CertFromDER(der)}
+// identify computes the ADR-0002 fingerprints of an SPKI (nil when none could
+// be located).
+func identify(spki []byte) SPKIIdentity {
+	var id SPKIIdentity
 	if spki == nil {
 		id.KeyIdentity = KeyIdentityUnavailable
 		id.KeyIdentityDetail = "no SubjectPublicKeyInfo could be located"
@@ -347,8 +363,8 @@ func serialHex(cert *x509.Certificate) string {
 	return hex.EncodeToString(b)
 }
 
-func publicKey(cert *x509.Certificate) PublicKey {
-	switch k := cert.PublicKey.(type) {
+func publicKey(pub any, alg x509.PublicKeyAlgorithm) PublicKey {
+	switch k := pub.(type) {
 	case *rsa.PublicKey:
 		return PublicKey{Algorithm: "RSA", Bits: k.N.BitLen()}
 	case *ecdsa.PublicKey:
@@ -360,7 +376,7 @@ func publicKey(cert *x509.Certificate) PublicKey {
 	case *ecdh.PublicKey:
 		return PublicKey{Algorithm: "ECDH", Detail: fmt.Sprint(k.Curve())}
 	default:
-		return PublicKey{Algorithm: cert.PublicKeyAlgorithm.String()}
+		return PublicKey{Algorithm: alg.String()}
 	}
 }
 
@@ -372,6 +388,15 @@ func algorithmOID(algorithmIdentifier []byte) string {
 		return ""
 	}
 	return oid.String()
+}
+
+func extensions(exts []pkix.Extension) []Extension {
+	var out []Extension
+	for _, e := range exts {
+		oid := e.Id.String()
+		out = append(out, Extension{OID: oid, Critical: e.Critical, Name: extensionNames[oid]})
+	}
+	return out
 }
 
 var extensionNames = map[string]string{

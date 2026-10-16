@@ -4,8 +4,10 @@
 //
 // It does not use encoding/pem to find blocks: pem.Decode silently skips a
 // corrupt block, which would turn "could not read this block" into "there was
-// no block". Only the contents of CERTIFICATE blocks are decoded; blocks with
-// any other label (including private keys) are reported by label alone.
+// no block". Only the contents of CERTIFICATE blocks and certificate signing
+// request blocks (CERTIFICATE REQUEST, and the legacy NEW CERTIFICATE
+// REQUEST) are decoded; blocks with any other label (including private keys)
+// are reported by label alone.
 package artifact
 
 import (
@@ -45,8 +47,12 @@ type Kind string
 
 const (
 	// KindCertificate: a PEM CERTIFICATE block, or DER shaped like a
-	// certificate. Whether it actually parses is decided later.
+	// certificate (which a certificate signing request also is). Whether it
+	// actually parses, and as what, is decided later.
 	KindCertificate Kind = "certificate"
+	// KindCertificateRequest: a PEM certificate signing request block
+	// (ADR-0011). Whether it actually parses is decided later.
+	KindCertificateRequest Kind = "certificate_request"
 	// KindUnsupported: well-framed, but not something this version inspects.
 	KindUnsupported Kind = "unsupported"
 	// KindMalformed: could not be framed or decoded.
@@ -68,7 +74,7 @@ type Block struct {
 	Kind    Kind    //
 	Label   string  // PEM label; empty for DER input
 	Offset  int     // byte offset of the block in the input
-	DER     []byte  // KindCertificate only
+	DER     []byte  // KindCertificate and KindCertificateRequest only
 	Problem Problem // KindMalformed only
 }
 
@@ -85,7 +91,14 @@ type Decoded struct {
 	Extraneous []Span
 }
 
-const certificateLabel = "CERTIFICATE"
+// decodedLabels are the PEM labels whose contents are decoded, and what
+// each frames. "NEW CERTIFICATE REQUEST" is the label older tools (Netscape,
+// some Windows and Java releases) write for the same PKCS #10 structure.
+var decodedLabels = map[string]Kind{
+	"CERTIFICATE":             KindCertificate,
+	"CERTIFICATE REQUEST":     KindCertificateRequest,
+	"NEW CERTIFICATE REQUEST": KindCertificateRequest,
+}
 
 var (
 	utf8BOM     = []byte{0xef, 0xbb, 0xbf}
@@ -156,7 +169,8 @@ func decodePEM(data []byte, start int) (Decoded, error) {
 }
 
 func classifyPEM(label string, offset int, raw []byte) Block {
-	if label != certificateLabel {
+	kind, decoded := decodedLabels[label]
+	if !decoded {
 		// Never decode other blocks: this version does not inspect them,
 		// and some (private keys) must not be handled needlessly.
 		return Block{Kind: KindUnsupported, Label: label, Offset: offset}
@@ -165,7 +179,7 @@ func classifyPEM(label string, offset int, raw []byte) Block {
 	if p == nil || p.Type != label || len(p.Bytes) == 0 || len(bytes.TrimSpace(rest)) != 0 {
 		return Block{Kind: KindMalformed, Label: label, Offset: offset, Problem: ProblemBadEncoding}
 	}
-	return Block{Kind: KindCertificate, Label: label, Offset: offset, DER: p.Bytes}
+	return Block{Kind: kind, Label: label, Offset: offset, DER: p.Bytes}
 }
 
 func decodeDER(data []byte, start int) Decoded {

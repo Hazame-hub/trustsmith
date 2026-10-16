@@ -16,6 +16,7 @@ import (
 
 	"github.com/Hazame-hub/trustsmith/internal/app/inspectsvc"
 	"github.com/Hazame-hub/trustsmith/internal/artifact"
+	"github.com/Hazame-hub/trustsmith/internal/x509facts"
 )
 
 // Limits bound a scan, so pointing it at / cannot run without end.
@@ -125,6 +126,10 @@ func scanFile(svc *inspectsvc.Service, path string, size int64, res *Result) {
 			return
 		}
 		if d, err := artifact.Decode(data); err != nil || d.Format != artifact.FormatDER || len(d.Blocks) == 0 || d.Blocks[0].Kind != artifact.KindCertificate {
+			return
+		} else if x509facts.FromDER(d.Blocks[0].DER).Kind == x509facts.KindCertificateRequest {
+			// A DER request has a certificate's outer shape; it is not a
+			// certificate file.
 			return
 		}
 	}

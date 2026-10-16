@@ -54,9 +54,9 @@ Hostname
 
 Findings (2)
   CRITICAL  entry 0  SHA-1 signature [sig.sha1]
-            The certificate is signed with SHA-1, which is no longer collision resistant, and current software rejects SHA-1 certificate signatures. On a self-signed CA certificate the signature is not checked when that certificate is used as a trust anchor, so there it is informational.
+            The certificate or certificate signing request is signed with SHA-1, which is no longer collision resistant. Current software rejects SHA-1 certificate signatures, and a CA should refuse a SHA-1-signed request. On a self-signed CA certificate the signature is not checked when that certificate is used as a trust anchor, so there it is informational.
             Evidence: signature_algorithm=SHA1-RSA
-            Fix: Reissue the certificate with a SHA-256 or stronger signature.
+            Fix: Reissue the certificate, or create a new certificate signing request, with a SHA-256 or stronger signature.
   CRITICAL  entry 0  Not verified against the supplied roots [trust.failed]
             Trustsmith asked Go's crypto/x509 verifier to validate this certificate against the trust anchors supplied with --roots, and the verifier rejected it. The reason evidence is a stable code, such as no_explicit_anchor_path or certificate_expired. Only the supplied roots were considered: no system trust store was used, and certificates in the inspected input are never anchors themselves.
             Evidence: reason=insecure_signature_algorithm

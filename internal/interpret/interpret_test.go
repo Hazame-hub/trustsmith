@@ -326,13 +326,22 @@ func TestBlockProblems(t *testing.T) {
 		t.Errorf("label evidence %+v", e.Findings[0].Evidence)
 	}
 
+	// A request block the caller never parsed is reported, not dropped.
+	e = interpret.Block(artifact.Block{Kind: artifact.KindCertificateRequest, Label: "CERTIFICATE REQUEST"}, nil, interpret.Issuers{}, now, th)
+	assertCodes(t, e.Findings, "input.unparseable_certificate_request:critical")
+
+	// A certificate signing request framed as a certificate (DER, or a PEM
+	// CERTIFICATE block) is described as a request, not as unsupported.
 	key := testpki.ECDSAKey(t)
 	csr, err := x509.CreateCertificateRequest(nil, &x509.CertificateRequest{}, crypto.Signer(key))
 	if err != nil {
 		t.Fatal(err)
 	}
 	csrEntry := interpret.Block(artifact.Block{Kind: artifact.KindCertificate}, parsed(t, csr), interpret.Issuers{}, now, th)
-	assertCodes(t, csrEntry.Findings, "input.unsupported_format:warning")
+	assertCodes(t, csrEntry.Findings)
+	if csrEntry.Request == nil || csrEntry.Summary != nil {
+		t.Errorf("want a request summary only, got %+v", csrEntry)
+	}
 }
 
 func TestInputFindings(t *testing.T) {
@@ -340,17 +349,22 @@ func TestInputFindings(t *testing.T) {
 		name         string
 		decoded      artifact.Decoded
 		certificates int
+		requests     int
 		want         []string
 	}{
-		{"empty", artifact.Decoded{Format: artifact.FormatEmpty}, 0, []string{"input.empty:critical"}},
-		{"unknown", artifact.Decoded{Format: artifact.FormatUnknown}, 0, []string{"input.unsupported_format:critical"}},
-		{"PEM with no certificates", artifact.Decoded{Format: artifact.FormatPEM, Blocks: []artifact.Block{{Kind: artifact.KindUnsupported}}}, 0, []string{"input.no_certificates:critical"}},
-		{"PEM text around blocks", artifact.Decoded{Format: artifact.FormatPEM, Extraneous: []artifact.Span{{Offset: 0, Length: 5}}}, 1, []string{"input.trailing_data:info"}},
-		{"DER trailing bytes", artifact.Decoded{Format: artifact.FormatDER, Extraneous: []artifact.Span{{Offset: 300, Length: 2}}}, 1, []string{"input.trailing_data:warning"}},
-		{"clean", artifact.Decoded{Format: artifact.FormatPEM}, 2, nil},
+		{"empty", artifact.Decoded{Format: artifact.FormatEmpty}, 0, 0, []string{"input.empty:critical"}},
+		{"unknown", artifact.Decoded{Format: artifact.FormatUnknown}, 0, 0, []string{"input.unsupported_format:critical"}},
+		{"PEM with no certificates", artifact.Decoded{Format: artifact.FormatPEM, Blocks: []artifact.Block{{Kind: artifact.KindUnsupported}}}, 0, 0, []string{"input.no_certificates:critical"}},
+		{"PEM text around blocks", artifact.Decoded{Format: artifact.FormatPEM, Extraneous: []artifact.Span{{Offset: 0, Length: 5}}}, 1, 0, []string{"input.trailing_data:info"}},
+		{"DER trailing bytes", artifact.Decoded{Format: artifact.FormatDER, Extraneous: []artifact.Span{{Offset: 300, Length: 2}}}, 1, 0, []string{"input.trailing_data:warning"}},
+		{"clean", artifact.Decoded{Format: artifact.FormatPEM}, 2, 0, nil},
+		// ADR-0011: requests only is an inspected input, not one without
+		// anything to inspect.
+		{"requests only", artifact.Decoded{Format: artifact.FormatPEM}, 0, 1, nil},
+		{"DER request with trailing bytes", artifact.Decoded{Format: artifact.FormatDER, Extraneous: []artifact.Span{{Offset: 300, Length: 2}}}, 0, 1, []string{"input.trailing_data:warning"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			fs := interpret.Input(tc.decoded, tc.certificates)
+			fs := interpret.Input(tc.decoded, tc.certificates, tc.requests)
 			assertCatalogued(t, fs)
 			assertCodes(t, fs, tc.want...)
 			for _, f := range fs {

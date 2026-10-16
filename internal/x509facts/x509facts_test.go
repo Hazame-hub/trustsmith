@@ -268,7 +268,7 @@ func TestCertificateRequestIsRecognised(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p := x509facts.FromDER(csr); p.Kind != x509facts.KindCertificateRequest || p.Certificate != nil || p.Unparseable != nil {
+	if p := x509facts.FromDER(csr); p.Kind != x509facts.KindCertificateRequest || p.Request == nil || p.Certificate != nil || p.Unparseable != nil {
 		t.Errorf("kind %s", p.Kind)
 	}
 }
@@ -291,7 +291,7 @@ func FuzzFromDER(f *testing.F) {
 				t.Fatal("inconsistent unparseable result")
 			}
 		case x509facts.KindCertificateRequest:
-			if p.Unparseable != nil || p.Certificate != nil {
+			if p.Request == nil || p.Unparseable != nil || p.Certificate != nil || p.UnparseableRequest != nil {
 				t.Fatal("inconsistent CSR result")
 			}
 		default:

@@ -3,9 +3,9 @@
   "scanned_at": "2026-09-14T12:00:00Z",
   "path": "testdata/certs",
   "overview": {
-    "files_examined": 50,
-    "certificate_files": 46,
-    "certificates": 84,
+    "files_examined": 60,
+    "certificate_files": 47,
+    "certificates": 85,
     "distinct_certificates": 63,
     "skipped_symlinks": 0,
     "skipped_too_large": 0,
@@ -201,6 +201,25 @@
     },
     {
       "file": "testdata/certs/bundle.pem",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/csr-with-leaf.pem",
       "entry": 0,
       "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
       "kind": "TLS server certificate",

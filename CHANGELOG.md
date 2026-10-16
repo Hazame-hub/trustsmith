@@ -19,6 +19,8 @@ section; the release workflow publishes that section as the release notes.
   policy (ADR-0009) and the explicit `compatible` policy (ADR-0010).
 - `--output json` with the versioned `trustsmith.inspect/v1` contract and its
   generated JSON Schema in `docs/schema/`.
+- `trustsmith inspect` explains certificate signing requests: requested
+  names, key, extensions and whether the signature verifies (ADR-0011).
 - `trustsmith ca init` and `ca issue`: a local private CA with name
   constraints; every issued certificate is checked before it is written
   (ADR-0012).

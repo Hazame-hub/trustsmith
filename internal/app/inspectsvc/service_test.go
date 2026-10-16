@@ -38,6 +38,7 @@ const (
 	unparseable = inspectsvc.TypeUnparseableCertificate
 	unsupported = inspectsvc.TypeUnsupported
 	malformed   = inspectsvc.TypeMalformed
+	request     = inspectsvc.TypeCertificateRequest
 )
 
 // corpusExpectations is the reviewed meaning of every committed fixture at the
@@ -116,6 +117,22 @@ func init() {
 		}
 	}
 	corpusExpectations["purpose-root-ca.pem"] = expectation{types: []inspectsvc.ArtifactType{cert}, paths: []string{selfSignedAlone}}
+	// Certificate signing requests (ADR-0011): never certificates, so no
+	// relationships, paths or input.no_certificates.
+	for name, fs := range map[string][]string{
+		"csr.pem":               nil,
+		"csr.der":               nil,
+		"csr-legacy-label.pem":  nil,
+		"csr-ca.pem":            nil,
+		"csr-bad-signature.pem": {"0:csr.signature_invalid:critical"},
+		"csr-rsa-1024.pem":      {"0:key.rsa_under_2048:critical"},
+		"csr-sha1.pem":          {"0:sig.sha1:critical"},
+		"csr-md5.pem":           {"0:sig.md5:critical", "0:csr.signature_unverifiable:warning"},
+		"csr-cn-only.pem":       {"0:name.cn_only_no_san:warning"},
+	} {
+		corpusExpectations[name] = expectation{types: []inspectsvc.ArtifactType{request}, findings: fs}
+	}
+	corpusExpectations["csr-with-leaf.pem"] = expectation{types: []inspectsvc.ArtifactType{cert, request}, paths: []string{partialAlone}}
 	// The chain served by the in-process TLS endpoint tests.
 	corpusExpectations["tls-endpoint.pem"] = expectation{
 		types:         []inspectsvc.ArtifactType{cert, cert, cert},
@@ -245,6 +262,9 @@ func TestCorpus(t *testing.T) {
 				}
 				if (a.Type == unparseable) != (a.Unparseable != nil) {
 					t.Errorf("artifact %d: unparseable facts mismatch", i)
+				}
+				if (a.Type == request) != (a.Request != nil && a.RequestSummary != nil) {
+					t.Errorf("artifact %d: request facts and summary must exist exactly for parsed requests", i)
 				}
 			}
 			if !slices.Equal(types, want.types) {

@@ -6,6 +6,10 @@
 // (such as CA/Browser Forum validity limits) is applied. Issuer relationships
 // found inside the input are signature checks only: nothing here asserts
 // trust, CA validity or chain validity.
+//
+// Certificate signing requests (request.go, ADR-0011) are interpreted on their
+// own: they have no validity period, issuer or chain, and are never part of
+// relationships, paths or evaluations.
 package interpret
 
 import (
@@ -120,7 +124,8 @@ type Summary struct {
 
 // Entry is the interpretation of one input block.
 type Entry struct {
-	Summary  *Summary // set only for certificates that parsed
+	Summary  *Summary        // set only for certificates that parsed
+	Request  *RequestSummary // set only for certificate signing requests that parsed
 	Findings []findings.Finding
 }
 
@@ -131,7 +136,8 @@ func finding(entry int, code findings.Code, sev findings.Severity, evidence ...f
 func ev(key, value string) findings.Evidence { return findings.Evidence{Key: key, Value: value} }
 
 // Block interprets one framed block. p is the result of x509facts.FromDER for
-// certificate blocks and nil otherwise; issuers is ignored for anything but a
+// certificate blocks, of x509facts.FromRequestDER for certificate signing
+// request blocks, and nil otherwise; issuers is ignored for anything but a
 // parsed certificate.
 func Block(b artifact.Block, p *x509facts.Parsed, issuers Issuers, now time.Time, th Thresholds) Entry {
 	switch b.Kind {
@@ -152,19 +158,26 @@ func Block(b artifact.Block, p *x509facts.Parsed, issuers Issuers, now time.Time
 	}
 
 	if p == nil {
-		// A certificate block that was never parsed is a caller defect; report
-		// it rather than let the block silently disappear.
+		// A block that was never parsed is a caller defect; report it rather
+		// than let the block silently disappear.
+		if b.Kind == artifact.KindCertificateRequest {
+			return Entry{Findings: []findings.Finding{finding(b.Entry, findings.InputUnparseableRequest, findings.SeverityCritical,
+				ev("parse_error", "certificate signing request was not parsed"))}}
+		}
 		return Entry{Findings: []findings.Finding{finding(b.Entry, findings.InputUnparseableCertificate, findings.SeverityCritical,
 			ev("parse_error", "certificate was not parsed"))}}
 	}
 	switch p.Kind {
 	case x509facts.KindCertificateRequest:
-		return Entry{Findings: []findings.Finding{finding(b.Entry, findings.InputUnsupportedFormat, findings.SeverityWarning,
-			ev("kind", "certificate_request"))}}
+		return request(b.Entry, p.Request)
+	case x509facts.KindUnparseableRequest:
+		fs := []findings.Finding{finding(b.Entry, findings.InputUnparseableRequest, findings.SeverityCritical,
+			ev("parse_error", p.UnparseableRequest.ParseError))}
+		return Entry{Findings: append(fs, keyIdentity(b.Entry, p.UnparseableRequest.SPKIIdentity)...)}
 	case x509facts.KindUnparseable:
 		fs := []findings.Finding{finding(b.Entry, findings.InputUnparseableCertificate, findings.SeverityCritical,
 			ev("parse_error", p.Unparseable.ParseError))}
-		return Entry{Findings: append(fs, keyIdentity(b.Entry, p.Unparseable.Identity)...)}
+		return Entry{Findings: append(fs, keyIdentity(b.Entry, p.Unparseable.SPKIIdentity)...)}
 	default:
 		return certificate(b.Entry, p.Certificate, issuers, now, th)
 	}
@@ -213,23 +226,15 @@ func certificate(entry int, c *x509facts.Certificate, issuers Issuers, now time.
 	if c.SelfIssued && isCA {
 		weakSeverity = findings.SeverityInfo
 	}
-	switch c.SignatureAlgorithm {
-	case x509.SHA1WithRSA, x509.ECDSAWithSHA1, x509.DSAWithSHA1:
-		add(findings.SigSHA1, weakSeverity, ev("signature_algorithm", c.SignatureAlgorithm.String()))
-	case x509.MD5WithRSA:
-		add(findings.SigMD5, weakSeverity, ev("signature_algorithm", c.SignatureAlgorithm.String()))
-	}
-
-	if c.PublicKey.Algorithm == "RSA" && c.PublicKey.Bits < 2048 {
-		add(findings.KeyRSAUnder2048, findings.SeverityCritical, ev("key_bits", strconv.Itoa(c.PublicKey.Bits)))
-	}
+	fs = append(fs, weakAlgorithm(entry, c.SignatureAlgorithm, weakSeverity)...)
+	fs = append(fs, shortKey(entry, c.PublicKey)...)
 
 	hasSAN := len(c.DNSNames)+len(c.IPAddresses)+len(c.EmailAddresses)+len(c.URIs) > 0
 	if !isCA && !hasSAN && c.Subject.CommonName != "" {
 		add(findings.NameCNOnlyNoSAN, findings.SeverityWarning, ev("common_name", c.Subject.CommonName))
 	}
 
-	fs = append(fs, keyIdentity(entry, c.Identity)...)
+	fs = append(fs, keyIdentity(entry, c.SPKIIdentity)...)
 
 	status := resolveIssuer(c, issuers)
 	fs = append(fs, status.findings(entry)...)
@@ -239,12 +244,12 @@ func certificate(entry int, c *x509facts.Certificate, issuers Issuers, now time.
 		Summary: &Summary{
 			Kind:                  kind,
 			Purposes:              purposes,
-			Identifies:            identifies(c, hasSAN),
+			Identifies:            names(c.Subject, hasSAN, c.DNSNames, c.IPAddresses, c.EmailAddresses, c.URIs),
 			Issuer:                c.Issuer.DN,
 			SelfSigned:            selfSigned(c),
 			Validity:              validity,
 			Key:                   keySummary(c.PublicKey),
-			Signature:             signatureSummary(c),
+			Signature:             signatureSummary(c.SignatureAlgorithm, c.SignatureAlgorithmOID),
 			Chain:                 ChainNotChecked,
 			IssuerInInput:         status.state,
 			VerifiedIssuerEntries: status.verified,
@@ -330,7 +335,26 @@ func joinInts(v []int) string {
 	return strings.Join(parts, ",")
 }
 
-func keyIdentity(entry int, id x509facts.Identity) []findings.Finding {
+// weakAlgorithm flags SHA-1 and MD5 signatures, on certificates and requests.
+func weakAlgorithm(entry int, alg x509.SignatureAlgorithm, sev findings.Severity) []findings.Finding {
+	switch alg {
+	case x509.SHA1WithRSA, x509.ECDSAWithSHA1, x509.DSAWithSHA1:
+		return []findings.Finding{finding(entry, findings.SigSHA1, sev, ev("signature_algorithm", alg.String()))}
+	case x509.MD5WithRSA:
+		return []findings.Finding{finding(entry, findings.SigMD5, sev, ev("signature_algorithm", alg.String()))}
+	}
+	return nil
+}
+
+// shortKey flags RSA keys shorter than 2048 bits, on certificates and requests.
+func shortKey(entry int, k x509facts.PublicKey) []findings.Finding {
+	if k.Algorithm == "RSA" && k.Bits < 2048 {
+		return []findings.Finding{finding(entry, findings.KeyRSAUnder2048, findings.SeverityCritical, ev("key_bits", strconv.Itoa(k.Bits)))}
+	}
+	return nil
+}
+
+func keyIdentity(entry int, id x509facts.SPKIIdentity) []findings.Finding {
 	switch id.KeyIdentity {
 	case x509facts.KeyIdentityNoncanonical:
 		return []findings.Finding{finding(entry, findings.KeyNoncanonicalSPKI, findings.SeverityWarning,
@@ -346,8 +370,11 @@ func keyIdentity(entry int, id x509facts.Identity) []findings.Finding {
 }
 
 // Input interprets the input as a whole. certificates is the number of blocks
-// that were certificates (parseable or not).
-func Input(d artifact.Decoded, certificates int) []findings.Finding {
+// that were certificates and requests the number that were certificate
+// signing requests (parseable or not). An input of requests only is not
+// "without certificates": it was inspected, and each request has its own
+// findings (ADR-0011).
+func Input(d artifact.Decoded, certificates, requests int) []findings.Finding {
 	whole := func(code findings.Code, sev findings.Severity, evidence ...findings.Evidence) findings.Finding {
 		return finding(findings.WholeInput, code, sev, evidence...)
 	}
@@ -365,7 +392,7 @@ func Input(d artifact.Decoded, certificates int) []findings.Finding {
 	for _, s := range d.Extraneous {
 		fs = append(fs, whole(findings.InputTrailingData, sev, ev("offset", strconv.Itoa(s.Offset)), ev("length", strconv.Itoa(s.Length))))
 	}
-	if certificates == 0 {
+	if certificates == 0 && requests == 0 {
 		fs = append(fs, whole(findings.InputNoCertificates, findings.SeverityCritical))
 	}
 	return fs
@@ -422,18 +449,21 @@ func describeKind(c *x509facts.Certificate, isCA bool) (string, []string) {
 	}
 }
 
-func identifies(c *x509facts.Certificate, hasSAN bool) []string {
+// names lists what a certificate identifies, or a request asks to be
+// certified for: the subject alternative names, or "CN=..." when there are
+// none.
+func names(subject x509facts.Name, hasSAN bool, dns, ips, emails, uris []string) []string {
 	if !hasSAN {
-		if c.Subject.CommonName != "" {
-			return []string{"CN=" + c.Subject.CommonName}
+		if subject.CommonName != "" {
+			return []string{"CN=" + subject.CommonName}
 		}
 		return []string{}
 	}
-	out := make([]string, 0, len(c.DNSNames)+len(c.IPAddresses)+len(c.EmailAddresses)+len(c.URIs))
-	out = append(out, c.DNSNames...)
-	out = append(out, c.IPAddresses...)
-	out = append(out, c.EmailAddresses...)
-	return append(out, c.URIs...)
+	out := make([]string, 0, len(dns)+len(ips)+len(emails)+len(uris))
+	out = append(out, dns...)
+	out = append(out, ips...)
+	out = append(out, emails...)
+	return append(out, uris...)
 }
 
 func selfSigned(c *x509facts.Certificate) SelfSigned {
@@ -460,11 +490,11 @@ func keySummary(k x509facts.PublicKey) string {
 	return k.Algorithm
 }
 
-func signatureSummary(c *x509facts.Certificate) string {
-	if c.SignatureAlgorithm == x509.UnknownSignatureAlgorithm && c.SignatureAlgorithmOID != "" {
-		return c.SignatureAlgorithmOID
+func signatureSummary(alg x509.SignatureAlgorithm, oid string) string {
+	if alg == x509.UnknownSignatureAlgorithm && oid != "" {
+		return oid
 	}
-	return c.SignatureAlgorithm.String()
+	return alg.String()
 }
 
 func timestamp(t time.Time) string { return t.UTC().Format(time.RFC3339) }

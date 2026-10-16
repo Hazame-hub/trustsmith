@@ -12,6 +12,16 @@ Validity periods are relative to the test clock 2026-09-14T12:00:00Z.
 | `bundle.pem` | leaf, intermediate and root, in that order |
 | `client.pem` | TLS client certificate with a URI SAN |
 | `cn-only.pem` | TLS server certificate with no Subject Alternative Names |
+| `csr-bad-signature.pem` | csr.pem with its signature corrupted |
+| `csr-ca.pem` | certificate signing request for a CA certificate with path length 0 |
+| `csr-cn-only.pem` | certificate signing request that names its host only in the Common Name |
+| `csr-legacy-label.pem` | csr.pem under the legacy NEW CERTIFICATE REQUEST label |
+| `csr-md5.pem` | certificate signing request re-signed with md5WithRSAEncryption (the engine refuses to check MD5) |
+| `csr-rsa-1024.pem` | certificate signing request for an RSA-1024 key |
+| `csr-sha1.pem` | certificate signing request signed with sha1WithRSAEncryption |
+| `csr-with-leaf.pem` | leaf.pem followed by csr.pem: the request is not a certificate or an issuer candidate |
+| `csr.der` | csr.pem as DER |
+| `csr.pem` | ECDSA P-256 certificate signing request for DNS and IP names, with requested key usage and extended key usage |
 | `empty.pem` | zero bytes |
 | `expired.pem` | expired on 2026-06-01 |
 | `expiring-critical.pem` | expires 2026-09-17 (2 days after the test clock) |

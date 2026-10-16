@@ -1,9 +1,9 @@
 Scanned testdata/certs at 2026-09-14 12:00:00 UTC
-  50 files examined, 46 with certificates, 84 certificates (63 distinct)
+  60 files examined, 47 with certificates, 85 certificates (63 distinct)
   skipped: 0 symbolic links (never followed), 0 files over 8 MiB; 0 unreadable
   trust is not evaluated: certificates are listed by what they contain, not by who trusts them
 
-Certificates, soonest expiry first (84)
+Certificates, soonest expiry first (85)
   EXPIRES     DAYS  WORST     FINDING                       NAMES                                             FILE
   2026-06-01  -106  critical  cert.expired                  expired.example.test                              testdata/certs/expired.pem#0
   2026-06-01  -106  critical  cert.expired                  CN=Trustsmith Path Expired Intermediate           testdata/certs/path-expired-intermediate.pem#1
@@ -15,6 +15,7 @@ Certificates, soonest expiry first (84)
   2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/bundle-with-bad-block.pem#0
   2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/bundle-with-private-key.pem#0
   2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/bundle.pem#0
+  2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/csr-with-leaf.pem#0
   2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/issuer-key-id-match-wrong-key.pem#0
   2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/issuer-name-match-wrong-key.pem#0
   2026-12-01  77    ok                                      api.example.test, www.example.test, 192.0.2.10    testdata/certs/leaf.der#0

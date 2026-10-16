@@ -1,12 +1,60 @@
 # Trustsmith
 
-Trustsmith is a local-first certificate and private-PKI workbench. It aims to
-make everyday certificate work understandable to people who are not PKI
-experts, without taking the advanced path away from those who are.
+**Understand your certificates before they break something.**
+
+Trustsmith is a local-first certificate and private-PKI workbench. It explains
+certificate files and TLS endpoints in plain language, says exactly what it
+checked and what it did not, and gives a fix for every problem it finds. It is
+built for people who are not PKI experts, without taking the advanced path
+away from those who are.
+
+Trustsmith is open source (Apache-2.0) and stands on its own. It is also the
+certificate half of [Sybil](#part-of-the-sybil-family): Sybil knows your
+infrastructure, Trustsmith knows its certificates.
 
 > **Status: early development.** The only command implemented so far is
 > `trustsmith inspect`, for certificate files and TLS endpoints. Everything else in the roadmap
 > (private CA, inventory, renewal, discovery, a local UI) is not built yet.
+
+## Quick start
+
+```console
+$ go install github.com/Hazame-hub/trustsmith/cmd/trustsmith@latest
+$ trustsmith inspect example.com:443
+$ trustsmith inspect server.pem --roots company-roots.pem --hostname api.example.com
+```
+
+Release archives for Linux, macOS and Windows (amd64 and arm64), with a
+`SHA256SUMS` file, are attached to each [GitHub release](https://github.com/Hazame-hub/trustsmith/releases).
+
+What it looks like:
+
+```console
+$ trustsmith inspect expired.pem
+Inspected expired.pem (PEM, 1 entry) at 2026-10-16 01:40:14 UTC
+
+[0] TLS server certificate
+    Identifies     expired.example.test
+    Issuer         CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests
+                   no matching issuer candidate found in this input
+    Valid          no, expired on 2026-06-01 00:00:00 UTC
+    Key            ECDSA P-256
+    Signature      ECDSA-SHA256
+    Chain          not validated against trust anchors (none supplied; see --roots)
+    ...
+
+Findings (1)
+  CRITICAL  entry 0  Certificate has expired [cert.expired]
+            The inspection time is after the certificate's notAfter date. Software that validates certificates will reject it.
+            Evidence: not_after=2026-06-01T00:00:00Z
+            Fix: Renew or replace the certificate, then deploy the replacement everywhere the old one is used.
+$ echo $?
+3
+```
+
+The exit code makes it a CI gate: `trustsmith inspect --fail-on warning cert.pem`
+fails the build on any warning, and `--output json` gives scripts a versioned,
+[schema-described](docs/schema/trustsmith.inspect.v1.schema.json) result.
 
 ## What works today
 
@@ -98,7 +146,7 @@ diagnostics, and public WebPKI policy checks.
 | 2 | usage error |
 | 3 | findings reached `--fail-on` (`info`, `warning`, `critical`; `never` disables) |
 
-## Building
+## Building from source
 
 Requires Go 1.27.
 
@@ -108,7 +156,8 @@ $ go test ./...
 ```
 
 With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
-`task fuzz:short`, `task golden:update`, `task fixtures`.
+`task fuzz:short`, `task golden:update`, `task fixtures`, `task dist`
+(cross-compiles every release target into `dist/`).
 
 ## Design documents
 
@@ -122,6 +171,48 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0008: explicit host name identity](docs/adr/0008-hostname-identity.md)
 - [ADR-0009: minimal TLS endpoint acquisition](docs/adr/0009-tls-endpoint-acquisition.md)
 - [ADR-0010: explicit compatible TLS probe policy](docs/adr/0010-compatible-probe-policy.md)
+
+## JSON output
+
+`--output json` emits `trustsmith.inspect/v1`. Its JSON Schema,
+[docs/schema/trustsmith.inspect.v1.schema.json](docs/schema/trustsmith.inspect.v1.schema.json),
+is generated from the CLI's contract types and every JSON golden file is
+validated against it, so it cannot drift from what the binary prints. Fields
+may be added within v1; consumers must ignore properties they do not know.
+Finding codes are append-only ([ADR-0003](docs/adr/0003-findings.md)), so a
+script can key on `cert.expired` or `name.hostname_mismatch` safely.
+
+## Part of the Sybil family
+
+[Sybil](https://github.com/Hazame-hub) is an infrastructure platform that
+takes a machine from intent to a verified live state and then watches it for
+drift. Its secrets service, Aegis, knows which host holds which credential and
+records every read. Certificates are the part of that picture Aegis
+deliberately leaves out, and they are what Trustsmith is for.
+
+Trustsmith does not need Sybil, and never will: every feature works from the
+command line, offline, with nothing to sign up for. When you run more than a
+handful of machines, Sybil is where Trustsmith's results are meant to go, to
+add what a local tool cannot. None of this is built yet; the JSON contract it
+will rest on is:
+
+- **Every certificate on every host, in one place.** The Sybil agent running
+  the same inspection on each machine and reporting the `trustsmith.inspect/v1`
+  result, so "what expires this month, and where is it deployed" becomes one
+  query instead of an SSH session per server.
+- **Expiry and mismatches on the infrastructure timeline**, next to the
+  deployments and drift that caused them.
+- **Renewal that closes the loop**: replace the certificate on the machine that
+  uses it, then prove the new one is served before the old one is retired.
+
+See [docs/integrations/sybil.md](docs/integrations/sybil.md) for how the two
+fit together and which parts exist today.
+
+## Contributing
+
+Bug reports, fixtures for certificates Trustsmith misreads, and pull requests
+are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities
+privately, as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

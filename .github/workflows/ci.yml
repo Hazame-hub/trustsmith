@@ -130,5 +130,6 @@ jobs:
           go test -run '^$' -fuzz '^FuzzCanonicalSPKI$' -fuzztime 20s ./internal/fingerprint
           go test -run '^$' -fuzz '^FuzzDecode$' -fuzztime 20s ./internal/artifact
           go test -run '^$' -fuzz '^FuzzFromDER$' -fuzztime 20s ./internal/x509facts
+          go test -run '^$' -fuzz '^FuzzFromRequestDER$' -fuzztime 20s ./internal/x509facts
           go test -run '^$' -fuzz '^FuzzInspectBytes$' -fuzztime 20s ./internal/app/inspectsvc
           go test -run '^$' -fuzz '^FuzzParse$' -fuzztime 20s ./internal/endpoint

@@ -67,6 +67,10 @@ func TestJSONGoldensValidateAgainstSchema(t *testing.T) {
 		if err := json.Unmarshal(data, &doc); err != nil {
 			t.Fatalf("%s: %v", path, err)
 		}
+		// Other commands have their own contracts.
+		if obj, ok := doc.(map[string]any); !ok || obj["schema"] != inspectSchema {
+			continue
+		}
 		v := validator{defs: schema["$defs"].(map[string]any)}
 		v.validate(schema, doc, "$")
 		for _, e := range v.errs {

@@ -12,10 +12,10 @@ Trustsmith is open source (Apache-2.0) and stands on its own. It is also the
 certificate half of [Sybil](#part-of-the-sybil-family): Sybil knows your
 infrastructure, Trustsmith knows its certificates.
 
-> **Status: early development.** Two commands exist: `trustsmith inspect`, for
-> certificate files and TLS endpoints, and `trustsmith ca`, a local private CA.
-> Everything else in the roadmap (inventory, renewal, discovery, a local UI) is
-> not built yet.
+> **Status: early development.** Three commands exist: `trustsmith inspect`,
+> for certificate files and TLS endpoints, `trustsmith ca`, a local private CA,
+> and `trustsmith match`, for keys and certificates. Everything else in the
+> roadmap (inventory, renewal, discovery, a local UI) is not built yet.
 
 ## Quick start
 
@@ -56,7 +56,6 @@ $ echo $?
 The exit code makes it a CI gate: `trustsmith inspect --fail-on warning cert.pem`
 fails the build on any warning, and `--output json` gives scripts a versioned,
 [schema-described](docs/schema/trustsmith.inspect.v1.schema.json) result.
-
 ## What works today
 
 `trustsmith inspect` explains a certificate file, or the certificates a TLS
@@ -146,6 +145,20 @@ $ trustsmith ca issue --dns app.example.internal --ip 10.1.2.3
   unencrypted PKCS #8 files with owner-only permissions; protect the CA
   directory accordingly.
 
+### Does this key belong to this certificate?
+
+`trustsmith match cert.pem key.pem` answers the question behind "key values
+mismatch" for every algorithm at once, by comparing ADR-0002 key identities
+([ADR-0013](docs/adr/0013-key-certificate-match.md)). In a bundle it names
+the entry that matches. Exit code 0 means it matches, 3 that it matches
+nothing. Only unencrypted keys are read, and nothing about the private key
+except its public identity is ever printed.
+
+```console
+$ trustsmith match fullchain.pem privkey.pem
+$ trustsmith match server.pem server.key --output json
+```
+
 File inspection works offline. The only network connection Trustsmith ever
 makes is to an endpoint you name. Other PEM blocks in a file, including private
 keys, are reported by their label and never decoded.
@@ -201,6 +214,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0009: minimal TLS endpoint acquisition](docs/adr/0009-tls-endpoint-acquisition.md)
 - [ADR-0010: explicit compatible TLS probe policy](docs/adr/0010-compatible-probe-policy.md)
 - [ADR-0012: a local private CA](docs/adr/0012-local-private-ca.md)
+- [ADR-0013: does this key belong to this certificate?](docs/adr/0013-key-certificate-match.md)
 
 ## JSON output
 

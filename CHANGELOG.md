@@ -22,5 +22,7 @@ section; the release workflow publishes that section as the release notes.
 - `trustsmith ca init` and `ca issue`: a local private CA with name
   constraints; every issued certificate is checked before it is written
   (ADR-0012).
+- `trustsmith match cert key`: does this unencrypted private key belong to
+  this certificate, or to which entry of a bundle (ADR-0013).
 - Release archives for Linux, macOS and Windows on amd64 and arm64, with
   SHA-256 checksums.

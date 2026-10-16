@@ -30,3 +30,14 @@ if [ "$code" -ne 1 ] || [ -e "$tmp/bank.key" ]; then
   exit 1
 fi
 rm -rf "$tmp"
+# match: a key and its certificate (exit 0), and a key that is not its (exit 3).
+vectors=internal/fingerprint/testdata/vectors
+"bin/trustsmith$ext" match "$vectors/ecdsa-p256/cert.pem" "$vectors/ecdsa-p256/key.pem" > /dev/null
+set +e
+"bin/trustsmith$ext" match "$vectors/rsa-2048/cert.pem" "$vectors/ecdsa-p256/key.pem" > /dev/null
+code=$?
+set -e
+if [ "$code" -ne 3 ]; then
+  echo "::error::matching a key against a certificate it does not belong to must exit 3, got $code"
+  exit 1
+fi

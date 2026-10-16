@@ -92,6 +92,7 @@ func newRoot(stdin io.Reader, stdout io.Writer, env Env) *cobra.Command {
 
 	root.AddCommand(newInspectCommand(stdin, stdout, env))
 	root.AddCommand(newCACommand(stdout, env))
+	root.AddCommand(newMatchCommand(stdout))
 	root.AddCommand(&cobra.Command{
 		Use:   "version",
 		Short: "Print the Trustsmith version",

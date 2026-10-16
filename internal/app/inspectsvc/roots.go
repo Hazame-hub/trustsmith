@@ -127,6 +127,8 @@ func rootsCertificates(data []byte) ([]rootsEntry, error) {
 				return nil, fmt.Errorf("entry %d is a %q PEM block; a roots file may contain only certificates (the block was not decoded)", b.Entry, b.Label)
 			}
 			return nil, fmt.Errorf("entry %d is not a certificate", b.Entry)
+		case artifact.KindCertificateRequest:
+			return nil, fmt.Errorf("entry %d is a certificate request, not a certificate", b.Entry)
 		}
 		p := x509facts.FromDER(b.DER)
 		switch {

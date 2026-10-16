@@ -33,6 +33,17 @@ func TestParserPanicIsContained(t *testing.T) {
 		}
 	})
 
+	t.Run("request-framed block", func(t *testing.T) {
+		original := parseCertificateRequest
+		t.Cleanup(func() { parseCertificateRequest = original })
+		parseCertificateRequest = func([]byte) (*x509.CertificateRequest, error) { panic("parser exploded") }
+
+		p := FromRequestDER(der)
+		if p.Kind != KindUnparseableRequest || !p.ParserPanicked || p.UnparseableRequest.ParseError != parserPanicMessage {
+			t.Errorf("got kind %s panicked %v (%+v)", p.Kind, p.ParserPanicked, p.UnparseableRequest)
+		}
+	})
+
 	t.Run("no panic, no flag", func(t *testing.T) {
 		if p := FromDER(der); p.ParserPanicked {
 			t.Error("ParserPanicked set without a panic")

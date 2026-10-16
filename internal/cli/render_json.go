@@ -10,6 +10,7 @@ import (
 	"github.com/Hazame-hub/trustsmith/internal/chainpath"
 	"github.com/Hazame-hub/trustsmith/internal/findings"
 	"github.com/Hazame-hub/trustsmith/internal/fingerprint"
+	"github.com/Hazame-hub/trustsmith/internal/interpret"
 	"github.com/Hazame-hub/trustsmith/internal/issuerlinks"
 	"github.com/Hazame-hub/trustsmith/internal/probe"
 	"github.com/Hazame-hub/trustsmith/internal/x509facts"
@@ -172,10 +173,13 @@ type jsonInput struct {
 }
 
 type jsonOverview struct {
-	Artifacts       int    `json:"artifacts"`
-	Certificates    int    `json:"certificates"`
-	Findings        int    `json:"findings"`
-	HighestSeverity string `json:"highest_severity"`
+	Artifacts    int `json:"artifacts"`
+	Certificates int `json:"certificates"`
+	// CertificateRequests counts certificate signing requests (parseable or
+	// not); they are never counted as certificates (ADR-0011).
+	CertificateRequests int    `json:"certificate_requests"`
+	Findings            int    `json:"findings"`
+	HighestSeverity     string `json:"highest_severity"`
 	// IncludedPaths counts the certification paths built inside the input;
 	// PathLimitReached says that list is incomplete.
 	IncludedPaths    int  `json:"included_paths"`
@@ -194,10 +198,17 @@ type jsonArtifact struct {
 	KeyIdentity  *jsonKeyIdentity  `json:"key_identity,omitempty"`
 	Summary      *jsonSummary      `json:"summary,omitempty"`
 	Technical    *jsonTechnical    `json:"technical,omitempty"`
+	// Request is set for a parsed certificate signing request (type
+	// certificate_request), which has no summary or technical section.
+	Request *jsonRequest `json:"request,omitempty"`
 }
 
+// jsonFingerprints are keyed by ADR-0002 scheme. x509-cert-sha256 is a
+// certificate identity, so a certificate signing request has only the two
+// public-key schemes; x509-spki-sha256 is what matches a request to the
+// certificate issued for it.
 type jsonFingerprints struct {
-	Cert        string  `json:"x509-cert-sha256"`
+	Cert        string  `json:"x509-cert-sha256,omitempty"`
 	KeyID       *string `json:"x509-spki-sha256"`
 	EncodedSPKI *string `json:"x509-spki-encoded-sha256"`
 }
@@ -254,6 +265,43 @@ type jsonTechnical struct {
 	SelfIssued             bool                 `json:"self_issued"`
 	SelfSignature          string               `json:"self_signature"`
 	PinSHA256              string               `json:"pin_sha256"`
+}
+
+// jsonRequest is what a certificate signing request asks a CA to certify
+// (ADR-0011). Nothing in it is in force: it has no issuer, serial number,
+// validity, chain or trust. requests lists the requested subject alternative
+// names, or "CN=..." when none are requested. signature is the algorithm, as
+// in a certificate summary; signature_check is verified, does_not_verify or
+// unverifiable — the request's signature checked with the key it contains,
+// which proves only that the requester held the private key — with a stable
+// signature_check_reason unless verified. key_usage, extended_key_usage and
+// basic_constraints are decoded from the requested extensions;
+// undecoded_extensions lists (by OID) requested extensions whose value could
+// not be decoded. attributes lists attribute types only: values, such as a
+// challengePassword, are never decoded or shown.
+type jsonRequest struct {
+	Kind                 string               `json:"kind"`
+	Requests             []string             `json:"requests"`
+	Subject              string               `json:"subject"`
+	Key                  string               `json:"key"`
+	PublicKey            jsonPublicKey        `json:"public_key"`
+	Signature            string               `json:"signature"`
+	SignatureAlgorithm   jsonAlgorithm        `json:"signature_algorithm"`
+	SignatureCheck       string               `json:"signature_check"`
+	SignatureCheckReason string               `json:"signature_check_reason,omitempty"`
+	SubjectAltNames      jsonSANs             `json:"subject_alt_names"`
+	KeyUsage             []string             `json:"key_usage"`
+	ExtendedKeyUsage     []string             `json:"extended_key_usage"`
+	BasicConstraints     jsonBasicConstraints `json:"basic_constraints"`
+	Extensions           []jsonExtension      `json:"extensions"`
+	UndecodedExtensions  []string             `json:"undecoded_extensions"`
+	Attributes           []jsonAttribute      `json:"attributes"`
+	PinSHA256            string               `json:"pin_sha256"`
+}
+
+type jsonAttribute struct {
+	OID  string `json:"oid"`
+	Name string `json:"name,omitempty"`
 }
 
 type jsonPublicKey struct {
@@ -395,8 +443,11 @@ func renderJSON(w io.Writer, res inspectsvc.Result) error {
 		doc.Overview.HighestSeverity = "none"
 	}
 	for _, a := range res.Artifacts {
-		if a.Type == inspectsvc.TypeCertificate || a.Type == inspectsvc.TypeUnparseableCertificate {
+		switch a.Type {
+		case inspectsvc.TypeCertificate, inspectsvc.TypeUnparseableCertificate:
 			doc.Overview.Certificates++
+		case inspectsvc.TypeCertificateRequest, inspectsvc.TypeUnparseableCertificateRequest:
+			doc.Overview.CertificateRequests++
 		}
 		doc.Artifacts = append(doc.Artifacts, artifactJSON(a))
 	}
@@ -442,12 +493,26 @@ func artifactJSON(a inspectsvc.Artifact) jsonArtifact {
 	case a.Unparseable != nil:
 		out.ParseError = a.Unparseable.ParseError
 		out.Fingerprints, out.KeyIdentity = identityJSON(a.Unparseable.Identity)
+	case a.Request != nil:
+		out.Fingerprints, out.KeyIdentity = spkiIdentityJSON(a.Request.SPKIIdentity)
+		out.Request = requestJSON(a.Request, a.RequestSummary)
+	case a.UnparseableRequest != nil:
+		out.ParseError = a.UnparseableRequest.ParseError
+		out.Fingerprints, out.KeyIdentity = spkiIdentityJSON(a.UnparseableRequest.SPKIIdentity)
 	}
 	return out
 }
 
 func identityJSON(id x509facts.Identity) (*jsonFingerprints, *jsonKeyIdentity) {
-	fp := &jsonFingerprints{Cert: id.Fingerprint.Hex()}
+	fp, key := spkiIdentityJSON(id.SPKIIdentity)
+	fp.Cert = id.Fingerprint.Hex()
+	return fp, key
+}
+
+// spkiIdentityJSON renders the public-key fingerprints alone, as a
+// certificate signing request has them.
+func spkiIdentityJSON(id x509facts.SPKIIdentity) (*jsonFingerprints, *jsonKeyIdentity) {
+	fp := &jsonFingerprints{}
 	if id.KeyIdentity != x509facts.KeyIdentityUnavailable {
 		encoded := id.EncodedSPKI.Hex()
 		fp.EncodedSPKI = &encoded
@@ -651,6 +716,36 @@ func technicalJSON(c *x509facts.Certificate) *jsonTechnical {
 		t.Extensions = append(t.Extensions, jsonExtension{OID: e.OID, Critical: e.Critical, Name: e.Name})
 	}
 	return t
+}
+
+func requestJSON(r *x509facts.CertificateRequest, s *interpret.RequestSummary) *jsonRequest {
+	out := &jsonRequest{
+		Kind: s.Kind, Requests: orEmpty(s.Requests), Subject: s.Subject, Key: s.Key,
+		PublicKey:            jsonPublicKey{Algorithm: r.PublicKey.Algorithm, Detail: r.PublicKey.Detail, Bits: r.PublicKey.Bits},
+		Signature:            s.Signature,
+		SignatureAlgorithm:   jsonAlgorithm{Name: r.SignatureAlgorithm.String(), OID: r.SignatureAlgorithmOID},
+		SignatureCheck:       string(s.SignatureCheck),
+		SignatureCheckReason: s.SignatureReason,
+		SubjectAltNames: jsonSANs{
+			DNS: orEmpty(r.DNSNames), IP: orEmpty(r.IPAddresses), Email: orEmpty(r.EmailAddresses), URI: orEmpty(r.URIs),
+		},
+		KeyUsage:         orEmpty(r.KeyUsage),
+		ExtendedKeyUsage: orEmpty(r.ExtKeyUsage),
+		BasicConstraints: jsonBasicConstraints{
+			Present: r.BasicConstraints.Present, IsCA: r.BasicConstraints.IsCA, MaxPathLen: r.BasicConstraints.MaxPathLen,
+		},
+		Extensions:          []jsonExtension{},
+		UndecodedExtensions: orEmpty(r.UndecodedExtensions),
+		Attributes:          []jsonAttribute{},
+		PinSHA256:           r.EncodedSPKI.PinSHA256(),
+	}
+	for _, e := range r.Extensions {
+		out.Extensions = append(out.Extensions, jsonExtension{OID: e.OID, Critical: e.Critical, Name: e.Name})
+	}
+	for _, a := range r.Attributes {
+		out.Attributes = append(out.Attributes, jsonAttribute{OID: a.OID, Name: a.Name})
+	}
+	return out
 }
 
 func findingJSON(f findings.Finding) jsonFinding {

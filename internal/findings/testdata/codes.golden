@@ -9,6 +9,8 @@ chain.issuer_not_ca
 chain.path_length_exceeded
 chain.path_limit_reached
 chain.structure_unverifiable
+csr.signature_invalid
+csr.signature_unverifiable
 input.empty
 input.malformed_der
 input.malformed_pem
@@ -16,6 +18,7 @@ input.malformed_spki
 input.no_certificates
 input.trailing_data
 input.unparseable_certificate
+input.unparseable_certificate_request
 input.unsupported_format
 issuer.candidate_unverifiable
 issuer.candidates_not_checked

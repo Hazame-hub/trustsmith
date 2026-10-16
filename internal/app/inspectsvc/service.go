@@ -47,9 +47,15 @@ type ArtifactType string
 const (
 	TypeCertificate            ArtifactType = "certificate"
 	TypeUnparseableCertificate ArtifactType = "unparseable_certificate"
-	TypeCertificateRequest     ArtifactType = "certificate_request"
-	TypeUnsupported            ArtifactType = "unsupported"
-	TypeMalformed              ArtifactType = "malformed"
+	// TypeCertificateRequest: a certificate signing request (ADR-0011). It is
+	// never a certificate: never an issuer candidate, path member or
+	// evaluation target.
+	TypeCertificateRequest ArtifactType = "certificate_request"
+	// TypeUnparseableCertificateRequest: a block labelled as a certificate
+	// signing request that Go could not parse.
+	TypeUnparseableCertificateRequest ArtifactType = "unparseable_certificate_request"
+	TypeUnsupported                   ArtifactType = "unsupported"
+	TypeMalformed                     ArtifactType = "malformed"
 )
 
 // Artifact is one inspected entry, in input order.
@@ -65,6 +71,11 @@ type Artifact struct {
 	Certificate *x509facts.Certificate
 	Unparseable *x509facts.Unparseable
 	Summary     *interpret.Summary
+	// Request and RequestSummary are set for certificate signing requests;
+	// UnparseableRequest for a request Go could not parse.
+	Request            *x509facts.CertificateRequest
+	UnparseableRequest *x509facts.UnparseableRequest
+	RequestSummary     *interpret.RequestSummary
 }
 
 // Result is a complete inspection.
@@ -178,26 +189,39 @@ func (s *Service) InspectBytes(src Source, data []byte) (Result, error) {
 }
 
 // inspectDecoded runs the pipeline over framed input: parse every
-// certificate, resolve issuer relationships and paths, evaluate trust,
-// purpose and host name identity, then interpret each entry.
+// certificate and certificate signing request, resolve issuer relationships
+// and paths, evaluate trust, purpose and host name identity, then interpret
+// each entry. Only certificates are inputs to relationships, paths and
+// evaluations: a request is described on its own (ADR-0011).
 func (s *Service) inspectDecoded(res Result, decoded artifact.Decoded) Result {
 	now := res.InspectedAt
 	res.Artifacts, res.Findings = []Artifact{}, []findings.Finding{}
 
 	parsed := make([]*x509facts.Parsed, len(decoded.Blocks))
 	var inputs []issuerlinks.Input
-	certificates := 0
+	certificates, requests := 0, 0
 	for i, b := range decoded.Blocks {
-		if b.Kind != artifact.KindCertificate {
+		var p x509facts.Parsed
+		switch b.Kind {
+		case artifact.KindCertificate:
+			p = x509facts.FromDER(b.DER)
+		case artifact.KindCertificateRequest:
+			p = x509facts.FromRequestDER(b.DER)
+		default:
 			continue
 		}
-		p := x509facts.FromDER(b.DER)
 		parsed[i] = &p
 		if p.ParserPanicked {
 			res.RecoveredPanics++
 		}
-		if p.Kind != x509facts.KindCertificateRequest {
+		switch p.Kind {
+		case x509facts.KindCertificateRequest, x509facts.KindUnparseableRequest:
+			requests++
+		default:
 			certificates++
+		}
+		if r := p.Request; r != nil && r.SignatureReason == sigcheck.ReasonEnginePanic {
+			res.RecoveredPanics++
 		}
 		if c := p.Certificate; c != nil {
 			if c.SelfSignatureReason == sigcheck.ReasonEnginePanic {
@@ -245,7 +269,7 @@ func (s *Service) inspectDecoded(res Result, decoded artifact.Decoded) Result {
 			a.Type = TypeMalformed
 		case artifact.KindUnsupported:
 			a.Type = TypeUnsupported
-		case artifact.KindCertificate:
+		case artifact.KindCertificate, artifact.KindCertificateRequest:
 			switch p := parsed[i]; p.Kind {
 			case x509facts.KindCertificate:
 				a.Type, a.Certificate = TypeCertificate, p.Certificate
@@ -254,11 +278,13 @@ func (s *Service) inspectDecoded(res Result, decoded artifact.Decoded) Result {
 			case x509facts.KindUnparseable:
 				a.Type, a.Unparseable = TypeUnparseableCertificate, p.Unparseable
 			case x509facts.KindCertificateRequest:
-				a.Type = TypeCertificateRequest
+				a.Type, a.Request = TypeCertificateRequest, p.Request
+			case x509facts.KindUnparseableRequest:
+				a.Type, a.UnparseableRequest = TypeUnparseableCertificateRequest, p.UnparseableRequest
 			}
 		}
 		entry := interpret.Block(b, parsed[i], issuers, now, s.thresholds)
-		a.Summary = entry.Summary
+		a.Summary, a.RequestSummary = entry.Summary, entry.Request
 		if a.Summary != nil {
 			if state, ok := chainState[a.Certificate.Fingerprint]; ok {
 				a.Summary.Chain = state
@@ -267,7 +293,7 @@ func (s *Service) inspectDecoded(res Result, decoded artifact.Decoded) Result {
 		res.Artifacts = append(res.Artifacts, a)
 		res.Findings = append(res.Findings, entry.Findings...)
 	}
-	res.Findings = append(res.Findings, interpret.Input(decoded, certificates)...)
+	res.Findings = append(res.Findings, interpret.Input(decoded, certificates, requests)...)
 
 	finishFindings(&res)
 	return res

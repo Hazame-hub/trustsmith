@@ -2,6 +2,10 @@
 // key verify another certificate's signature? It applies no certificate
 // authority, validity, key-usage, path or trust policy — a verified result
 // means only that the signature is cryptographically valid under that key.
+//
+// It answers the same question for a certificate signing request and the
+// key the request itself carries (ADR-0011): that proves only that whoever
+// made the request held the private key, nothing about what it asks for.
 package sigcheck
 
 import (
@@ -60,8 +64,29 @@ var checkSignature = func(child, signer *x509.Certificate) error {
 	return signer.CheckSignature(child.SignatureAlgorithm, child.RawTBSCertificate, child.Signature)
 }
 
+// checkRequestSignature is the single verification call for certificate
+// signing requests: CertificateRequest.CheckSignature, which verifies the
+// request's signature over its exact RawTBSCertificateRequest bytes with the
+// public key in the request. Like Certificate.CheckSignature it accepts SHA-1
+// and refuses MD5. It is a variable only so tests can prove the panic
+// boundary.
+var checkRequestSignature = func(csr *x509.CertificateRequest) error {
+	return csr.CheckSignature()
+}
+
 // Certificate checks whether signer's public key verifies child's signature.
-func Certificate(child, signer *x509.Certificate) (res Result) {
+func Certificate(child, signer *x509.Certificate) Result {
+	return check(func() error { return checkSignature(child, signer) })
+}
+
+// Request checks whether a certificate signing request's own public key
+// verifies its signature.
+func Request(csr *x509.CertificateRequest) Result {
+	return check(func() error { return checkRequestSignature(csr) })
+}
+
+// check runs one verification call and classifies its result.
+func check(verify func() error) (res Result) {
 	// The verification engine processes attacker-supplied signatures and
 	// keys; a panic there is contained and reported with a stable reason.
 	defer func() {
@@ -69,7 +94,7 @@ func Certificate(child, signer *x509.Certificate) (res Result) {
 			res = Result{State: Unverifiable, Reason: ReasonEnginePanic, Detail: "signature verification panicked"}
 		}
 	}()
-	err := checkSignature(child, signer)
+	err := verify()
 	state, reason := classify(err)
 	res = Result{State: state, Reason: reason}
 	if err != nil {

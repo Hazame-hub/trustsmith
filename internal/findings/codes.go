@@ -15,6 +15,9 @@ const (
 	InputTrailingData           Code = "input.trailing_data"
 	InputUnparseableCertificate Code = "input.unparseable_certificate"
 	InputMalformedSPKI          Code = "input.malformed_spki"
+	// InputUnparseableRequest: a block labelled as a certificate signing
+	// request that Go's parser rejected (ADR-0011).
+	InputUnparseableRequest Code = "input.unparseable_certificate_request"
 )
 
 // Validity.
@@ -23,6 +26,14 @@ const (
 	CertNotYetValid    Code = "cert.not_yet_valid"
 	CertExpiringSoon   Code = "cert.expiring_soon"
 	CertSelfSignedLeaf Code = "cert.self_signed_leaf"
+)
+
+// Certificate signing requests (ADR-0011): the request's signature checked
+// with its own key. Weak algorithms, short keys and names reuse the sig.*,
+// key.* and name.* codes.
+const (
+	CSRSignatureInvalid      Code = "csr.signature_invalid"
+	CSRSignatureUnverifiable Code = "csr.signature_unverifiable"
 )
 
 // Signatures and keys.

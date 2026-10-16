@@ -53,3 +53,16 @@ func TestPanicDuringVerificationIsContained(t *testing.T) {
 		t.Errorf("got %s/%s, want unverifiable/engine_panic", got.State, got.Reason)
 	}
 }
+
+// TestPanicDuringRequestVerificationIsContained proves the same boundary for
+// certificate signing requests.
+func TestPanicDuringRequestVerificationIsContained(t *testing.T) {
+	original := checkRequestSignature
+	t.Cleanup(func() { checkRequestSignature = original })
+	checkRequestSignature = func(*x509.CertificateRequest) error { panic("engine exploded") }
+
+	got := Request(&x509.CertificateRequest{})
+	if got.State != Unverifiable || got.Reason != ReasonEnginePanic {
+		t.Errorf("got %s/%s, want unverifiable/engine_panic", got.State, got.Reason)
+	}
+}

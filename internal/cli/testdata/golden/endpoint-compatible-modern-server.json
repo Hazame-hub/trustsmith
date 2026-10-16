@@ -67,6 +67,7 @@
   "overview": {
     "artifacts": 2,
     "certificates": 2,
+    "certificate_requests": 0,
     "findings": 0,
     "highest_severity": "none",
     "included_paths": 1,

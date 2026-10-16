@@ -197,11 +197,27 @@ func TestUnsupportedBlocksAreNotDecoded(t *testing.T) {
 	a := newCertDER(t, "a")
 	data := "-----BEGIN PRIVATE KEY-----\nsecret material that must not be decoded\n-----END PRIVATE KEY-----\n" +
 		string(pemOf("CERTIFICATE", a)) +
-		"-----BEGIN CERTIFICATE REQUEST-----\nAAAA\n-----END CERTIFICATE REQUEST-----\n"
+		"-----BEGIN PKCS7-----\nnot base64 either\n-----END PKCS7-----\n"
 	assertBlocks(t, decode(t, []byte(data)), []wantBlock{
 		{kind: artifact.KindUnsupported, label: "PRIVATE KEY"},
 		{kind: artifact.KindCertificate, label: "CERTIFICATE", der: a},
-		{kind: artifact.KindUnsupported, label: "CERTIFICATE REQUEST"},
+		{kind: artifact.KindUnsupported, label: "PKCS7"},
+	})
+}
+
+// TestCertificateRequestBlocksAreDecoded proves both certificate signing
+// request labels are framed as requests (ADR-0011), whatever their contents
+// turn out to be, and that a corrupt request block is malformed, not skipped.
+func TestCertificateRequestBlocksAreDecoded(t *testing.T) {
+	a := newCertDER(t, "a")
+	data := string(pemOf("CERTIFICATE REQUEST", a)) + string(pemOf("NEW CERTIFICATE REQUEST", a)) +
+		"-----BEGIN CERTIFICATE REQUEST-----\nthis is !!! not base64\n-----END CERTIFICATE REQUEST-----\n" +
+		string(pemOf("CERTIFICATE", a))
+	assertBlocks(t, decode(t, []byte(data)), []wantBlock{
+		{kind: artifact.KindCertificateRequest, label: "CERTIFICATE REQUEST", der: a},
+		{kind: artifact.KindCertificateRequest, label: "NEW CERTIFICATE REQUEST", der: a},
+		{kind: artifact.KindMalformed, label: "CERTIFICATE REQUEST", problem: artifact.ProblemBadEncoding},
+		{kind: artifact.KindCertificate, label: "CERTIFICATE", der: a},
 	})
 }
 

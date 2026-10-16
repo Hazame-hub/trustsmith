@@ -47,21 +47,24 @@ Codes in this revision:
 | Code | Severity | Emitted when |
 |---|---|---|
 | `input.empty` | critical | no data |
-| `input.unsupported_format` | critical (whole input) / warning (block) | neither PEM nor DER; a non-certificate PEM block (reported by label, not decoded); DER that is not a certificate; a CSR |
-| `input.no_certificates` | critical | input framed, but no certificate in it |
+| `input.unsupported_format` | critical (whole input) / warning (block) | neither PEM nor DER; a PEM block that is neither a certificate nor a certificate signing request (reported by label, not decoded); DER that is neither |
+| `input.no_certificates` | critical | input framed, but no certificate or certificate signing request in it (ADR-0011) |
 | `input.malformed_pem` | critical | bad armour, missing END, undecodable block |
 | `input.malformed_der` | critical | invalid DER |
 | `input.trailing_data` | info (PEM) / warning (DER) | data outside any block |
 | `input.unparseable_certificate` | critical | Go's X.509 parser rejected a certificate |
-| `input.malformed_spki` | warning | the certificate's public key is malformed |
+| `input.unparseable_certificate_request` | critical | Go's parser rejected a block labelled as a certificate signing request (ADR-0011) |
+| `input.malformed_spki` | warning | the public key of a certificate or certificate signing request is malformed |
 | `cert.expired` / `cert.not_yet_valid` | critical | inspection time after `notAfter` / before `notBefore` |
 | `cert.expiring_soon` | warning at ≤ 30 days, critical at ≤ 7 days | still valid, expiring |
 | `cert.self_signed_leaf` | warning | non-CA certificate whose self-signature verifies |
-| `sig.sha1` / `sig.md5` | critical; info on a self-issued CA | weak signature algorithm |
-| `key.rsa_under_2048` | critical | RSA modulus shorter than 2048 bits |
+| `csr.signature_invalid` | critical | a certificate signing request's signature does not verify with its own key (ADR-0011) |
+| `csr.signature_unverifiable` | warning | the engine could not check a certificate signing request's signature, e.g. MD5 (ADR-0011) |
+| `sig.sha1` / `sig.md5` | critical; info on a self-issued CA | weak signature algorithm, on a certificate or a certificate signing request |
+| `key.rsa_under_2048` | critical | RSA modulus shorter than 2048 bits, in a certificate or a certificate signing request |
 | `key.noncanonical_spki` | warning | KeyID exists but the key is encoded non-canonically |
 | `key.unsupported_for_identity` | info | the key has no ADR-0002 identity |
-| `name.cn_only_no_san` | warning | non-CA certificate named only by Common Name |
+| `name.cn_only_no_san` | warning | non-CA certificate named only by Common Name, or a request for a non-CA certificate that asks for no subject alternative names |
 | `name.hostname_mismatch` | critical | the certificate does not identify the name requested with `--hostname` (ADR-0008) |
 | `issuer.candidate_unverifiable` | info | a matching certificate in the input could not check this signature, and none verified (ADR-0004) |
 | `issuer.candidates_not_checked` | info | issuer-candidate limits were reached; issuer information is incomplete (ADR-0004) |
@@ -120,6 +123,9 @@ Codes in this revision:
   `tls_peer_certificates`, `artifacts[].locator`, `purpose_evaluation.source`
   and `hostname_evaluation.source` were added within v1 (ADR-0009), as were
   `probe.policy.id` and `probe.compatibility_features_used` (ADR-0010).
+  `overview.certificate_requests`, `artifacts[].request`, the artifact type
+  `unparseable_certificate_request` and the absence of `x509-cert-sha256`
+  from a request's fingerprints were added within v1 (ADR-0011).
   `probe.policy` suite and group lists are sets, listed by name.
 - **Fingerprints** are keyed by ADR-0002 scheme name. A missing key identity is
   `null`.

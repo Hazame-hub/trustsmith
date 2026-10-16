@@ -37,9 +37,12 @@ This describes the implementation today, which offers only
     no HTTP, and bounds the connection and the handshake with timeouts.
   - Skipping verification and speaking TLS are confined by architecture tests
     to one package, which depends on no evaluation code.
-- **Handles no private keys.** PEM blocks other than `CERTIFICATE` are reported
-  by label and never decoded. The tool stores nothing and writes nothing except
-  its output.
+- **Handles no private keys.** PEM blocks other than `CERTIFICATE` and
+  certificate signing requests (`CERTIFICATE REQUEST`, `NEW CERTIFICATE
+  REQUEST`) are reported by label and never decoded. A certificate signing
+  request carries a public key, never a private one. Its attribute values,
+  such as a challenge password, are never decoded or shown. The tool stores
+  nothing and writes nothing except its output.
 - **Treats input as hostile.**
   - Input is limited to 8 MiB and 10,000 PEM blocks.
   - One malformed block is reported without stopping the others.
@@ -82,7 +85,10 @@ This describes the implementation today, which offers only
     affected by GO-2026-5026, fail the tests), and only the user's DNS request
     is converted: IP addresses and certificate names never are.
   - A self-signature is reported as verified only when it verifies
-    cryptographically.
+    cryptographically. The same holds for a certificate signing request's
+    signature with its own key, which proves only that the requester held the
+    private key; a request is never used as a certificate, issuer or trust
+    anchor.
 
 ## Limitations
 

@@ -5,7 +5,8 @@ make everyday certificate work understandable to people who are not PKI
 experts, without taking the advanced path away from those who are.
 
 > **Status: early development.** The only command implemented so far is
-> `trustsmith inspect`, for certificate files and TLS endpoints. Everything else in the roadmap
+> `trustsmith inspect`, for certificate files, certificate signing requests
+> and TLS endpoints. Everything else in the roadmap
 > (private CA, inventory, renewal, discovery, a local UI) is not built yet.
 
 ## What works today
@@ -13,8 +14,8 @@ experts, without taking the advanced path away from those who are.
 `trustsmith inspect` explains a certificate file, or the certificates a TLS
 server presents:
 
-- **Inputs:** PEM certificates, DER certificates, PEM bundles, standard
-  input (`-`), and TLS endpoints (`host:port`, `[IPv6]:port`,
+- **Inputs:** PEM certificates, DER certificates, PEM bundles, certificate
+  signing requests (PEM or DER), standard input (`-`), and TLS endpoints (`host:port`, `[IPv6]:port`,
   `tls://host:port`; port 443 by default).
 - **What it tells you:** what the certificate is for, what it identifies, who it
   says issued it, whether it is valid now, when it expires, its key and
@@ -47,6 +48,16 @@ server presents:
   ([ADR-0008](docs/adr/0008-hostname-identity.md)). It implies no purpose.
   Internationalised names are first converted to their A-label (`xn--`) form
   with an explicit, pinned IDNA profile.
+- **Certificate signing requests:** for a CSR (`CERTIFICATE REQUEST`, or the
+  legacy `NEW CERTIFICATE REQUEST` label, or DER), what it asks a CA to
+  certify: the subject, the requested names (DNS, IP, email, URI), the key, the
+  requested key usage, extended key usage and basic constraints, and whether
+  its signature verifies with its own key
+  ([ADR-0011](docs/adr/0011-certificate-signing-requests.md)). Its
+  `x509-spki-sha256` key identity is the one the issued certificate will have,
+  so the two can be matched. A request is never treated as a certificate: it
+  has no validity, issuer, chain or trust, and is not evaluated by `--roots`,
+  `--purpose` or `--hostname`.
 - **Fingerprints** follow [ADR-0002](docs/adr/0002-public-key-identity.md):
   `x509-cert-sha256` for the certificate, `x509-spki-sha256` (a canonical,
   cross-file key identity), and `x509-spki-encoded-sha256` (the key as encoded,
@@ -77,6 +88,7 @@ keys, are reported by their label and never decoded.
 $ trustsmith inspect testdata/certs/leaf.pem
 $ trustsmith inspect --advanced bundle.pem
 $ trustsmith inspect --output json cert.der
+$ trustsmith inspect request.csr
 $ cat bundle.pem | trustsmith inspect -
 $ trustsmith inspect bundle.pem --roots company-roots.pem
 $ trustsmith inspect server.pem --purpose tls-server --roots company-roots.pem
@@ -86,7 +98,7 @@ $ trustsmith inspect tls://[2001:db8::1]:8443 --output json
 $ trustsmith inspect legacy.example.com:443 --probe-policy compatible
 ```
 
-Not yet supported: system or platform trust stores, revocation, private keys, CSRs, PKCS#12, STARTTLS and legacy TLS
+Not yet supported: system or platform trust stores, revocation, private keys, PKCS#12, STARTTLS and legacy TLS
 diagnostics, and public WebPKI policy checks.
 
 ### Exit codes
@@ -122,6 +134,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0008: explicit host name identity](docs/adr/0008-hostname-identity.md)
 - [ADR-0009: minimal TLS endpoint acquisition](docs/adr/0009-tls-endpoint-acquisition.md)
 - [ADR-0010: explicit compatible TLS probe policy](docs/adr/0010-compatible-probe-policy.md)
+- [ADR-0011: certificate signing requests](docs/adr/0011-certificate-signing-requests.md)
 
 ## License
 

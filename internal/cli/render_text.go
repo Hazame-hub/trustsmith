@@ -323,6 +323,7 @@ func writeTrust(b *strings.Builder, res inspectsvc.Result) {
 		}
 		topField(b, "Anchor", text)
 	}
+	requestsNotEvaluated(b, res)
 
 	for _, target := range t.Targets {
 		first := target.Entries[0]
@@ -364,6 +365,7 @@ func writePurpose(b *strings.Builder, res inspectsvc.Result) {
 		requestedPurpose += ", implied by the endpoint"
 	}
 	topField(b, "Requested", requestedPurpose)
+	requestsNotEvaluated(b, res)
 	for _, t := range e.Targets {
 		first := t.Entries[0]
 		fmt.Fprintf(b, "  Entry %d (%s)\n", first, names[first])
@@ -421,6 +423,7 @@ func writeHostname(b *strings.Builder, res inspectsvc.Result) {
 	}
 	topField(b, "Requested", requested+")")
 	topField(b, "Matcher", "Go crypto/x509 VerifyHostname ("+e.EngineVersion+"): subject alternative names only")
+	requestsNotEvaluated(b, res)
 	for _, t := range e.Targets {
 		first := t.Entries[0]
 		fmt.Fprintf(b, "  Entry %d (%s)\n", first, names[first])
@@ -631,12 +634,19 @@ func writeArtifact(b *strings.Builder, a inspectsvc.Artifact, advanced, trustEva
 		fmt.Fprintf(b, "[%d] Certificate that could not be parsed\n", a.Entry)
 		field(b, "Parse error", a.Unparseable.ParseError)
 		field(b, "Certificate", a.Unparseable.Fingerprint.String())
-		field(b, "Key identity", keyIdentityText(a.Unparseable.Identity))
+		field(b, "Key identity", keyIdentityText(a.Unparseable.SPKIIdentity))
 		if advanced && a.Unparseable.KeyIdentity != x509facts.KeyIdentityUnavailable {
 			field(b, "Encoded SPKI", a.Unparseable.EncodedSPKI.String()+" (x509-spki-encoded-sha256)")
 		}
 	case inspectsvc.TypeCertificateRequest:
-		fmt.Fprintf(b, "[%d] Certificate signing request (not inspected by this version)\n", a.Entry)
+		writeRequest(b, a, advanced)
+	case inspectsvc.TypeUnparseableCertificateRequest:
+		fmt.Fprintf(b, "[%d] Certificate signing request that could not be parsed\n", a.Entry)
+		field(b, "Parse error", a.UnparseableRequest.ParseError)
+		field(b, "Key identity", keyIdentityText(a.UnparseableRequest.SPKIIdentity))
+		if advanced && a.UnparseableRequest.KeyIdentity != x509facts.KeyIdentityUnavailable {
+			field(b, "Encoded SPKI", a.UnparseableRequest.EncodedSPKI.String()+" (x509-spki-encoded-sha256)")
+		}
 	case inspectsvc.TypeUnsupported:
 		if a.Label != "" {
 			fmt.Fprintf(b, "[%d] PEM block %q (not inspected; contents not decoded)\n", a.Entry, a.Label)
@@ -688,18 +698,13 @@ func writeCertificate(b *strings.Builder, a inspectsvc.Artifact, advanced, trust
 	field(b, "Signature", s.Signature)
 	field(b, "Chain", chainText(s.Chain, trustEvaluated))
 	field(b, "Certificate", c.Fingerprint.String())
-	field(b, "Key identity", keyIdentityText(c.Identity))
+	field(b, "Key identity", keyIdentityText(c.SPKIIdentity))
 
 	if !advanced {
 		return
 	}
 	b.WriteString("    Technical details\n")
-	tech := func(label, value string) {
-		if value != "" {
-			fmt.Fprintf(b, "      %-19s%s\n", label, value)
-		}
-	}
-	list := func(label string, values []string) { tech(label, strings.Join(values, ", ")) }
+	tech, list := techWriters(b)
 
 	tech("Version", strconv.Itoa(c.Version))
 	tech("Serial", c.SerialHex)
@@ -707,14 +712,7 @@ func writeCertificate(b *strings.Builder, a inspectsvc.Artifact, advanced, trust
 	tech("Issuer", c.Issuer.DN)
 	tech("Not before", stamp(c.NotBefore))
 	tech("Not after", stamp(c.NotAfter))
-	key := c.PublicKey.Algorithm
-	if c.PublicKey.Detail != "" {
-		key += " " + c.PublicKey.Detail
-	}
-	if c.PublicKey.Bits > 0 {
-		key += ", " + strconv.Itoa(c.PublicKey.Bits) + " bits"
-	}
-	tech("Public key", key)
+	tech("Public key", publicKeyText(c.PublicKey))
 	tech("Signature alg.", strings.TrimSpace(c.SignatureAlgorithm.String()+" ("+c.SignatureAlgorithmOID+")"))
 	list("Key usage", c.KeyUsage)
 	list("Ext. key usage", c.ExtKeyUsage)
@@ -725,10 +723,45 @@ func writeCertificate(b *strings.Builder, a inspectsvc.Artifact, advanced, trust
 	list("IP addresses", c.IPAddresses)
 	list("Email addresses", c.EmailAddresses)
 	list("URIs", c.URIs)
-	for i, e := range c.Extensions {
+	writeExtensions(b, "Extensions", c.Extensions)
+	list("CRL distribution", c.CRLDistributionPoints)
+	list("OCSP servers", c.OCSPServers)
+	list("Issuer URLs", c.IssuingCertificateURLs)
+	list("Policies", c.PolicyOIDs)
+	tech("Self-issued", yesNo(c.SelfIssued))
+	tech("Encoded SPKI", c.EncodedSPKI.String()+" (x509-spki-encoded-sha256)")
+	tech("pin-sha256", c.EncodedSPKI.PinSHA256())
+	tech("OpenSSL format", c.Fingerprint.Colon())
+}
+
+// techWriters returns the line writers of a "Technical details" block: tech
+// skips empty values, list joins values.
+func techWriters(b *strings.Builder) (tech func(label, value string), list func(label string, values []string)) {
+	tech = func(label, value string) {
+		if value != "" {
+			fmt.Fprintf(b, "      %-19s%s\n", label, value)
+		}
+	}
+	list = func(label string, values []string) { tech(label, strings.Join(values, ", ")) }
+	return tech, list
+}
+
+func publicKeyText(k x509facts.PublicKey) string {
+	key := k.Algorithm
+	if k.Detail != "" {
+		key += " " + k.Detail
+	}
+	if k.Bits > 0 {
+		key += ", " + strconv.Itoa(k.Bits) + " bits"
+	}
+	return key
+}
+
+func writeExtensions(b *strings.Builder, heading string, exts []x509facts.Extension) {
+	for i, e := range exts {
 		label := ""
 		if i == 0 {
-			label = "Extensions"
+			label = heading
 		}
 		value := e.OID
 		if e.Name != "" {
@@ -739,14 +772,77 @@ func writeCertificate(b *strings.Builder, a inspectsvc.Artifact, advanced, trust
 		}
 		fmt.Fprintf(b, "      %-19s%s\n", label, value)
 	}
-	list("CRL distribution", c.CRLDistributionPoints)
-	list("OCSP servers", c.OCSPServers)
-	list("Issuer URLs", c.IssuingCertificateURLs)
-	list("Policies", c.PolicyOIDs)
-	tech("Self-issued", yesNo(c.SelfIssued))
-	tech("Encoded SPKI", c.EncodedSPKI.String()+" (x509-spki-encoded-sha256)")
-	tech("pin-sha256", c.EncodedSPKI.PinSHA256())
-	tech("OpenSSL format", c.Fingerprint.Colon())
+}
+
+// writeRequest renders a certificate signing request in the style of a
+// certificate entry. It says what the request asks for and never presents
+// any of it as in force: a request has no issuer, validity, chain or trust.
+func writeRequest(b *strings.Builder, a inspectsvc.Artifact, advanced bool) {
+	r, s := a.Request, a.RequestSummary
+	fmt.Fprintf(b, "[%d] %s\n", a.Entry, s.Kind)
+
+	requests := "(no names)"
+	if len(s.Requests) > 0 {
+		requests = strings.Join(s.Requests, ", ")
+	}
+	field(b, "Requests", requests)
+	subject := s.Subject
+	if subject == "" {
+		subject = "(empty)"
+	}
+	field(b, "Subject", subject)
+	field(b, "Key", s.Key)
+	switch s.SignatureCheck {
+	case interpret.RequestSignatureVerified:
+		field(b, "Signature", s.Signature+", verified with the requested key (the requester holds its private key)")
+	case interpret.RequestSignatureDoesNotVerify:
+		field(b, "Signature", s.Signature+", does not verify with the requested key ("+s.SignatureReason+")")
+	default:
+		field(b, "Signature", s.Signature+", could not be verified ("+s.SignatureReason+")")
+	}
+	field(b, "Certificate", "none: a CA issues one from this request; nothing in it is in force yet")
+	field(b, "Key identity", keyIdentityText(r.SPKIIdentity))
+
+	if !advanced {
+		return
+	}
+	b.WriteString("    Technical details (as requested)\n")
+	tech, list := techWriters(b)
+	tech("Subject", r.Subject.DN)
+	tech("Public key", publicKeyText(r.PublicKey))
+	tech("Signature alg.", strings.TrimSpace(r.SignatureAlgorithm.String()+" ("+r.SignatureAlgorithmOID+")"))
+	list("Key usage", r.KeyUsage)
+	list("Ext. key usage", r.ExtKeyUsage)
+	if r.BasicConstraints.Present {
+		tech("Basic constraints", basicConstraintsText(r.BasicConstraints))
+	}
+	list("DNS names", r.DNSNames)
+	list("IP addresses", r.IPAddresses)
+	list("Email addresses", r.EmailAddresses)
+	list("URIs", r.URIs)
+	writeExtensions(b, "Extensions", r.Extensions)
+	list("Not decoded", r.UndecodedExtensions)
+	attributes := make([]string, len(r.Attributes))
+	for i, at := range r.Attributes {
+		attributes[i] = strings.TrimSpace(at.OID + " " + at.Name)
+	}
+	list("Attributes", attributes)
+	if len(attributes) > 0 {
+		tech("", "attribute values are not shown")
+	}
+	tech("Encoded SPKI", r.EncodedSPKI.String()+" (x509-spki-encoded-sha256)")
+	tech("pin-sha256", r.EncodedSPKI.PinSHA256())
+}
+
+// requestsNotEvaluated notes, inside an evaluation section, that the
+// input's certificate signing requests are not among its targets.
+func requestsNotEvaluated(b *strings.Builder, res inspectsvc.Result) {
+	for _, a := range res.Artifacts {
+		if a.Type == inspectsvc.TypeCertificateRequest || a.Type == inspectsvc.TypeUnparseableCertificateRequest {
+			b.WriteString("  Certificate signing requests are not evaluated: they are not certificates.\n")
+			return
+		}
+	}
 }
 
 func validityText(v interpret.Validity) string {
@@ -763,7 +859,7 @@ func validityText(v interpret.Validity) string {
 	return "yes, until " + v.NotAfter.UTC().Format(humanTime) + " (" + left + ")"
 }
 
-func keyIdentityText(id x509facts.Identity) string {
+func keyIdentityText(id x509facts.SPKIIdentity) string {
 	switch id.KeyIdentity {
 	case x509facts.KeyIdentityCanonical:
 		return id.KeyID.String() + " (x509-spki-sha256)"

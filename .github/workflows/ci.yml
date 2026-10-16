@@ -16,8 +16,11 @@
 # Actions are pinned to commit SHAs; the tag is in the trailing comment.
 name: ci
 
+# Pushes to main, and pull requests. A branch with an open pull request is
+# tested once per push, not twice: there is one self-hosted runner.
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -132,3 +135,15 @@ jobs:
           go test -run '^$' -fuzz '^FuzzFromDER$' -fuzztime 20s ./internal/x509facts
           go test -run '^$' -fuzz '^FuzzInspectBytes$' -fuzztime 20s ./internal/app/inspectsvc
           go test -run '^$' -fuzz '^FuzzParse$' -fuzztime 20s ./internal/endpoint
+
+  dist:
+    name: dist (cross-compile, dry run)
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Build every release target
+        shell: bash
+        run: ./.github/workflows/build-dist.sh "${GITHUB_SHA::12}"

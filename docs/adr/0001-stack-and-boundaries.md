@@ -41,6 +41,8 @@ certificate bundles.
 cmd/trustsmith          composition root; the only place the real clock is read
 internal/cli            argument parsing, text and JSON rendering, exit codes
 internal/app/inspectsvc the inspect application service (one code path for every interface)
+internal/app/casvc      the local CA service: CA directories, issuance proven by inspectsvc, the only file writer (ADR-0012)
+internal/issuance       certificate and key creation for the local CA; pure, the only CreateCertificate call (ADR-0012)
 internal/probe          TLS endpoint acquisition: the only network and crypto/tls code; no certificate decisions (ADR-0009)
 internal/endpoint       parsing of TLS endpoint arguments (ADR-0009)
 internal/interpret      facts + relationships + paths + time → friendly summary and findings (pure)

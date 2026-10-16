@@ -1,0 +1,1638 @@
+{
+  "schema": "trustsmith.scan/v1",
+  "scanned_at": "2026-09-14T12:00:00Z",
+  "path": "testdata/certs",
+  "overview": {
+    "files_examined": 50,
+    "certificate_files": 46,
+    "certificates": 84,
+    "distinct_certificates": 63,
+    "skipped_symlinks": 0,
+    "skipped_too_large": 0,
+    "limit_reached": false,
+    "findings": 31,
+    "highest_severity": "critical",
+    "trust": "not_evaluated"
+  },
+  "expiring_within": null,
+  "certificates": [
+    {
+      "file": "testdata/certs/expired.pem",
+      "entry": 0,
+      "x509-cert-sha256": "8ce3764d642c8ea6daccaa92315297693a2ea4de6f592ed588adbbc6fc5d5ac1",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "expired.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "expired",
+        "not_before": "2025-06-01T00:00:00Z",
+        "not_after": "2026-06-01T00:00:00Z",
+        "days_remaining": -106
+      },
+      "findings": [
+        {
+          "code": "cert.expired",
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/path-expired-intermediate.pem",
+      "entry": 1,
+      "x509-cert-sha256": "d3d0b40a5a5443c93f970764fe74c8b3721c1b3f4dd27f99c2c8bcc41e4e4fbc",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Expired Intermediate"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Expired Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "expired",
+        "not_before": "2025-01-01T00:00:00Z",
+        "not_after": "2026-06-01T00:00:00Z",
+        "days_remaining": -106
+      },
+      "findings": [
+        {
+          "code": "cert.expired",
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/expiring-critical.pem",
+      "entry": 0,
+      "x509-cert-sha256": "34e3e96e5c95911351dd7e4512e61d5454ef69a1136d01f0d1e7a912152ed7b2",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "very-soon.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-06-17T00:00:00Z",
+        "not_after": "2026-09-17T00:00:00Z",
+        "days_remaining": 2
+      },
+      "findings": [
+        {
+          "code": "cert.expiring_soon",
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/expiring-warning.pem",
+      "entry": 0,
+      "x509-cert-sha256": "75854a9f2fd594f90ed67bc4693e6660add00783d15b53cdfc492526a78e2f37",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "soon.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-07-01T00:00:00Z",
+        "not_after": "2026-10-01T00:00:00Z",
+        "days_remaining": 16
+      },
+      "findings": [
+        {
+          "code": "cert.expiring_soon",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/bundle-duplicate.pem",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/bundle-duplicate.pem",
+      "entry": 2,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/bundle-reversed.pem",
+      "entry": 2,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/bundle-with-bad-block.pem",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/bundle-with-private-key.pem",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/bundle.pem",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/issuer-key-id-match-wrong-key.pem",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/issuer-name-match-wrong-key.pem",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/leaf.der",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/leaf.pem",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/text-around.pem",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/tls-endpoint.pem",
+      "entry": 0,
+      "x509-cert-sha256": "d53628434b6bd0f1f0b09d79d1713a952f418c5b4f1fda36c6c5aa47453483cf",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "xn--bcher-kva.example",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Endpoint Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/trailing-data.der",
+      "entry": 0,
+      "x509-cert-sha256": "37bd156605eff086feaf2d9445e5b838c2a1b7a2c3c684717415594a1615c4ff",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "api.example.test",
+        "www.example.test",
+        "192.0.2.10"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2026-12-01T00:00:00Z",
+        "days_remaining": 77
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/client.pem",
+      "entry": 0,
+      "x509-cert-sha256": "9ac776eb18c35eb789eb8c6736e1f7b52ac64ee7c13194de649399f393e79845",
+      "kind": "TLS client certificate",
+      "identifies": [
+        "spiffe://example.test/client-1"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/cn-only.pem",
+      "entry": 0,
+      "x509-cert-sha256": "89e8a2bcc0e6ff6f550de0c61c8495fcc7dc9d481d5f42f4f56ec7d031c6e9cd",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "CN=cn-only.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": [
+        {
+          "code": "name.cn_only_no_san",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/md5-with-issuer.pem",
+      "entry": 0,
+      "x509-cert-sha256": "6d4e82354f8ce3c266765888b4fbbf3c9b309c7bc9ffb3a3deecc548783f50fa",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "legacy-signed.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Legacy Signing CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": [
+        {
+          "code": "sig.md5",
+          "severity": "critical"
+        },
+        {
+          "code": "issuer.candidate_unverifiable",
+          "severity": "info"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/md5.pem",
+      "entry": 0,
+      "x509-cert-sha256": "2cd7dc33df35eaed0ccf4f2ea608374edaab1af9dd8b2c4df4930d5aa5204d94",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "legacy.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Legacy RSA CA",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": [
+        {
+          "code": "sig.md5",
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/path-critical-extension.pem",
+      "entry": 0,
+      "x509-cert-sha256": "4a36c1e4d2f00daf9e66e94d426bf1898ab3b0d029dd3c550434ffb5ba18def1",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "critical.path.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Critical-Extension Intermediate,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-cross-signed.pem",
+      "entry": 0,
+      "x509-cert-sha256": "3935a48be86f7713e54c853952d6389ce68c884b6d88ed84c251e370cda49218",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "cross.path.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Cross Intermediate,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-expired-intermediate.pem",
+      "entry": 0,
+      "x509-cert-sha256": "c3cb0e983dbfab08c61bf09f40b693ef0085747fe48619aef2fbd7d245770edc",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "expired-issuer.path.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Expired Intermediate,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-key-usage-no-certsign.pem",
+      "entry": 0,
+      "x509-cert-sha256": "fef5e8885c70ec034a0de1e7349992679ff9b643d263b4b5c6646de342600d9d",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "key-usage.path.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Key-Usage Issuer,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-length-exceeded.pem",
+      "entry": 0,
+      "x509-cert-sha256": "58726721817f24f410fd7e7a7dd48210538d0792cab7a1efc8373c724f248ea8",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "length.path.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Length Intermediate,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-length-self-issued.pem",
+      "entry": 0,
+      "x509-cert-sha256": "8ceae17eb980ae7749e083c664740103f974f335333a06da4bf3ee55f878e4ab",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "self-issued.path.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Self-Issued CA,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-no-basic-constraints.pem",
+      "entry": 0,
+      "x509-cert-sha256": "fcff5e98ae1cf059c90f61959e6c32ee0d61d81d9446679fc308b3b98ead76dd",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "no-bc.path.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path No-BC Issuer,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-not-ca.pem",
+      "entry": 0,
+      "x509-cert-sha256": "a42741d8fad59dba46f62306174ab20258c7b985aa44583a797744a003adfa56",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "not-ca.path.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Not-CA Issuer,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-any-eku.pem",
+      "entry": 0,
+      "x509-cert-sha256": "3d079ff96cfae2b212b327698ca0c309ca0670e2ee24fffbb796971a2240662a",
+      "kind": "Certificate with no extended key usage restriction",
+      "identifies": [
+        "any-eku.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Intermediate CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-code-signing.pem",
+      "entry": 0,
+      "x509-cert-sha256": "9509c83495605ab034e6f11aaf72a57e2f70a2ff5f07840bef81cc4942e01eff",
+      "kind": "Code signing certificate",
+      "identifies": [
+        "https://publisher.example.test/"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Intermediate CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-email.pem",
+      "entry": 0,
+      "x509-cert-sha256": "623a325c906e9695b850de3f0c461f0b942dd2d18266203b2f34d34aec9a73dd",
+      "kind": "Email (S/MIME) certificate",
+      "identifies": [
+        "signer@example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Intermediate CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-key-usage-conflict.pem",
+      "entry": 0,
+      "x509-cert-sha256": "d8cc790da95ff901852e800db549ada93738bcde9b5b67d02c67289d94b4ffbc",
+      "kind": "Code signing certificate",
+      "identifies": [
+        "https://mismatched.example.test/"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Intermediate CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-no-eku.pem",
+      "entry": 0,
+      "x509-cert-sha256": "e0dd7a8f7de1708e1c047877edf7523358c6a3a320d0b3ba4cb4a43301d4387f",
+      "kind": "Certificate with no extended key usage restriction",
+      "identifies": [
+        "no-eku.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Intermediate CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-server-only-intermediate.pem",
+      "entry": 0,
+      "x509-cert-sha256": "314066ae7b01aadbe7f8edd875e0af28b392a8a7d907c6c70b46e1d24db93826",
+      "kind": "TLS client certificate",
+      "identifies": [
+        "spiffe://example.test/purpose-client"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Server-Only Intermediate CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/reissued-intermediates.pem",
+      "entry": 0,
+      "x509-cert-sha256": "aa5d0b35eee4c31d5cedef58d9ed8646ca82acd4cfd2f9b75e39fecd6810cbe0",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "reissued.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Reissued Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/rsa-1024.pem",
+      "entry": 0,
+      "x509-cert-sha256": "c843456408888116e2c389cae823bceed51d6474be9580b3ae3b555761a087bc",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "rsa1024.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": [
+        {
+          "code": "key.rsa_under_2048",
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/self-issued-not-self-signed.pem",
+      "entry": 0,
+      "x509-cert-sha256": "e14423fc3d2d791deceadc95c27a82cd8fd8f8e2ddd981fbcc72882eb6601266",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "self-issued.example.test"
+      ],
+      "issuer_as_stated": "CN=self-issued.example.test",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/self-signed-leaf.pem",
+      "entry": 0,
+      "x509-cert-sha256": "ef6a94f73d7ac57e0a810e25b7f4ef15cc0f548b15ef04818c752941dfe575ec",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "self.example.test"
+      ],
+      "issuer_as_stated": "CN=self.example.test",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": [
+        {
+          "code": "cert.self_signed_leaf",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/sha1-with-issuer.pem",
+      "entry": 0,
+      "x509-cert-sha256": "d2257da2a021dbbbb781a081249d8a4ce77d1c075b668ea94742be6e715565ea",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "legacy-signed.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Legacy Signing CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": [
+        {
+          "code": "sig.sha1",
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/sha1.pem",
+      "entry": 0,
+      "x509-cert-sha256": "9e80fdd9bf8830a78e31d84e2a818f3ee0f1b9036e8f3177864467efbbad2dfa",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "legacy.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Legacy RSA CA",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": [
+        {
+          "code": "sig.sha1",
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/x25519-key.pem",
+      "entry": 0,
+      "x509-cert-sha256": "091809a1102bc295f66b0e1164f9b7dcd0e7d85a05c5cde4d19a3c936bbc0cb9",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "noncanonical.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-09-01T00:00:00Z",
+        "not_after": "2027-09-01T00:00:00Z",
+        "days_remaining": 351
+      },
+      "findings": [
+        {
+          "code": "key.unsupported_for_identity",
+          "severity": "info"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/not-yet-valid.pem",
+      "entry": 0,
+      "x509-cert-sha256": "a555d4a97251e51d566448c72c06d6d873b7c7e3c82f076115914e21179a9cbf",
+      "kind": "TLS server certificate",
+      "identifies": [
+        "future.example.test"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "not_yet_valid",
+        "not_before": "2026-10-01T00:00:00Z",
+        "not_after": "2027-10-01T00:00:00Z",
+        "days_remaining": 381
+      },
+      "findings": [
+        {
+          "code": "cert.not_yet_valid",
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/bundle-duplicate.pem",
+      "entry": 1,
+      "x509-cert-sha256": "ae96492f08a113ded178c48fe3924b288f3489d718a4b843a6fcda90af49017a",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/bundle-reversed.pem",
+      "entry": 1,
+      "x509-cert-sha256": "ae96492f08a113ded178c48fe3924b288f3489d718a4b843a6fcda90af49017a",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/bundle-with-bad-block.pem",
+      "entry": 2,
+      "x509-cert-sha256": "ae96492f08a113ded178c48fe3924b288f3489d718a4b843a6fcda90af49017a",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/bundle.pem",
+      "entry": 1,
+      "x509-cert-sha256": "ae96492f08a113ded178c48fe3924b288f3489d718a4b843a6fcda90af49017a",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/issuer-key-id-match-wrong-key.pem",
+      "entry": 1,
+      "x509-cert-sha256": "36985a8bc07d9be6cad66ebb3bd6c8e1099f06b8fbfd8f7fdc48d37a66f4e75d",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/issuer-name-match-wrong-key.pem",
+      "entry": 1,
+      "x509-cert-sha256": "b156b7c19a8894e2dbac13df199464c412ca2d59c9614f46e8cd6969ee240be7",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Intermediate CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/md5-with-issuer.pem",
+      "entry": 1,
+      "x509-cert-sha256": "55fbb9ffb5e74806ea39a9baaa53704bdfaacfce622c815b7a0a52d00d6351dc",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Legacy Signing CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Legacy Signing CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-critical-extension.pem",
+      "entry": 1,
+      "x509-cert-sha256": "a0bf4c388311da195a55e42f9ece2c770e657fca48cacf9bafe716296df4132f",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Critical-Extension Intermediate"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Critical-Extension Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": [
+        {
+          "code": "chain.structure_unverifiable",
+          "severity": "info"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/path-critical-extension.pem",
+      "entry": 2,
+      "x509-cert-sha256": "e2b7bcc09962dae477a4a41fd34c6badd56db4412e5c9994e7854b95ed5cae03",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Critical-Extension Root"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Critical-Extension Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-cross-signed.pem",
+      "entry": 1,
+      "x509-cert-sha256": "d9f9007d9190f4db0a7b130127dede8a4ac5f85301909ef43410493136d4230c",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Cross Intermediate"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Root A,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-cross-signed.pem",
+      "entry": 2,
+      "x509-cert-sha256": "4d43ce23a952834f00d536bfe63b28bc7a13289e8cd991b1faa484338c960d0a",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Root A"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Root A,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-cross-signed.pem",
+      "entry": 3,
+      "x509-cert-sha256": "769500b982f55c469d8fc128a7e8871cd96dc2cff11c7b52958f7ee4b5fc1a47",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Root A"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Root B,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-cross-signed.pem",
+      "entry": 4,
+      "x509-cert-sha256": "2e4ab1b5e077e2b85974f560fc60372c04ccb32c5dd1ddc0623e3d593e4e6f52",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Root B"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Root B,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-cycle.pem",
+      "entry": 0,
+      "x509-cert-sha256": "09ea58743a76495dcef0bbf082a63abcfd0b0c740921e7a71c2a67029a0d1453",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Cycle X"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Cycle Y,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": [
+        {
+          "code": "chain.cycle",
+          "severity": "info"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/path-cycle.pem",
+      "entry": 1,
+      "x509-cert-sha256": "8af6214afd126bc9b2a946111e4daf894e3e4524fb1352684963df534c40bb10",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Cycle Y"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Cycle X,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-expired-intermediate.pem",
+      "entry": 2,
+      "x509-cert-sha256": "b5e95c5531b7ce0a5efed6df3e9e41e112319b029441f0b19490f6df7e0de94b",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Expired Root"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Expired Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-key-usage-no-certsign.pem",
+      "entry": 1,
+      "x509-cert-sha256": "5ee5e7ba1ab55728492c6f518255dec8c8078a3b59a8f266857e3539c23e8653",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Key-Usage Issuer"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Key-Usage Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": [
+        {
+          "code": "chain.issuer_key_usage",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/path-key-usage-no-certsign.pem",
+      "entry": 2,
+      "x509-cert-sha256": "cbae696d85befae6e9226b15f018c1b28c17b6aab57e83d4318772a4d6692289",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Key-Usage Root"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Key-Usage Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-length-exceeded.pem",
+      "entry": 1,
+      "x509-cert-sha256": "b3b29f844fc6e0cdc8446003db438574935862e48dde07c1ffed015ae9742e55",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Length Intermediate"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Length Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-length-exceeded.pem",
+      "entry": 2,
+      "x509-cert-sha256": "35b23b24ca3d954db6579f64bdadde9c2abbb567fc2fdbef001fa5e46f4928c5",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Length Root"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Length Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": [
+        {
+          "code": "chain.path_length_exceeded",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/path-length-self-issued.pem",
+      "entry": 1,
+      "x509-cert-sha256": "2a4885b33e3050c960d72ff32ab605134c71317a795cad03610388834ad86b43",
+      "kind": "Self-issued CA certificate (self-signature not verified)",
+      "identifies": [
+        "CN=Trustsmith Path Self-Issued CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Self-Issued CA,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-length-self-issued.pem",
+      "entry": 2,
+      "x509-cert-sha256": "987c46c79579c26444ae9f0d0b002be3323d9badb9ccfef51a3c3b2af0a392c0",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Self-Issued CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Self-Issued CA,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-no-basic-constraints.pem",
+      "entry": 1,
+      "x509-cert-sha256": "3372153bf1c597035906abc14b828493684b8cb065772656ac39fd5460bf031f",
+      "kind": "Certificate with no extended key usage restriction",
+      "identifies": [
+        "CN=Trustsmith Path No-BC Issuer"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path No-BC Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": [
+        {
+          "code": "chain.issuer_not_ca",
+          "severity": "warning"
+        },
+        {
+          "code": "name.cn_only_no_san",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/path-no-basic-constraints.pem",
+      "entry": 2,
+      "x509-cert-sha256": "0d31605ad0a1e43f15dddda77c6e69d0528333f6245c4d68dd57b13873d622f2",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path No-BC Root"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path No-BC Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/path-not-ca.pem",
+      "entry": 1,
+      "x509-cert-sha256": "1c3de8a360acb1279568cb1e49e64f8e31ca8224b15a10297b4e98437f0358eb",
+      "kind": "Certificate with no extended key usage restriction",
+      "identifies": [
+        "CN=Trustsmith Path Not-CA Issuer"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Not-CA Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": [
+        {
+          "code": "chain.issuer_not_ca",
+          "severity": "warning"
+        },
+        {
+          "code": "name.cn_only_no_san",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "testdata/certs/path-not-ca.pem",
+      "entry": 2,
+      "x509-cert-sha256": "0f9778e557c3161c00e644645224f2a5603f73c88d4921cf0abfcdd08354dc22",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Path Not-CA Root"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Path Not-CA Root,O=Trustsmith Path Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-any-eku.pem",
+      "entry": 1,
+      "x509-cert-sha256": "cdd28547cb450f03688489bcbfe903312099818aa824ab1c4b8f136cf1e83c55",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Purpose Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-code-signing.pem",
+      "entry": 1,
+      "x509-cert-sha256": "cdd28547cb450f03688489bcbfe903312099818aa824ab1c4b8f136cf1e83c55",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Purpose Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-email.pem",
+      "entry": 1,
+      "x509-cert-sha256": "cdd28547cb450f03688489bcbfe903312099818aa824ab1c4b8f136cf1e83c55",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Purpose Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-key-usage-conflict.pem",
+      "entry": 1,
+      "x509-cert-sha256": "cdd28547cb450f03688489bcbfe903312099818aa824ab1c4b8f136cf1e83c55",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Purpose Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-no-eku.pem",
+      "entry": 1,
+      "x509-cert-sha256": "cdd28547cb450f03688489bcbfe903312099818aa824ab1c4b8f136cf1e83c55",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Purpose Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-server-only-intermediate.pem",
+      "entry": 1,
+      "x509-cert-sha256": "49c4df20e2ab58827f39b6ceaf67c1302458f39fa42aa81df04f5fec2ae9d4ca",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Purpose Server-Only Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/reissued-intermediates.pem",
+      "entry": 1,
+      "x509-cert-sha256": "e29f4882975fa81812b7c9356c49faf7e865b6b992b77a28da38f466e65dbf01",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Reissued Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Reissue Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/reissued-intermediates.pem",
+      "entry": 2,
+      "x509-cert-sha256": "e2926a4e8bece753fb9c1d8ddd1b6b39aa7a3d7171ca582a297e53093323e1ba",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Reissued Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Reissue Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/sha1-with-issuer.pem",
+      "entry": 1,
+      "x509-cert-sha256": "55fbb9ffb5e74806ea39a9baaa53704bdfaacfce622c815b7a0a52d00d6351dc",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Legacy Signing CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Legacy Signing CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/tls-endpoint.pem",
+      "entry": 1,
+      "x509-cert-sha256": "cc4cc3f2028ff06b063880990b59a619882a60692bfbfd04fdd1d3fa2cd139ae",
+      "kind": "CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Endpoint Intermediate CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Endpoint Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2031-01-01T00:00:00Z",
+        "days_remaining": 1569
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/bundle-reversed.pem",
+      "entry": 0,
+      "x509-cert-sha256": "9ccfee007ad73eced4df32fc914d882dee1b6d8a2557e3036b14d7dd41ca7c39",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Root CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2036-01-01T00:00:00Z",
+        "days_remaining": 3395
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/bundle.pem",
+      "entry": 2,
+      "x509-cert-sha256": "9ccfee007ad73eced4df32fc914d882dee1b6d8a2557e3036b14d7dd41ca7c39",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Root CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2036-01-01T00:00:00Z",
+        "days_remaining": 3395
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/purpose-root-ca.pem",
+      "entry": 0,
+      "x509-cert-sha256": "8e7c4823bf49738b364dbc23852849ac6b0b699d50a321b6fd6383fb95f5c6a5",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Purpose Root CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Purpose Root CA,O=Trustsmith Purpose Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2036-01-01T00:00:00Z",
+        "days_remaining": 3395
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/root-ca.pem",
+      "entry": 0,
+      "x509-cert-sha256": "9ccfee007ad73eced4df32fc914d882dee1b6d8a2557e3036b14d7dd41ca7c39",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Root CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2036-01-01T00:00:00Z",
+        "days_remaining": 3395
+      },
+      "findings": []
+    },
+    {
+      "file": "testdata/certs/tls-endpoint.pem",
+      "entry": 2,
+      "x509-cert-sha256": "7dd6e7707e30ad0a99c7903e46f1560fc3dcf25bfdd36535ce926cfd2e64f359",
+      "kind": "Self-signed CA certificate",
+      "identifies": [
+        "CN=Trustsmith Test Endpoint Root CA"
+      ],
+      "issuer_as_stated": "CN=Trustsmith Test Endpoint Root CA,O=Trustsmith Tests",
+      "validity": {
+        "state": "valid",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2036-01-01T00:00:00Z",
+        "days_remaining": 3395
+      },
+      "findings": []
+    }
+  ],
+  "problems": [
+    {
+      "file": "testdata/certs/bundle-with-bad-block.pem",
+      "entry": 1,
+      "code": "input.malformed_pem",
+      "severity": "critical"
+    },
+    {
+      "file": "testdata/certs/bundle-with-private-key.pem",
+      "entry": 1,
+      "code": "input.unsupported_format",
+      "severity": "warning"
+    },
+    {
+      "file": "testdata/certs/malformed.pem",
+      "entry": null,
+      "code": "input.no_certificates",
+      "severity": "critical"
+    },
+    {
+      "file": "testdata/certs/malformed.pem",
+      "entry": 0,
+      "code": "input.malformed_pem",
+      "severity": "critical"
+    },
+    {
+      "file": "testdata/certs/noncanonical-rsa-key.pem",
+      "entry": 0,
+      "code": "input.unparseable_certificate",
+      "severity": "critical"
+    },
+    {
+      "file": "testdata/certs/noncanonical-rsa-key.pem",
+      "entry": 0,
+      "code": "key.noncanonical_spki",
+      "severity": "warning"
+    },
+    {
+      "file": "testdata/certs/text-around.pem",
+      "entry": null,
+      "code": "input.trailing_data",
+      "severity": "info"
+    },
+    {
+      "file": "testdata/certs/text-around.pem",
+      "entry": null,
+      "code": "input.trailing_data",
+      "severity": "info"
+    },
+    {
+      "file": "testdata/certs/trailing-data.der",
+      "entry": null,
+      "code": "input.trailing_data",
+      "severity": "warning"
+    }
+  ],
+  "errors": []
+}

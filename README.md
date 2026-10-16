@@ -4,9 +4,10 @@ Trustsmith is a local-first certificate and private-PKI workbench. It aims to
 make everyday certificate work understandable to people who are not PKI
 experts, without taking the advanced path away from those who are.
 
-> **Status: early development.** The only command implemented so far is
-> `trustsmith inspect`, for certificate files and TLS endpoints. Everything else in the roadmap
-> (private CA, inventory, renewal, discovery, a local UI) is not built yet.
+> **Status: early development.** Implemented so far: `trustsmith inspect`, for
+> certificate files and TLS endpoints, and `trustsmith scan`, for directories.
+> Everything else in the roadmap (private CA, inventory, renewal, network
+> discovery, a local UI) is not built yet.
 
 ## What works today
 
@@ -69,6 +70,26 @@ server presents:
 - **Output:** friendly text by default, `--advanced` for technical details, or
   `--output json` for the versioned `trustsmith.inspect/v1` schema.
 
+### Which certificates are on this machine?
+
+`trustsmith scan /etc/ssl` finds every certificate file under a directory,
+inspects each one exactly as `inspect` would, and lists the certificates
+soonest-expiring first with their worst finding
+([ADR-0014](docs/adr/0014-directory-scan.md)):
+
+```console
+$ trustsmith scan /etc/nginx --expiring-within 30
+Certificates expired or expiring within 30 days (2 of 14)
+  EXPIRES     DAYS  WORST     FINDING             NAMES                 FILE
+  2026-06-01  -106  critical  cert.expired        old.example.com       /etc/nginx/ssl/old.pem#0
+  2026-10-01  16    warning   cert.expiring_soon  api.example.com       /etc/nginx/ssl/api.pem#0
+```
+
+Files are chosen by content (PEM certificate armour) or, for DER, by
+extension; symbolic links are never followed and private keys are never
+decoded. `--output json` (`trustsmith.scan/v1`) and the exit code make it a
+cron or CI check.
+
 File inspection works offline. The only network connection Trustsmith ever
 makes is to an endpoint you name. Other PEM blocks in a file, including private
 keys, are reported by their label and never decoded.
@@ -122,6 +143,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0008: explicit host name identity](docs/adr/0008-hostname-identity.md)
 - [ADR-0009: minimal TLS endpoint acquisition](docs/adr/0009-tls-endpoint-acquisition.md)
 - [ADR-0010: explicit compatible TLS probe policy](docs/adr/0010-compatible-probe-policy.md)
+- [ADR-0014: scanning a directory for certificates](docs/adr/0014-directory-scan.md)
 
 ## License
 

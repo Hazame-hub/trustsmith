@@ -1,0 +1,24 @@
+Scanned testdata/certs at 2026-09-14 12:00:00 UTC
+  50 files examined, 46 with certificates, 84 certificates (63 distinct)
+  skipped: 0 symbolic links (never followed), 0 files over 8 MiB; 0 unreadable
+  trust is not evaluated: certificates are listed by what they contain, not by who trusts them
+
+Certificates expired or expiring within 30 days (4 of 84)
+  EXPIRES     DAYS  WORST     FINDING             NAMES                                    FILE
+  2026-06-01  -106  critical  cert.expired        expired.example.test                     testdata/certs/expired.pem#0
+  2026-06-01  -106  critical  cert.expired        CN=Trustsmith Path Expired Intermediate  testdata/certs/path-expired-intermediate.pem#1
+  2026-09-17  2     critical  cert.expiring_soon  very-soon.example.test                   testdata/certs/expiring-critical.pem#0
+  2026-10-01  16    warning   cert.expiring_soon  soon.example.test                        testdata/certs/expiring-warning.pem#0
+
+Other findings (9)
+  CRITICAL  input.malformed_pem             testdata/certs/bundle-with-bad-block.pem#1
+  WARNING   input.unsupported_format        testdata/certs/bundle-with-private-key.pem#1
+  CRITICAL  input.no_certificates           testdata/certs/malformed.pem
+  CRITICAL  input.malformed_pem             testdata/certs/malformed.pem#0
+  CRITICAL  input.unparseable_certificate   testdata/certs/noncanonical-rsa-key.pem#0
+  WARNING   key.noncanonical_spki           testdata/certs/noncanonical-rsa-key.pem#0
+  INFO      input.trailing_data             testdata/certs/text-around.pem
+  INFO      input.trailing_data             testdata/certs/text-around.pem
+  WARNING   input.trailing_data             testdata/certs/trailing-data.der
+
+Findings: 13 critical, 12 warning, 6 info. Explain one: trustsmith inspect <file>

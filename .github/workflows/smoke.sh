@@ -15,3 +15,15 @@ if [ "$code" -ne 3 ]; then
   echo "::error::inspecting an expired certificate must exit 3, got $code"
   exit 1
 fi
+
+# scan: the corpus holds expired certificates, so the default --fail-on
+# critical exits 3; --fail-on never exits 0.
+set +e
+"bin/trustsmith$ext" scan testdata/certs > /dev/null
+code=$?
+set -e
+if [ "$code" -ne 3 ]; then
+  echo "::error::scanning a corpus with expired certificates must exit 3, got $code"
+  exit 1
+fi
+"bin/trustsmith$ext" scan testdata/certs --fail-on never --output json > /dev/null

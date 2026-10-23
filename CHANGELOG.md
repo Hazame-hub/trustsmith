@@ -5,7 +5,12 @@ section; the release workflow publishes that section as the release notes.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+- `pkg/scan` and `pkg/inspect`: Go packages that return the
+  `trustsmith.scan/v1` and `trustsmith.inspect/v1` documents, byte for byte
+  what the CLI prints, so another module can use Trustsmith without running
+  the binary (ADR-0015).
 
 ## v0.1.0 - 2026-10-23
 

@@ -248,6 +248,7 @@ With [Task](https://taskfile.dev): `task build`, `task test`, `task lint`,
 - [ADR-0012: a local private CA](docs/adr/0012-local-private-ca.md)
 - [ADR-0013: does this key belong to this certificate?](docs/adr/0013-key-certificate-match.md)
 - [ADR-0014: scanning a directory for certificates](docs/adr/0014-directory-scan.md)
+- [ADR-0015: public packages for the JSON contracts](docs/adr/0015-public-packages.md)
 
 ## JSON output
 
@@ -258,6 +259,20 @@ validated against it, so it cannot drift from what the binary prints. Fields
 may be added within v1; consumers must ignore properties they do not know.
 Finding codes are append-only ([ADR-0003](docs/adr/0003-findings.md)), so a
 script can key on `cert.expired` or `name.hostname_mismatch` safely.
+
+## Using it from Go
+
+Two public packages return the same JSON documents as the CLI, byte for byte
+([ADR-0015](docs/adr/0015-public-packages.md)):
+
+```go
+scanDoc, err := scan.Directory("/etc/ssl", scan.Options{})          // trustsmith.scan/v1
+inspectDoc, err := inspect.Target("example.com:443", inspect.Options{}) // trustsmith.inspect/v1
+```
+
+They live in `github.com/Hazame-hub/trustsmith/pkg/scan` and `.../pkg/inspect`.
+Decode the bytes with your own types and ignore properties you do not know;
+the Go API is two functions, and the JSON contract is the promise.
 
 ## Part of the Sybil family
 

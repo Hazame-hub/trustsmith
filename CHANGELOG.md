@@ -7,6 +7,20 @@ section; the release workflow publishes that section as the release notes.
 
 ### Added
 
+- `pkg/scan` and `pkg/inspect`: Go packages that return the
+  `trustsmith.scan/v1` and `trustsmith.inspect/v1` documents, byte for byte
+  what the CLI prints, so another module can use Trustsmith without running
+  the binary (ADR-0015).
+
+## v0.1.0 - 2026-10-23
+
+First release. The command line flags and text output may still change before
+v1.0.0; the `trustsmith.inspect/v1` and `trustsmith.scan/v1` JSON contracts,
+finding codes and exit codes follow their own compatibility rules (fields and
+codes are only ever added within v1).
+
+### Added
+
 - `trustsmith inspect` for PEM certificates, DER certificates, PEM bundles,
   standard input and TLS endpoints (`host:port`, `[IPv6]:port`,
   `tls://host:port`).

@@ -36,6 +36,9 @@ that is the part that exists.
 - **Stable finding codes.** Codes are append-only; an integration can map
   `cert.expired`, `cert.expiring_soon`, `name.hostname_mismatch` or
   `trust.failed` to alerts without parsing human text.
+- **Go packages** for the agent side: `pkg/scan` and `pkg/inspect` return
+  those documents, byte for byte what the CLI prints, so Quasar can scan a
+  host without a second binary ([ADR-0015](../adr/0015-public-packages.md)).
 - **Exit codes** that make inspection a gate: 0 clean, 3 findings at or above
   `--fail-on`, 1 operational error, 2 usage error.
 

@@ -44,7 +44,7 @@ or inspection could not run at all, and carries the command's message.
 ### Compatibility
 
 The Go API (two functions, two `Options` structs, two `Schema` constants) is
-covered by semantic versioning from v0.2.0. The documents follow their own
+covered by semantic versioning from v0.1.0. The documents follow their own
 rules (ADR-0003): fields are only added within v1, so callers decode with
 their own types and ignore what they do not know.
 

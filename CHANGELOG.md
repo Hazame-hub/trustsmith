@@ -5,19 +5,15 @@ section; the release workflow publishes that section as the release notes.
 
 ## Unreleased
 
-### Added
-
-- `pkg/scan` and `pkg/inspect`: Go packages that return the
-  `trustsmith.scan/v1` and `trustsmith.inspect/v1` documents, byte for byte
-  what the CLI prints, so another module can use Trustsmith without running
-  the binary (ADR-0015).
+Nothing yet.
 
 ## v0.1.0 - 2026-10-23
 
 First release. The command line flags and text output may still change before
 v1.0.0; the `trustsmith.inspect/v1` and `trustsmith.scan/v1` JSON contracts,
 finding codes and exit codes follow their own compatibility rules (fields and
-codes are only ever added within v1).
+codes are only ever added within v1). Built with Go 1.27.3, which fixes
+GO-2026-6809 in crypto/x509.
 
 ### Added
 
@@ -42,5 +38,9 @@ codes are only ever added within v1).
   this certificate, or to which entry of a bundle (ADR-0013).
 - `trustsmith scan <dir>`: every certificate under a directory, soonest
   expiring first, as text or `trustsmith.scan/v1` JSON (ADR-0014).
+- `pkg/scan` and `pkg/inspect`: Go packages that return the
+  `trustsmith.scan/v1` and `trustsmith.inspect/v1` documents, byte for byte
+  what the CLI prints, so another module can use Trustsmith without running
+  the binary (ADR-0015).
 - Release archives for Linux, macOS and Windows on amd64 and arm64, with
   SHA-256 checksums.

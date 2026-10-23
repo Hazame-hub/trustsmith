@@ -5,6 +5,15 @@ section; the release workflow publishes that section as the release notes.
 
 ## Unreleased
 
+Nothing yet.
+
+## v0.1.0 - 2026-10-23
+
+First release. The command line flags and text output may still change before
+v1.0.0; the `trustsmith.inspect/v1` and `trustsmith.scan/v1` JSON contracts,
+finding codes and exit codes follow their own compatibility rules (fields and
+codes are only ever added within v1).
+
 ### Added
 
 - `trustsmith inspect` for PEM certificates, DER certificates, PEM bundles,

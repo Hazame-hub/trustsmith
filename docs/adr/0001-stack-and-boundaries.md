@@ -19,7 +19,7 @@ certificate bundles.
 
 ### Language, toolchain, dependencies
 
-- **Go 1.27**, with `toolchain go1.27.2` in `go.mod` (1.27.2 fixes GO-2026-6607 in crypto/tls). No GODEBUG settings are
+- **Go 1.27**, with `toolchain go1.27.3` in `go.mod` (1.27.2 fixed GO-2026-6607 in crypto/tls; 1.27.3 fixes GO-2026-6809 in crypto/x509). No GODEBUG settings are
   used: `internal/archtest` forbids a `godebug` block in `go.mod`, `//go:debug`
   directives and GODEBUG literals (ADR-0009).
 - **Standard-library cryptography first.** `crypto/x509` parses certificates.

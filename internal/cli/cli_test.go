@@ -49,6 +49,7 @@ func golden(t *testing.T, name, got string) {
 	// Goldens record a placeholder so they do not change with every toolchain
 	// update; TestTrustJSONContract checks the real value.
 	got = strings.ReplaceAll(got, runtime.Version(), "GO_VERSION")
+	got = tls13SuitePlaceholder(got)
 	path := filepath.Join(goldenDir, name)
 	if os.Getenv("UPDATE_GOLDEN") == "1" {
 		if err := os.MkdirAll(goldenDir, 0o755); err != nil {
@@ -66,6 +67,23 @@ func golden(t *testing.T, name, got string) {
 	if normalized := strings.ReplaceAll(string(want), "\r\n", "\n"); normalized != got {
 		t.Errorf("output differs from %s (run with UPDATE_GOLDEN=1 to accept)\n--- got ---\n%s", path, got)
 	}
+}
+
+// tls13Suites are the TLS 1.3 suites Go negotiates between two Go ends, and
+// which one depends on the CPU: AES-GCM when both have AES instructions,
+// ChaCha20-Poly1305 otherwise (ADR-0009). Goldens record a placeholder for the
+// negotiated one so they pass on any machine, including a CI runner whose
+// virtual CPU hides AES; TestEndpointTLS13SuiteIsOneOfGos checks the real
+// value. TLS 1.2 suite names (TLS_ECDHE_...) never match these.
+var tls13Suites = []string{"TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256"}
+
+const tls13SuiteGolden = "TLS13_SUITE_BY_HARDWARE"
+
+func tls13SuitePlaceholder(s string) string {
+	for _, suite := range tls13Suites {
+		s = strings.ReplaceAll(s, suite, tls13SuiteGolden)
+	}
+	return s
 }
 
 func corpusNames(t *testing.T) []string {

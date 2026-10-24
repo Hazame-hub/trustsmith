@@ -6,7 +6,7 @@ TLS probe
   Result           handshake completed; peer certificates acquired
   Stage            complete
   Server name      none sent (IP address)
-  Negotiated       TLS 1.3, TLS_AES_128_GCM_SHA256, X25519MLKEM768
+  Negotiated       TLS 1.3, TLS13_SUITE_BY_HARDWARE, X25519MLKEM768
   ALPN             none offered
   Certificates     2 certificates received, in the server's order
   Elapsed          0 ms

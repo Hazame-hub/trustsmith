@@ -194,6 +194,22 @@ func TestEndpointGoldens(t *testing.T) {
 	}
 }
 
+// The goldens hide which TLS 1.3 suite was negotiated (it depends on the
+// CPU); this checks it is one of the two Go chooses between, in both outputs.
+func TestEndpointTLS13SuiteIsOneOfGos(t *testing.T) {
+	chdirRoot(t)
+	for _, output := range []string{"text", "json"} {
+		_, out, stderr := runDial(t, tlsDial(t), "--output", output, "inspect", "api.example.test:443")
+		found := 0
+		for _, suite := range tls13Suites {
+			found += strings.Count(out, suite)
+		}
+		if found != 1 {
+			t.Errorf("%s: want exactly one of %v in the output, found %d (stderr %q):\n%s", output, tls13Suites, found, stderr, out)
+		}
+	}
+}
+
 type jsonEndpointDoc struct {
 	Input struct {
 		Kind    string `json:"kind"`

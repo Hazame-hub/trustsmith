@@ -204,8 +204,11 @@ tests fail on any dial they did not arrange.
   named on the command line. Everything else stays offline.
 - **Machine-dependent negotiation.** The negotiated TLS 1.3 suite depends on
   Go's hardware-dependent preference (AES-GCM with AES hardware, otherwise
-  ChaCha20-Poly1305). Goldens assume AES hardware, which all release and CI
-  platforms have.
+  ChaCha20-Poly1305). Goldens record the placeholder
+  `TLS13_SUITE_BY_HARDWARE` for it, and `TestEndpointTLS13SuiteIsOneOfGos`
+  checks the real value is one of the two. (Amended 2026-10-24: goldens used
+  to assume AES hardware, and failed on a self-hosted runner whose virtual CPU
+  does not expose AES.)
 - **Deferred:**
   - compatible and legacy diagnostic policies;
   - STARTTLS and ALPN probing;

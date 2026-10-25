@@ -6,8 +6,8 @@
 # push) and attaches the archives and SHA256SUMS to a draft GitHub release.
 # The release stays a draft until someone publishes it by hand.
 #
-# Runner: the self-hosted Linux runner (GitHub-hosted runners are unavailable
-# while Actions billing is blocked). CGO is off, so one Linux host builds the
+# Runner: the self-hosted Linux runner. Only a maintainer can push a tag, so
+# only reviewed code reaches it. CGO is off, so one Linux host builds the
 # macOS and Windows binaries too.
 #
 # Actions are pinned to commit SHAs; the tag is in the trailing comment.

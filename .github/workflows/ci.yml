@@ -5,11 +5,19 @@
 # smoke run of the real binary. Race, lint, vulnerability and short fuzzing
 # jobs run once, on Linux.
 #
-# Runners. Linux jobs run on the self-hosted runner container for this
-# repository (sybil-dev deploy/ci/runner-up.sh Hazame-hub/trustsmith; no
-# Docker socket). There is no self-hosted runner for macOS or Windows, and
-# GitHub-hosted jobs cannot start while the account's Actions billing is
-# blocked, so the macOS and Windows tests run only when the repository variable
+# Runners. This repository is public and its Linux jobs run on a self-hosted
+# runner, which must never execute code nobody here has reviewed. So the
+# runner is chosen per event:
+#   - pushes to main, and pull requests from branches of this repository, run
+#     on the self-hosted runner (labels self-hosted, Linux, X64);
+#   - pull requests from forks run on GitHub-hosted ubuntu-latest, never on
+#     the self-hosted runner. If hosted runners are unavailable those jobs
+#     wait; a maintainer reviews the change and pushes it to a branch here to
+#     test it on the self-hosted runner.
+# Keep that expression on every self-hosted job, and never add a
+# pull_request_target trigger to this repository.
+#
+# macOS and Windows tests run only when the repository variable
 # HOSTED_RUNNERS is "true". They are kept, not removed: set the variable to
 # bring them back.
 #
@@ -28,8 +36,8 @@ permissions:
 
 jobs:
   test:
-    name: test (linux-self-hosted)
-    runs-on: [self-hosted, Linux, X64]
+    name: test (linux)
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted","Linux","X64"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -73,7 +81,7 @@ jobs:
         run: ./.github/workflows/smoke.sh
 
   race:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted","Linux","X64"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -94,7 +102,7 @@ jobs:
         run: go test -race -count=1 ./...
 
   lint:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted","Linux","X64"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -111,7 +119,7 @@ jobs:
           version: v2.14.0
 
   vulncheck:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted","Linux","X64"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -122,7 +130,7 @@ jobs:
 
   fuzz:
     name: fuzz (short)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted","Linux","X64"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -140,7 +148,7 @@ jobs:
 
   dist:
     name: dist (cross-compile, dry run)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted","Linux","X64"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0

@@ -49,7 +49,7 @@ in the order it would be useful:
 
 1. **Certificate lens on the asset page.** The Sybil agent inspects the
    certificates a host serves (`trustsmith inspect host:port`) or holds
-   (certificate files), and continuum stores the `trustsmith.inspect/v1`
+   (certificate files), and the Sybil server stores the `trustsmith.inspect/v1`
    document against the asset. "What does this host hold" then covers
    certificates as well as secrets.
 2. **Expiry on the timeline.** `cert.expiring_soon` and `cert.expired`

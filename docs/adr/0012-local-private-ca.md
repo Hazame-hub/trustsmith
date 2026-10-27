@@ -14,8 +14,8 @@ today either issue for any name with an unconstrained root (a stolen key then
 lets an attacker impersonate any site to every machine that trusts it), or
 leave the user to verify the result by hand.
 
-Sybil's secrets service, Aegis, deliberately has no PKI engine
-(`docs/positioning.md` in sybil-aegis). This is where certificates are issued
+Sybil's secrets service, Aegis, deliberately has no PKI engine (a decision
+recorded in its own positioning). This is where certificates are issued
 instead. Aegis is unchanged by this ADR.
 
 This slice adds the first two verbs: create a CA, issue a certificate.

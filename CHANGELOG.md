@@ -5,7 +5,11 @@ section; the release workflow publishes that section as the release notes.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+- `pkg/inspect.Options` gains `Hostname` and `Purpose`, the library's
+  `--hostname` and `--purpose`. The Sybil server uses them to inspect the
+  certificate a service serves after a renewal, against the name it serves.
 
 ## v0.1.0 - 2026-10-23
 

@@ -24,6 +24,17 @@ type Options struct {
 	// Now is the clock that validity is evaluated against; nil uses
 	// time.Now.
 	Now func() time.Time
+
+	// Hostname, when set, is checked against the certificate's subject
+	// alternative names, as --hostname does: a mismatch is the critical
+	// finding name.hostname_mismatch. An endpoint implies its own host
+	// otherwise.
+	Hostname string
+
+	// Purpose, when set, is evaluated as --purpose does: any, tls-server,
+	// tls-client, code-signing or email. An endpoint implies tls-server
+	// otherwise, and a file any.
+	Purpose string
 }
 
 // Target inspects a file path or a TLS endpoint (host:port, [IPv6]:port or
@@ -31,5 +42,14 @@ type Options struct {
 // An endpoint is contacted over the network; a file is only read. Findings
 // never make it fail; an error means the inspection could not run at all.
 func Target(target string, opts Options) ([]byte, error) {
-	return runcli.JSON(opts.Now, "inspect", "--output", "json", "--fail-on", "never", "--", target)
+	args := []string{"inspect", "--output", "json", "--fail-on", "never"}
+	// Only a set option becomes a flag: the CLI tells an explicit flag from
+	// its default, and so does the document's "source".
+	if opts.Hostname != "" {
+		args = append(args, "--hostname", opts.Hostname)
+	}
+	if opts.Purpose != "" {
+		args = append(args, "--purpose", opts.Purpose)
+	}
+	return runcli.JSON(opts.Now, append(args, "--", target)...)
 }

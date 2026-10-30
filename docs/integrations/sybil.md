@@ -42,24 +42,19 @@ that is the part that exists.
 - **Exit codes** that make inspection a gate: 0 clean, 3 findings at or above
   `--fail-on`, 1 operational error, 2 usage error.
 
-## What does not exist yet
+## How Sybil uses it
 
-Nothing in Sybil consumes Trustsmith output today. The intended integration,
-in the order it would be useful:
-
-1. **Certificate lens on the asset page.** The Sybil agent inspects the
-   certificates a host serves (`trustsmith inspect host:port`) or holds
-   (certificate files), and the Sybil server stores the `trustsmith.inspect/v1`
-   document against the asset. "What does this host hold" then covers
-   certificates as well as secrets.
-2. **Expiry on the timeline.** `cert.expiring_soon` and `cert.expired`
-   findings become timeline events and alerts, beside the deployments and drift
-   that explain them.
-3. **Renewal with verification.** Once Trustsmith has a private CA, Sybil
-   renews a certificate on the machine that uses it, reloads the service, and
-   re-inspects the endpoint to prove the new certificate is served before the
-   old one is retired. This is Sybil's Act → Verify loop applied to
-   certificates.
+1. **Certificate lens on the asset page.** The Sybil agent runs `pkg/scan` on
+   each host and sends the `trustsmith.scan/v1` document; the Sybil server
+   stores it against the asset, and the asset page lists what the host holds.
+2. **Expiry on the timeline.** The server turns the scan's expiry into
+   timeline events beside the deployments and drift that explain them.
+3. **Renewal with verification.** When a runbook renews a certificate, the
+   server re-inspects what the service now serves with `pkg/inspect`, against
+   the name it serves and the `tls-server` purpose, and the renewal fails on
+   any critical finding. This is Sybil's Act → Verify loop applied to
+   certificates. Issuing the new certificate from Trustsmith's private CA is
+   not wired yet; the renewal takes a bundle from the secrets store.
 
 Each of those is Sybil work. Trustsmith's commitment is to keep the contract
 above stable, and to add fields within v1 only additively.

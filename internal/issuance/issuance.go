@@ -10,6 +10,7 @@ package issuance
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -69,6 +70,29 @@ func GenerateKey(rand io.Reader, t KeyType) (crypto.Signer, error) {
 		return rsa.GenerateKey(rand, 3072)
 	}
 	return nil, fmt.Errorf("unknown key type %q", t)
+}
+
+// CheckSubjectKey refuses a public key the CA will not certify when the key
+// comes from someone else (a certificate signing request): RSA under 2048
+// bits, an elliptic curve other than P-256, P-384 or P-521, and any other
+// algorithm than RSA, ECDSA and Ed25519.
+func CheckSubjectKey(pub crypto.PublicKey) error {
+	switch k := pub.(type) {
+	case *rsa.PublicKey:
+		if k.N.BitLen() < 2048 {
+			return fmt.Errorf("%w: an RSA key of %d bits is too short; use at least 2048", ErrRequest, k.N.BitLen())
+		}
+	case *ecdsa.PublicKey:
+		switch k.Curve {
+		case elliptic.P256(), elliptic.P384(), elliptic.P521():
+		default:
+			return fmt.Errorf("%w: the elliptic curve %s is not accepted; use P-256 or P-384", ErrRequest, k.Curve.Params().Name)
+		}
+	case ed25519.PublicKey:
+	default:
+		return fmt.Errorf("%w: the key type %T is not accepted; use ECDSA, RSA or Ed25519", ErrRequest, pub)
+	}
+	return nil
 }
 
 // Limits on what the local CA issues. They are policy, not protocol: the

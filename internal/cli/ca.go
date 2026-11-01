@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/netip"
+	"os"
 	"strings"
 	"time"
 
@@ -27,13 +28,15 @@ func newCACommand(stdout io.Writer, env Env) *cobra.Command {
 and its private key (ca.key). 'trustsmith ca issue' creates a key and a
 certificate signed by that CA, proves the certificate with the same checks as
 'trustsmith inspect' (trusted by this CA, suitable for its purpose, identifying
-every requested name), and only then writes them.
+every requested name), and only then writes them. 'trustsmith ca sign' does the
+same for a certificate signing request, so the key never leaves the machine
+that created it (ADR-0016).
 
 Trustsmith never overwrites a key or a certificate. Keys are written
 unencrypted with owner-only permissions (0600) on Unix-like systems; protect
 the CA directory as you would any private key.`,
 	}
-	cmd.AddCommand(newCAInitCommand(stdout, env), newCAIssueCommand(stdout, env))
+	cmd.AddCommand(newCAInitCommand(stdout, env), newCAIssueCommand(stdout, env), newCASignCommand(stdout, env))
 	return cmd
 }
 
@@ -168,6 +171,141 @@ or a refused request), 2 usage error.`,
 	f.StringVar(&keyType, "key-type", string(issuance.KeyECDSAP256), "key algorithm: ecdsa-p256, ecdsa-p384 or rsa-3072")
 	f.IntVar(&days, "days", int(issuance.DefaultLeafValidity.Hours()/24), "validity in days (at most 397)")
 	return cmd
+}
+
+func newCASignCommand(stdout io.Writer, env Env) *cobra.Command {
+	var (
+		dir, csrPath, out, use string
+		days                   int
+		dns, ips               []string
+	)
+	cmd := &cobra.Command{
+		Use:   "sign",
+		Short: "Sign a certificate signing request with a local CA",
+		Long: `Sign the certificate signing request in --csr with the CA in --ca-dir and
+write the certificate to <out>.pem. The private key stays wherever the request
+was made: no key is created, read or written (ADR-0016).
+
+The request must carry a valid self-signature (proof that its maker holds the
+key) and an accepted key: RSA of at least 2048 bits, ECDSA P-256, P-384 or
+P-521, or Ed25519. The names certified are those given with --dns and --ip, or,
+when none are given, the subject alternative names the request asks for. The
+request's subject and any other extension it asks for are ignored: the CA
+decides what it certifies.
+
+Before anything is written, the certificate is inspected exactly as for
+'trustsmith ca issue'. If any check fails, nothing is written.
+
+Exit codes: 0 signed, 1 operational error (including an existing output file
+or a refused request), 2 usage error.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			server, client, err := parseUse(use)
+			if err != nil {
+				return err
+			}
+			if csrPath == "" {
+				return usageError{errors.New("name the request with --csr")}
+			}
+			addrs, err := parseIPs(ips)
+			if err != nil {
+				return err
+			}
+			data, err := os.ReadFile(csrPath)
+			if err != nil {
+				return operationalError{fmt.Errorf("read the request: %w", err)}
+			}
+			if out == "" {
+				first := ""
+				switch {
+				case len(dns) > 0:
+					first = dns[0]
+				case len(addrs) > 0:
+					first = addrs[0].String()
+				default:
+					csr, perr := casvc.ParseCSR(data)
+					if perr != nil {
+						return caError(perr)
+					}
+					switch {
+					case len(csr.DNSNames) > 0:
+						first = csr.DNSNames[0]
+					case len(csr.IPAddresses) > 0:
+						first = csr.IPAddresses[0].String()
+					default:
+						return caError(fmt.Errorf("%w: the request names nothing; certify a name with --dns or --ip", issuance.ErrRequest))
+					}
+				}
+				out = defaultOut(first)
+			}
+			res, err := casvc.New(env.Now, env.Rand).Sign(casvc.SignRequest{
+				Dir: dir, Out: out, CSR: data, DNSNames: dns, IPs: addrs,
+				Server: server, Client: client, Validity: days24(days),
+			})
+			if err != nil {
+				return caError(err)
+			}
+			return renderCASign(stdout, res, dir, use)
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&dir, "ca-dir", defaultCADir, "directory of the CA created by 'trustsmith ca init'")
+	f.StringVar(&csrPath, "csr", "", "certificate signing request to sign, PEM or DER")
+	f.StringArrayVar(&dns, "dns", nil, "DNS name to certify instead of the request's names (repeatable)")
+	f.StringArrayVar(&ips, "ip", nil, "IP address to certify instead of the request's names (repeatable)")
+	f.StringVar(&use, "use", "server", "what the certificate is for: server, client or both")
+	f.StringVar(&out, "out", "", "output path without extension (default: the first name)")
+	f.IntVar(&days, "days", int(issuance.DefaultLeafValidity.Hours()/24), "validity in days (at most 397)")
+	return cmd
+}
+
+func parseUse(use string) (server, client bool, err error) {
+	switch use {
+	case "server":
+		return true, false, nil
+	case "client":
+		return false, true, nil
+	case "both":
+		return true, true, nil
+	}
+	return false, false, usageError{fmt.Errorf("invalid --use %q: want server, client or both", use)}
+}
+
+func parseIPs(ips []string) ([]netip.Addr, error) {
+	var addrs []netip.Addr
+	for _, s := range ips {
+		a, err := netip.ParseAddr(strings.Trim(s, "[]"))
+		if err != nil || a.Zone() != "" {
+			return nil, usageError{fmt.Errorf("invalid --ip %q", s)}
+		}
+		addrs = append(addrs, a.Unmap())
+	}
+	return addrs, nil
+}
+
+func renderCASign(w io.Writer, res casvc.Signed, dir, use string) error {
+	c := res.Certificate
+	names := append([]string{}, res.DNSNames...)
+	for _, ip := range res.IPs {
+		names = append(names, ip.String())
+	}
+	p := &printer{w: w}
+	p.linef("Signed a %s certificate for %s", useText(use), strings.Join(names, ", "))
+	p.linef("")
+	p.linef("  Certificate   %s", res.CertPath)
+	p.linef("  Private key   not handled: it stays where the request was made")
+	p.linef("  Issuer        %s", c.Issuer.String())
+	p.linef("  Valid until   %s", c.NotAfter.UTC().Format(humanTime))
+	p.linef("  Certificate   %s", fingerprint.CertFromDER(c.Raw))
+	p.linef("")
+	p.linef("Proven before writing, with the checks of 'trustsmith inspect':")
+	p.linef("  - the request's signature proves its maker holds the key")
+	p.linef("  - validates against %s as the only trust anchor", dir+"/"+casvc.CertFile)
+	p.linef("  - its key usages permit %s use", useText(use))
+	p.linef("  - it identifies every certified name")
+	p.linef("")
+	p.linef("Check it yourself: trustsmith inspect %s --roots %s/%s --hostname %s", res.CertPath, dir, casvc.CertFile, names[0])
+	return p.err
 }
 
 func days24(days int) time.Duration { return time.Duration(days) * 24 * time.Hour }

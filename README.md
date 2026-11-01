@@ -136,6 +136,7 @@ server presents:
 ```console
 $ trustsmith ca init --permit-dns example.internal --permit-ip 10.0.0.0/8
 $ trustsmith ca issue --dns app.example.internal --ip 10.1.2.3
+$ trustsmith ca sign --csr app.csr        # the key stays where app.csr was made
 ```
 
 - **Constrained by default when you ask.** `--permit-dns` and `--permit-ip`
@@ -148,6 +149,12 @@ $ trustsmith ca issue --dns app.example.internal --ip 10.1.2.3
 - **Refuses rather than adjusts.** A certificate that would outlive its CA,
   last more than 397 days or name something outside the constraints is refused
   with the reason.
+- **Signs requests without seeing the key.** `ca sign` certifies the key of a
+  certificate signing request after checking its signature and key strength,
+  for the request's names or the ones you give
+  ([ADR-0016](docs/adr/0016-sign-certificate-requests.md)). Its subject and
+  requested extensions are ignored: the certificate is the same as `ca issue`
+  would make.
 - **Never overwrites** a key or certificate, and never touches a trust store:
   it tells you which file to trust.
 - Root: ECDSA P-256 by default (`--key-type ecdsa-p384` or `rsa-3072`),

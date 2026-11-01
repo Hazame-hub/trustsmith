@@ -1,6 +1,7 @@
-// Package casvc is the local CA application service (ADR-0012): it creates a
-// CA directory, and issues certificates from it after proving each one with
-// the same inspection code path as `trustsmith inspect`. It is the only
+// Package casvc is the local CA application service (ADR-0012, ADR-0016): it
+// creates a CA directory, and issues certificates from it, or signs requests
+// for keys held elsewhere, after proving each one with the same inspection
+// code path as `trustsmith inspect`. It is the only
 // package that writes private keys to disk.
 package casvc
 
@@ -164,7 +165,7 @@ func (s *Service) Issue(r IssueRequest) (Issued, error) {
 		return Issued{}, err
 	}
 	certPEM := issuance.EncodeCertificate(der)
-	proof, err := s.prove(certPEM, caCertPath, now, r)
+	proof, err := s.prove(certPEM, caCertPath, now, r.Out, r.Server, r.Client, r.DNSNames, r.IPs)
 	if err != nil {
 		return Issued{}, err
 	}
@@ -178,6 +179,111 @@ func (s *Service) Issue(r IssueRequest) (Issued, error) {
 	return Issued{CertPath: certPath, KeyPath: keyPath, Certificate: cert, Proof: proof}, nil
 }
 
+// SignRequest describes a certificate for a key someone else holds: the
+// certificate signing request in CSR (PEM or DER) is signed by the CA in Dir
+// and the certificate written to Out+".pem". No key is created or written.
+//
+// The names certified are DNSNames and IPs when either is set, and otherwise
+// the subject alternative names the request asks for. The request's subject
+// and any other extension it asks for are ignored: the CA decides what it
+// certifies, the request only proves possession of the key.
+type SignRequest struct {
+	Dir      string
+	Out      string
+	CSR      []byte
+	DNSNames []string
+	IPs      []netip.Addr
+	Server   bool
+	Client   bool
+	Validity time.Duration
+}
+
+// Signed is a signed, proven and written certificate.
+type Signed struct {
+	CertPath    string
+	Certificate *x509.Certificate
+	DNSNames    []string
+	IPs         []netip.Addr
+	// Proof is the inspection of the certificate against the CA as the only
+	// trust anchor, as for Issue.
+	Proof inspectsvc.Result
+}
+
+// Sign checks the request's self-signature and key, signs a certificate for
+// its key, proves it exactly as Issue does, and only then writes it. An
+// existing file is never replaced.
+func (s *Service) Sign(r SignRequest) (Signed, error) {
+	certPath := r.Out + ".pem"
+	if err := refuseExisting(certPath); err != nil {
+		return Signed{}, err
+	}
+	csr, err := ParseCSR(r.CSR)
+	if err != nil {
+		return Signed{}, err
+	}
+	if err := csr.CheckSignature(); err != nil {
+		return Signed{}, fmt.Errorf("%w: the request's signature does not verify, so it does not prove possession of its key: %w", issuance.ErrRequest, err)
+	}
+	if err := issuance.CheckSubjectKey(csr.PublicKey); err != nil {
+		return Signed{}, err
+	}
+	dnsNames, ips := r.DNSNames, r.IPs
+	if len(dnsNames) == 0 && len(ips) == 0 {
+		dnsNames = csr.DNSNames
+		for _, ip := range csr.IPAddresses {
+			a, _ := netip.AddrFromSlice(ip)
+			ips = append(ips, a.Unmap())
+		}
+	}
+	caCertPath := filepath.Join(r.Dir, CertFile)
+	ca, caKey, err := loadCA(r.Dir)
+	if err != nil {
+		return Signed{}, err
+	}
+	now := s.now()
+	der, err := issuance.Leaf(issuance.LeafRequest{
+		DNSNames: dnsNames, IPs: ips, Server: r.Server, Client: r.Client,
+		Now: now, Validity: r.Validity,
+		Key: csr.PublicKey, CA: ca, CAKey: caKey, Rand: s.rand,
+	})
+	if err != nil {
+		return Signed{}, err
+	}
+	certPEM := issuance.EncodeCertificate(der)
+	proof, err := s.prove(certPEM, caCertPath, now, r.Out, r.Server, r.Client, dnsNames, ips)
+	if err != nil {
+		return Signed{}, err
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		return Signed{}, err
+	}
+	if err := writeExclusive(certPath, certPEM, certMode); err != nil {
+		return Signed{}, err
+	}
+	return Signed{CertPath: certPath, Certificate: cert, DNSNames: dnsNames, IPs: ips, Proof: proof}, nil
+}
+
+// ParseCSR reads one certificate signing request, PEM ("CERTIFICATE REQUEST"
+// or the legacy "NEW CERTIFICATE REQUEST") or DER.
+func ParseCSR(data []byte) (*x509.CertificateRequest, error) {
+	der := data
+	if block, rest := pem.Decode(data); block != nil {
+		if block.Type != "CERTIFICATE REQUEST" && block.Type != "NEW CERTIFICATE REQUEST" {
+			return nil, fmt.Errorf("%w: expected a certificate signing request, found a PEM %q block", issuance.ErrRequest, block.Type)
+		}
+		if len(strings.TrimSpace(string(rest))) != 0 {
+			return nil, fmt.Errorf("%w: the request file holds more than one PEM block", issuance.ErrRequest)
+		}
+		der = block.Bytes
+	}
+	csr, err := x509.ParseCertificateRequest(der)
+	if err != nil {
+		return nil, fmt.Errorf("%w: not a certificate signing request: %w", issuance.ErrRequest, err)
+	}
+	return csr, nil
+}
+
 // wildcardProbeLabel stands in for "*" when proving a wildcard name: the
 // certificate must identify that concrete name under the wildcard.
 const wildcardProbeLabel = "trustsmith-wildcard-check"
@@ -185,20 +291,20 @@ const wildcardProbeLabel = "trustsmith-wildcard-check"
 // prove inspects the in-memory certificate once per requested purpose and
 // name, with the CA certificate file as the only trust anchor, and returns
 // the first inspection.
-func (s *Service) prove(certPEM []byte, caCertPath string, now time.Time, r IssueRequest) (inspectsvc.Result, error) {
+func (s *Service) prove(certPEM []byte, caCertPath string, now time.Time, out string, server, client bool, dnsNames []string, ips []netip.Addr) (inspectsvc.Result, error) {
 	roots, err := inspectsvc.LoadRoots([]string{caCertPath})
 	if err != nil {
 		return inspectsvc.Result{}, err
 	}
 	var purposes []purpose.Purpose
-	if r.Server {
+	if server {
 		purposes = append(purposes, purpose.TLSServer)
 	}
-	if r.Client {
+	if client {
 		purposes = append(purposes, purpose.TLSClient)
 	}
-	names := append([]string{}, r.DNSNames...)
-	for _, ip := range r.IPs {
+	names := append([]string{}, dnsNames...)
+	for _, ip := range ips {
 		names = append(names, ip.String())
 	}
 	var first *inspectsvc.Result
@@ -211,7 +317,7 @@ func (s *Service) prove(certPEM []byte, caCertPath string, now time.Time, r Issu
 			}
 			svc := inspectsvc.New(func() time.Time { return now },
 				inspectsvc.WithRoots(roots), inspectsvc.WithPurpose(p), inspectsvc.WithHostname(req))
-			res, err := svc.InspectBytes(inspectsvc.Source{Kind: inspectsvc.SourceFile, Locator: r.Out + ".pem"}, certPEM)
+			res, err := svc.InspectBytes(inspectsvc.Source{Kind: inspectsvc.SourceFile, Locator: out + ".pem"}, certPEM)
 			if err != nil {
 				return inspectsvc.Result{}, err
 			}
@@ -337,3 +443,28 @@ func writeExclusive(path string, data []byte, mode fs.FileMode) error {
 	}
 	return nil
 }
+
+// Stage writes an existing CA and, when csr is set, a request to sign into
+// dir, an empty directory the caller created, so the library in pkg/ca can
+// run `trustsmith ca sign` on material it was handed in memory. The CA is
+// loaded back and refused unless its key belongs to its certificate, so a
+// mismatched pair fails here and not halfway through a signature. Files are
+// written exclusively, the key with owner-only permissions.
+func Stage(dir string, caCertPEM, caKeyPEM, csr []byte) error {
+	if err := writeExclusive(filepath.Join(dir, KeyFile), caKeyPEM, keyMode); err != nil {
+		return err
+	}
+	if err := writeExclusive(filepath.Join(dir, CertFile), caCertPEM, certMode); err != nil {
+		return err
+	}
+	if _, _, err := loadCA(dir); err != nil {
+		return err
+	}
+	if csr != nil {
+		return writeExclusive(filepath.Join(dir, StagedRequestFile), csr, certMode)
+	}
+	return nil
+}
+
+// StagedRequestFile is the name Stage gives the request inside the directory.
+const StagedRequestFile = "request.csr"

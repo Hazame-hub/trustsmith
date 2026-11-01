@@ -7,6 +7,15 @@ section; the release workflow publishes that section as the release notes.
 
 ### Added
 
+- `trustsmith ca sign --csr <file>` signs a certificate signing request with
+  the local CA, so the key stays on the machine that made it
+  ([ADR-0016](docs/adr/0016-sign-certificate-requests.md)). The request's
+  signature and key are checked, its names are used unless `--dns`/`--ip` are
+  given, and everything else it asks for is ignored. The certificate is proven
+  before it is written, as with `ca issue`.
+- `pkg/ca` with `Init` and `Sign`, for callers that hold the CA in memory. They
+  run the CLI commands in process (ADR-0015).
+
 - `pkg/inspect.Options` gains `Hostname` and `Purpose`, the library's
   `--hostname` and `--purpose`. The Sybil server uses them to inspect the
   certificate a service serves after a renewal, against the name it serves.

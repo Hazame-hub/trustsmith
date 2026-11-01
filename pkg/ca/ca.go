@@ -79,11 +79,11 @@ func Init(opts InitOptions) (CA, error) {
 	if _, err := runcli.JSON(opts.Now, args...); err != nil {
 		return CA{}, err
 	}
-	cert, err := os.ReadFile(filepath.Join(caDir, casvc.CertFile))
+	cert, err := os.ReadFile(filepath.Join(caDir, casvc.CertFile)) //nolint:gosec // inside the private directory this call created
 	if err != nil {
 		return CA{}, err
 	}
-	key, err := os.ReadFile(filepath.Join(caDir, casvc.KeyFile))
+	key, err := os.ReadFile(filepath.Join(caDir, casvc.KeyFile)) //nolint:gosec // inside the private directory this call created
 	if err != nil {
 		return CA{}, err
 	}
@@ -139,17 +139,14 @@ func Sign(ca CA, csr []byte, opts SignOptions) ([]byte, error) {
 	if _, err := runcli.JSON(opts.Now, args...); err != nil {
 		return nil, err
 	}
-	return os.ReadFile(out + ".pem")
+	return os.ReadFile(out + ".pem") //nolint:gosec // inside the private directory this call created
 }
 
-// privateDir is an owner-only temporary directory and its removal.
+// privateDir is an owner-only temporary directory (os.MkdirTemp creates it
+// with mode 0700) and its removal.
 func privateDir() (string, func(), error) {
 	dir, err := os.MkdirTemp("", "trustsmith-ca-*")
 	if err != nil {
-		return "", nil, err
-	}
-	if err := os.Chmod(dir, 0o700); err != nil {
-		_ = os.RemoveAll(dir)
 		return "", nil, err
 	}
 	return dir, func() { _ = os.RemoveAll(dir) }, nil

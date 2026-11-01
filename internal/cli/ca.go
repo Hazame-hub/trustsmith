@@ -211,7 +211,7 @@ or a refused request), 2 usage error.`,
 			if err != nil {
 				return err
 			}
-			data, err := os.ReadFile(csrPath)
+			data, err := os.ReadFile(csrPath) //nolint:gosec // the request file the user named
 			if err != nil {
 				return operationalError{fmt.Errorf("read the request: %w", err)}
 			}

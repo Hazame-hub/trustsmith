@@ -6,6 +6,7 @@ package runcli
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"strings"
@@ -23,7 +24,7 @@ func JSON(now func() time.Time, args ...string) ([]byte, error) {
 		now = time.Now
 	}
 	var stdout, stderr bytes.Buffer
-	code := cli.Run(args, bytes.NewReader(nil), &stdout, &stderr, cli.Env{Now: now, Version: "library"})
+	code := cli.Run(args, bytes.NewReader(nil), &stdout, &stderr, cli.Env{Now: now, Rand: rand.Reader, Version: "library"})
 	if code != cli.ExitOK {
 		msg := strings.TrimSpace(strings.TrimPrefix(stderr.String(), "trustsmith: "))
 		if msg == "" {

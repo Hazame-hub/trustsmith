@@ -1,12 +1,17 @@
 package cli_test
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/Hazame-hub/trustsmith/internal/cli"
+	"github.com/Hazame-hub/trustsmith/internal/testpki"
 )
 
 // The local CA end to end, through the CLI: create a CA, issue from it, and
@@ -88,6 +93,59 @@ func TestCAIssueDefaultOut(t *testing.T) {
 	for _, f := range []string{"trustsmith-ca/ca.pem", "trustsmith-ca/ca.key", "_wildcard.svc.example.internal.pem", "_wildcard.svc.example.internal.key"} {
 		if _, err := os.Stat(f); err != nil {
 			t.Error(err)
+		}
+	}
+}
+
+// Signing a request through the CLI: only the certificate is written, it is
+// for the request's names, and it inspects clean against the CA.
+func TestCASign(t *testing.T) {
+	tmp := t.TempDir()
+	dir := filepath.Join(tmp, "ca")
+	if code, _, stderr := run(t, nil, "ca", "init", "--dir", dir, "--permit-dns", "example.internal"); code != cli.ExitOK {
+		t.Fatal(stderr)
+	}
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	csrPath := filepath.Join(tmp, "req.csr")
+	der := testpki.Request(t, testpki.RequestTemplate{DNSNames: []string{"app.example.internal"}}, key)
+	if err := os.WriteFile(csrPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: der}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Chdir(tmp)
+	code, stdout, stderr := run(t, nil, "ca", "sign", "--ca-dir", dir, "--csr", csrPath)
+	if code != cli.ExitOK {
+		t.Fatalf("ca sign: exit %d: %s", code, stderr)
+	}
+	for _, want := range []string{"Signed a TLS server certificate for app.example.internal", "app.example.internal.pem", "not handled", "Proven before writing"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("ca sign output lacks %q:\n%s", want, stdout)
+		}
+	}
+	if _, err := os.Stat("app.example.internal.key"); err == nil {
+		t.Error("ca sign wrote a key")
+	}
+	if code, out, _ := run(t, nil, "inspect", "app.example.internal.pem", "--roots", filepath.Join(dir, "ca.pem"), "--purpose", "tls-server", "--hostname", "app.example.internal", "--fail-on", "info"); code != cli.ExitOK {
+		t.Errorf("inspect of the signed certificate: exit %d\n%s", code, out)
+	}
+
+	for name, tc := range map[string]struct {
+		args []string
+		code int
+		want string
+	}{
+		"no csr":      {[]string{"ca", "sign", "--ca-dir", dir}, cli.ExitUsage, "--csr"},
+		"missing csr": {[]string{"ca", "sign", "--ca-dir", dir, "--csr", filepath.Join(tmp, "none")}, cli.ExitError, "read the request"},
+		"outside":     {[]string{"ca", "sign", "--ca-dir", dir, "--csr", csrPath, "--dns", "bank.example.com", "--out", filepath.Join(tmp, "o")}, cli.ExitError, "outside the CA's permitted names"},
+		"bad use":     {[]string{"ca", "sign", "--ca-dir", dir, "--csr", csrPath, "--use", "email"}, cli.ExitUsage, "invalid --use"},
+		"twice":       {[]string{"ca", "sign", "--ca-dir", dir, "--csr", csrPath}, cli.ExitError, "never overwrites"},
+	} {
+		code, _, stderr := run(t, nil, tc.args...)
+		if code != tc.code || !strings.Contains(stderr, tc.want) {
+			t.Errorf("%s: exit %d, stderr %q; want exit %d containing %q", name, code, stderr, tc.code, tc.want)
 		}
 	}
 }

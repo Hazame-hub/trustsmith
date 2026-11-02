@@ -39,6 +39,10 @@ that is the part that exists.
 - **Go packages** for the agent side: `pkg/scan` and `pkg/inspect` return
   those documents, byte for byte what the CLI prints, so Quasar can scan a
   host without a second binary ([ADR-0015](../adr/0015-public-packages.md)).
+- **A CA for the server side**: `pkg/ca` creates a CA held in memory and signs
+  certificate signing requests with it, refusing and proving exactly as
+  `trustsmith ca sign` does
+  ([ADR-0016](../adr/0016-sign-certificate-requests.md)).
 - **Exit codes** that make inspection a gate: 0 clean, 3 findings at or above
   `--fail-on`, 1 operational error, 2 usage error.
 
@@ -54,7 +58,9 @@ that is the part that exists.
    the name it serves and the `tls-server` purpose, and the renewal fails on
    any critical finding. This is Sybil's Act → Verify loop applied to
    certificates. Issuing the new certificate from Trustsmith's private CA is
-   not wired yet; the renewal takes a bundle from the secrets store.
+   not wired yet; the renewal takes a bundle from the secrets store. With
+   `pkg/ca` it can: the machine makes its key and request, the server signs
+   the request, and only the certificate travels.
 
 Each of those is Sybil work. Trustsmith's commitment is to keep the contract
 above stable, and to add fields within v1 only additively.

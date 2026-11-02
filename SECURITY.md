@@ -101,7 +101,9 @@ This describes the implementation today: `trustsmith inspect`, the local CA
 part of Trustsmith that creates or stores secret material.
 
 - **What it writes.** `ca init` writes `ca.pem` and `ca.key` into a directory
-  it creates with mode 0700; `ca issue` writes `<out>.pem` and `<out>.key`.
+  it creates with mode 0700; `ca issue` writes `<out>.pem` and `<out>.key`;
+  `ca sign` ([ADR-0016](docs/adr/0016-sign-certificate-requests.md)) writes
+  only `<out>.pem`, because the key stays wherever the request was made.
   Keys are unencrypted PKCS #8 PEM with mode 0600. On Windows the mode bits
   only toggle read-only and the key inherits the directory's ACL, so put the
   CA directory somewhere only you can read.
@@ -115,6 +117,13 @@ part of Trustsmith that creates or stores secret material.
 - **Proof before writing.** Every issued certificate is validated against its
   CA, for its purpose and every requested name, by the same code as
   `trustsmith inspect`, before its key is written.
+- **Signing requests.** `ca sign` refuses a request whose signature does not
+  verify or whose key is weak (RSA below 2048 bits, curves other than P-256,
+  P-384 and P-521), and copies nothing from the request but its key and, unless
+  names are given, its names: a request asking to be a CA gets an end-entity
+  certificate.
+- **`pkg/ca`** writes the CA it is handed into an owner-only temporary
+  directory for the length of one call and removes it before returning.
 - Key creation and file writing are each confined to one package by
   architecture tests.
 ## Matching keys to certificates

@@ -5,6 +5,11 @@ section; the release workflow publishes that section as the release notes.
 
 ## Unreleased
 
+## v0.2.0 - 2026-11-04
+
+Signing certificate requests, so a key never has to leave the machine that
+made it. Built with Go 1.27.3.
+
 ### Added
 
 - `trustsmith ca sign --csr <file>` signs a certificate signing request with
@@ -15,7 +20,6 @@ section; the release workflow publishes that section as the release notes.
   before it is written, as with `ca issue`.
 - `pkg/ca` with `Init` and `Sign`, for callers that hold the CA in memory. They
   run the CLI commands in process (ADR-0015).
-
 - `pkg/inspect.Options` gains `Hostname` and `Purpose`, the library's
   `--hostname` and `--purpose`. The Sybil server uses them to inspect the
   certificate a service serves after a renewal, against the name it serves.
